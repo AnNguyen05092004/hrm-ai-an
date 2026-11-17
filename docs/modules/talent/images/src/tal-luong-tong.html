@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>luong-tong</title><link rel="stylesheet" href="kit.css">
+<style>
+  .r { display: flex; gap: 50px; align-items: stretch; }
+  .r > .box { width: 222px; }
+  .core { border: 1.6px dashed #C9CEDB; background: #fff; }
+  .core > .lane-title { background: #64748B; }
+</style></head>
+<body><div id="canvas">
+  <div class="title">Luồng tổng: hai điểm bắt đầu, dùng chung một khung năng lực</div>
+  <div class="subtitle">Từ trên xuống: KPI, chiến lược → kế hoạch cho tổ chức · Từ dưới lên: nhân viên chọn hướng → lộ trình cá nhân · Talent là khung, LMS là nhiên liệu</div>
+
+  <div class="col" style="gap:56px">
+    <div class="lane"><div class="lane-title">A · Kế hoạch đào tạo tổ chức (từ trên xuống)</div>
+      <div class="r">
+        <div class="box human" id="a1"><span class="kind">GIÁM ĐỐC / LEADER</span><h4>Nhập KPI, chiến lược</h4><p>"2027: 30% doanh thu từ dự án GenAI"; phạm vi, thời hạn, ngân sách</p></div>
+        <div class="box ai" id="a2"><span class="kind">★ AI</span><h4>Dịch ra năng lực cần có</h4><p>Skill nào, mức bao nhiêu, cần bao nhiêu người; hỏi lại nếu đầu vào còn mơ hồ</p></div>
+        <div class="box code" id="a3"><span class="kind">CODE</span><h4>Gap theo đơn vị</h4><p>So với hồ sơ năng lực: đơn vị nào thiếu skill gì, thiếu bao nhiêu người</p></div>
+        <div class="box ai" id="a4"><span class="kind">★ AI</span><h4>Kế hoạch theo cấp + đề xuất người</h4><p>Trưởng phòng, lead, nhân viên học gì; tên từng người kèm lý do; gap quá lớn thì gợi ý tuyển</p></div>
+        <div class="box human" id="a5"><span class="kind">TRƯỞNG PHÒNG → NGƯỜI DUYỆT</span><h4>Chỉnh và duyệt</h4><p>Trưởng phòng thêm/bớt người của đơn vị mình; người có thẩm quyền duyệt</p></div>
+      </div>
+    </div>
+
+    <div class="lane core"><div class="lane-title">Dùng chung</div>
+      <div class="r">
+        <div class="box sys" id="k1"><span class="kind">KHUNG</span><h4>Khung năng lực, career path</h4><p>Năng lực → skill, mức 1–5 theo vị trí; hướng lên và chuyển ngang</p></div>
+        <div class="box code" id="k2"><span class="kind">CODE</span><h4>Hồ sơ năng lực</h4><p>Mức hiện tại từng skill, có nguồn; tính gap</p></div>
+        <div class="box human" id="k3"><span class="kind">QUẢN LÝ</span><h4>Đánh giá mức 4–5</h4><p>Qua kết quả dự án, việc thực tế</p></div>
+        <div class="box ai" id="k4"><span class="kind">★ AI</span><h4>Gợi ý khóa học</h4><p>LMS → khóa ngoài đã duyệt → thiếu thì gợi ý từ khóa để tự tìm</p></div>
+        <div class="box sys" id="k5"><span class="kind">LMS</span><h4>Giao khóa, học, thi</h4><p>Ghi nhận hoàn thành, bài thi, chứng chỉ</p></div>
+      </div>
+    </div>
+
+    <div class="lane"><div class="lane-title">B · Lộ trình cá nhân (từ dưới lên)</div>
+      <div class="r">
+        <div class="box actor" id="b1"><span class="kind">NHÂN VIÊN</span><h4>Chọn hướng phát triển</h4><p>Lên vị trí cao hơn, hoặc chuyển ngang (BE → AI Engineer)</p></div>
+        <div class="box ai" id="b2"><span class="kind">★ AI</span><h4>Gợi ý hướng gần với mình</h4><p>So các hướng trong career path; giải thích vì sao gần</p></div>
+        <div class="box code" id="b3"><span class="kind">CODE</span><h4>Gap theo vị trí đích</h4><p>Từng skill: mức cần, mức hiện tại, còn thiếu</p></div>
+        <div class="box ai" id="b4"><span class="kind">★ AI</span><h4>Lập lộ trình</h4><p>Lên tới mức 3: khóa học. Mức 4–5: việc thực tế, mentor. Có mốc đánh giá lại</p></div>
+        <div class="box actor" id="b5"><span class="kind">NHÂN VIÊN + ★ TRỢ LÝ</span><h4>Tự học và làm theo lộ trình</h4><p>Không cần duyệt; trợ lý nhắc, cập nhật gap hằng tháng</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="actor"></i>Nhân viên</span><span><i class="ai"></i>AI làm</span><span><i class="code"></i>Code / quy tắc</span>
+    <span><i class="human"></i>Người có thẩm quyền</span><span><i class="sys"></i>Dữ liệu / hệ thống</span>
+  </div>
+</div>
+<script src="kit.js"></script>
+<script>
+  ['a', 'b'].forEach(p => { for (let i = 1; i < 5; i++) K.link(p + i, p + (i + 1), { from: 'r', to: 'l' }); });
+  K.link('a5', 'k5', { fx: 0.75, tx: 0.75, color: '#2E9E6A', label: 'giao khóa' });
+  K.link('b5', 'k5', { from: 't', to: 'b', fx: 0.75, tx: 0.75, color: '#3F48A6', label: 'đăng ký học' });
+  K.link('k4', 'a4', { from: 't', to: 'b', dash: true, color: '#E8902F' });
+  K.link('k4', 'b4', { from: 'b', to: 't', dash: true, color: '#E8902F' });
+  K.link('k2', 'a3', { from: 't', to: 'b', dash: true, fx: 0.7, tx: 0.3 });
+  K.link('k2', 'b3', { from: 'b', to: 't', dash: true, fx: 0.7, tx: 0.3 });
+  K.link('k5', 'k2', { from: 'b', to: 'b', fx: 0.3, out: 14, color: '#4F6BD8', label: 'thi đạt, chứng chỉ → tối đa mức 3' });
+  K.link('k3', 'k2', { from: 'l', to: 'r', color: '#2E9E6A' });
+  K.link('k1', 'k2', { from: 'r', to: 'l' });
+  K.draw();
+</script>
+</body></html>

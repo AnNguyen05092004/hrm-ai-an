@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>9box</title><link rel="stylesheet" href="kit.css">
+<style>
+  .wrap { display: flex; gap: 40px; align-items: flex-start; }
+  .grid { display: grid; grid-template-columns: 34px repeat(3, 196px); grid-template-rows: repeat(3, 100px) 30px; gap: 8px; }
+  .cell { border-radius: 10px; padding: 10px 12px; font-size: 12.5px; position: relative; border: 1.5px solid transparent; }
+  .cell b { display: block; font-size: 13.5px; margin-bottom: 2px; }
+  .cell .n { position: absolute; right: 12px; top: 8px; font-size: 22px; font-weight: 800; opacity: .85; }
+  .cell .d { color: #4B5563; font-size: 11.5px; line-height: 1.4; margin-top: 2px; padding-right: 26px; }
+  .g { background: #E3F4EA; border-color: #9FD5B5; } .g .n { color: #1E7B4E; }
+  .y { background: #FFF6DE; border-color: #F0D58C; } .y .n { color: #9A6B00; }
+  .rd { background: #FDECEC; border-color: #F2B8B8; } .rd .n { color: #B42318; }
+  .ax { display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; color: #6B7280; }
+  .ax.v { writing-mode: vertical-rl; transform: rotate(180deg); }
+  .axt { font-size: 12.5px; font-weight: 800; color: #1F2560; text-align: center; margin-top: 4px; }
+  .ini { display: inline-block; font-size: 10.5px; font-weight: 700; background: #fff; border: 1px solid #D1D5DB; border-radius: 10px; padding: 0 6px; margin: 4px 3px 0 0; }
+  .side { width: 400px; }
+  .flt { font-size: 12.5px; color: #374151; margin-bottom: 14px; }
+  .flt span { display: inline-block; border: 1px solid #D1D5DB; border-radius: 8px; padding: 3px 10px; margin: 0 6px 6px 0; background: #fff; }
+  .sum li { margin-bottom: 8px; }
+  .sum { padding-left: 18px; margin: 6px 0 0; }
+  .note { font-size: 11.5px; color: #6B7280; margin-top: 10px; line-height: 1.5; }
+</style></head>
+<body><div id="canvas">
+  <div class="title">Dashboard nhân tài: 9-Box Năng lực × Tiềm năng</div>
+  <div class="subtitle">Ví dụ: Giám đốc Khối AI &amp; Dữ liệu xem đơn vị mình (AI-ML, AI-DATA · 28 người) · số liệu giả lập</div>
+
+  <div class="wrap">
+    <div>
+      <div class="grid">
+        <div class="ax v">Cao</div>
+        <div class="cell y"><span class="n">2</span><b>Tiềm năng chưa bộc lộ</b><div class="d">Học nhanh, skill chưa đủ chuẩn vị trí</div></div>
+        <div class="cell g"><span class="n">4</span><b>Phát triển nhanh</b><div class="d">Ứng viên kế cận sau 1–2 năm</div></div>
+        <div class="cell g"><span class="n">3</span><b>Ngôi sao</b><div class="d">Sẵn sàng cho vị trí cao hơn</div><span class="ini">VSF021</span><span class="ini">VSF024</span><span class="ini">VSF027</span></div>
+        <div class="ax v">Vừa</div>
+        <div class="cell rd"><span class="n">1</span><b>Cần hỗ trợ</b><div class="d">Skill dưới chuẩn; xem lại cách giao việc, kèm cặp</div></div>
+        <div class="cell y"><span class="n">9</span><b>Nòng cốt</b><div class="d">Đáp ứng tốt vị trí hiện tại</div></div>
+        <div class="cell g"><span class="n">5</span><b>Chuyên gia triển vọng</b><div class="d">Giỏi chuyên môn, có thể lên thêm</div></div>
+        <div class="ax v">Thấp</div>
+        <div class="cell rd"><span class="n">0</span><b>Cần xem xét</b><div class="d">Người có thẩm quyền trao đổi trực tiếp</div></div>
+        <div class="cell y"><span class="n">1</span><b>Ổn định</b><div class="d">Phù hợp vị trí hiện tại</div></div>
+        <div class="cell y"><span class="n">3</span><b>Chuyên gia ổn định</b><div class="d">Giữ và tận dụng làm mentor</div></div>
+        <div></div><div class="ax">Thấp</div><div class="ax">Vừa</div><div class="ax">Cao</div>
+      </div>
+      <div class="axt">→ NĂNG LỰC (code tính: tỷ lệ skill đạt mức yêu cầu của vị trí)</div>
+      <div class="axt" style="text-align:left; margin-top:2px">↑ TIỀM NĂNG (quản lý đánh giá: thấp / vừa / cao)</div>
+    </div>
+
+    <div class="side col tight">
+      <div class="flt"><span>Đơn vị: Khối AI &amp; Dữ liệu ▾</span><span>Kỳ: 2026 ▾</span><span>Chế độ: 9-Box | Heatmap skill</span></div>
+      <div class="box ai"><span class="kind">★ AI TÓM TẮT · CÓ NGUỒN</span>
+        <ul class="sum">
+          <li><b>4/9 người tiềm năng cao chưa có lộ trình phát triển.</b> Nên mở lộ trình hoặc giao việc thực tế.</li>
+          <li><b>Skill "Triển khai LLM vào sản phẩm":</b> mức trung bình AI-ML là 2,1, chuẩn vị trí là 3. Đây là skill chính của KPI "30% doanh thu từ GenAI 2027".</li>
+          <li><b>3 người "Chuyên gia ổn định"</b> có skill mức 5 đúng chỗ đơn vị đang thiếu, có thể làm mentor.</li>
+          <li><b>5 đánh giá tiềm năng đã quá 12 tháng</b>, nên cập nhật trước khi dùng.</li>
+        </ul>
+        <span class="btn">Lập kế hoạch đào tạo cho gap này</span><span class="btn">Xem danh sách</span>
+      </div>
+      <div class="note">AI không xếp ô và không kết luận về từng người. Ô 9-Box chỉ để tham khảo, không phải quyết định thăng tiến, lương hay nghỉ việc. Nhân viên không thấy ô của mình; họ thấy mức skill và gap.</div>
+    </div>
+  </div>
+</div>
+<script src="kit.js"></script>
+<script>K.draw();</script>
+</body></html>

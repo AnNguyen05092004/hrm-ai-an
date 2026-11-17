@@ -1,0 +1,19 @@
+<!-- @dsCard group="Học tập & soạn nội dung" height=600 -->
+<!doctype html>
+<html lang="vi">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"><title>QuestionEditor</title></head>
+<body>
+<div class="pv-col" style="max-width:700px">
+<section class="wf-qe">
+  <div class="wf-qe-top"><select class="wf-input wf-select" aria-label="Loại câu"><option>Một đáp án</option></select><select class="wf-input wf-select" style="width:auto;min-width:170px" aria-label="Chủ đề"><option>Bảo mật thông tin</option></select><span class="wf-badge wf-badge--ai">AI soạn nháp</span></div>
+  <div class="wf-field"><label class="wf-label" for="qe1">Đề bài <span class="wf-req">*</span></label><textarea id="qe1" class="wf-input wf-textarea" style="min-height:64px">Bạn nhận được email lạ yêu cầu đăng nhập lại tài khoản. Việc đầu tiên nên làm?</textarea></div>
+  <fieldset class="wf-radio-group"><legend class="wf-label">Đáp án (chọn một đáp án đúng)</legend>
+    <div class="wf-qe-opt"><label class="wf-radio"><input type="radio" name="qa" aria-label="Đáp án đúng: A"><span class="wf-sr">Đáp án đúng</span></label><input class="wf-input" value="Đăng nhập để kiểm tra" aria-label="Đáp án A"><button class="wf-btn wf-btn--ghost wf-btn--icon wf-btn--sm" aria-label="Xóa đáp án A"><svg class="wf-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button></div>
+    <div class="wf-qe-opt"><label class="wf-radio"><input type="radio" name="qa" checked aria-label="Đáp án đúng: B"><span class="wf-sr">Đáp án đúng</span></label><input class="wf-input" value="Không bấm liên kết, báo đầu mối ATTT" aria-label="Đáp án B"><button class="wf-btn wf-btn--ghost wf-btn--icon wf-btn--sm" aria-label="Xóa đáp án B"><svg class="wf-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button></div>
+    <button class="wf-btn wf-btn--ghost wf-btn--sm" style="justify-self:start"><svg class="wf-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Thêm đáp án</button>
+  </fieldset>
+  <div class="wf-field"><label class="wf-label" for="qe2">Giải thích</label><textarea id="qe2" class="wf-input wf-textarea" style="min-height:64px">Liên kết trong email lạ có thể dẫn tới trang giả mạo.</textarea></div>
+  <div class="wf-qe-foot"><span class="wf-source">Quy chế ATTT 2026, Điều 9</span><span class="wf-source">Tiêu chí: Nhận diện lừa đảo</span><button class="wf-btn wf-btn--secondary wf-btn--sm">Lưu nháp</button><button class="wf-btn wf-btn--primary wf-btn--sm">Gửi duyệt câu hỏi</button></div>
+</section></div>
+</body>
+</html>

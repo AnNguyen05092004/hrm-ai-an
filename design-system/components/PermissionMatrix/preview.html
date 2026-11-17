@@ -1,0 +1,24 @@
+<!-- @dsCard group="Hiển thị" height=488 -->
+<!doctype html>
+<html lang="vi">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"><title>PermissionMatrix</title></head>
+<body>
+<div class="pv-col" style="gap:24px">
+<div class="wf-table-wrap"><table class="wf-perm">
+  <thead><tr><th>Vai trò</th><th>Tạo nội dung</th><th>Rà soát</th><th>Duyệt xuất bản</th><th>Giao học</th><th>Quản trị người dùng</th></tr></thead>
+  <tbody>
+    <tr><td><b>Người tạo nội dung</b></td><td><label class="wf-check"><input type="checkbox" checked aria-label="Người tạo: Tạo nội dung"></label></td><td><label class="wf-check"><input type="checkbox" aria-label="Người tạo: Rà soát"></label></td><td><label class="wf-check"><input type="checkbox" disabled aria-label="Người tạo: Duyệt xuất bản"></label></td><td><label class="wf-check"><input type="checkbox" aria-label="Người tạo: Giao học"></label></td><td><label class="wf-check"><input type="checkbox" disabled aria-label="Người tạo: Quản trị"></label></td></tr>
+    <tr><td><b>Chuyên gia</b></td><td><label class="wf-check"><input type="checkbox" aria-label="Chuyên gia: Tạo nội dung"></label></td><td><label class="wf-check"><input type="checkbox" checked aria-label="Chuyên gia: Rà soát"></label></td><td><label class="wf-check"><input type="checkbox" disabled aria-label="Chuyên gia: Duyệt"></label></td><td><label class="wf-check"><input type="checkbox" disabled aria-label="Chuyên gia: Giao học"></label></td><td><label class="wf-check"><input type="checkbox" disabled aria-label="Chuyên gia: Quản trị"></label></td></tr>
+    <tr><td><b>Người duyệt</b></td><td><label class="wf-check"><input type="checkbox" disabled aria-label="Người duyệt: Tạo"></label></td><td><label class="wf-check"><input type="checkbox" checked aria-label="Người duyệt: Rà soát"></label></td><td><label class="wf-check"><input type="checkbox" checked aria-label="Người duyệt: Duyệt xuất bản"></label></td><td><label class="wf-check"><input type="checkbox" aria-label="Người duyệt: Giao học"></label></td><td><label class="wf-check"><input type="checkbox" disabled aria-label="Người duyệt: Quản trị"></label></td></tr>
+    <tr><td><b>Quản trị hệ thống</b></td><td><label class="wf-check"><input type="checkbox" disabled aria-label="Quản trị: Tạo"></label></td><td><label class="wf-check"><input type="checkbox" disabled aria-label="Quản trị: Rà soát"></label></td><td><span class="wf-tip"><label class="wf-check"><input type="checkbox" disabled aria-label="Quản trị: Duyệt xuất bản"></label><span class="wf-tip-box" role="tooltip">Quản trị không duyệt nghiệp vụ</span></span></td><td><label class="wf-check"><input type="checkbox" disabled aria-label="Quản trị: Giao học"></label></td><td><label class="wf-check"><input type="checkbox" checked aria-label="Quản trị: Quản trị người dùng"></label></td></tr>
+  </tbody></table></div>
+<div class="wf-table-wrap"><table class="wf-perm">
+  <thead><tr><th>Nhóm</th><th>Số người</th><th>Tạo nội dung bằng AI</th></tr></thead>
+  <tbody>
+    <tr><td><b>Phòng Đào tạo</b></td><td>8</td><td><label class="wf-switch" style="justify-content:center"><input type="checkbox" role="switch" checked aria-label="Phòng Đào tạo: dùng AI tạo nội dung"><span>Bật</span></label></td></tr>
+    <tr><td><b>Chuyên gia nghiệp vụ</b></td><td>34</td><td><label class="wf-switch" style="justify-content:center"><input type="checkbox" role="switch" aria-label="Chuyên gia nghiệp vụ: dùng AI tạo nội dung"><span>Tắt</span></label></td></tr>
+  </tbody></table></div>
+<div class="wf-help">Người tạo không tự duyệt nội dung của mình. Quản trị hệ thống không ra quyết định nghiệp vụ.</div>
+</div>
+</body>
+</html>

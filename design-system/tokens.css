@@ -1,0 +1,121 @@
+/* Workforce AI: CSS variables sinh từ tokens.json. Đừng sửa tay: sửa tokens.json rồi chạy build.py */
+:root {
+  /* Màu */
+  --white: #ffffff;
+  --red-50: #fff0f2;
+  --red-100: #ffe0e6;
+  --red-200: #fac2cd;
+  --red-300: #f79aad;
+  --red-400: #f56480;
+  --red-500: #df0027;
+  --red-600: #ea0029;
+  --red-700: #c60023;
+  --red-800: #9f102b;
+  --red-900: #6e1024;
+  --ink: #20242d;
+  --ink-muted: #626b7a;
+  --ink-subtle: #697181;
+  --ink-hint: #6f7685;
+  --line: #eceef1;
+  --line-strong: #cbd0d9;
+  --surface: var(--white);
+  --surface-subtle: #f7f8fa;
+  --surface-muted: #f1f3f6;
+  --surface-sunken: #eceef1;
+  --primary: var(--red-600);
+  --primary-hover: var(--red-700);
+  --primary-pressed: var(--red-800);
+  --primary-soft: var(--red-50);
+  --on-primary: var(--white);
+  --focus-ring: #c60023;
+  --ai-surface: #fff5f7;
+  --ai-line: #fac2cd;
+  --ai-ink: var(--red-800);
+  --success: #268463;
+  --success-text: #216c52;
+  --success-surface: #ecf7f2;
+  --warning: #b87a20;
+  --warning-text: #8b5d17;
+  --warning-surface: #fff6e6;
+  --danger-text: #a91f3b;
+  --danger-surface: #fff0f3;
+  --danger-line: #f1b8c5;
+  --info: #4679bd;
+  --info-surface: #eef3fc;
+  --chart-1: var(--primary);
+  --chart-2: #2a78d6;
+  --chart-3: #eda100;
+  --chart-4: #1baf7a;
+  --chart-5: #6250d6;
+  --chart-seq-1: #cde2fb;
+  --chart-seq-2: #9ec5f4;
+  --chart-seq-3: #6da7ec;
+  --chart-seq-4: #256abf;
+  --chart-seq-5: #104281;
+  --chart-div-neg: #d03b3b;
+  --chart-div-mid: #f0efec;
+  --chart-div-pos: #2a78d6;
+  --chart-grid: var(--line);
+  --banner-surface: #f8ebec;
+  --banner-line: #f2dfe3;
+  --banner-accent: #ff6684;
+  --banner-label: #984155;
+  /* Khoảng cách */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  /* Bo góc */
+  --radius-xs: 2px;
+  --radius-sm: 8px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+  /* Bóng */
+  --shadow-card: 0 2px 4px #18264105;
+  --shadow-hover: 0 3px 9px #1c294308;
+  --shadow-pop: 0 12px 36px #1826411a;
+  --shadow-brand: 0 6px 14px #ea002926;
+  /* Kích thước */
+  --control-h: 40px;
+  --control-h-sm: 36px;
+  --input-h: 42px;
+  --header-h: 80px;
+  --sidebar-w: 252px;
+  --content-max: 1640px;
+  /* Chuyển động */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 400ms;
+  --ease-standard: cubic-bezier(.2, 0, 0, 1);
+  /* Lớp xếp chồng */
+  --z-sticky: 10;
+  --z-dropdown: 30;
+  --z-drawer: 40;
+  --z-dialog: 50;
+  --z-toast: 60;
+  --z-tooltip: 70;
+  /* Font */
+  --font-sans: "Be Vietnam Pro", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --font-display: "Lexend", "Be Vietnam Pro", sans-serif;
+}
+
+/* Kiểu chữ: dùng class .text-<tên> */
+.text-hero { font-family: var(--font-display); font-size: 32px; line-height: 42px; font-weight: 500; letter-spacing: -0.025em; }
+.text-h1 { font-family: var(--font-display); font-size: 28px; line-height: 36px; font-weight: 500; letter-spacing: -0.025em; }
+.text-h2 { font-family: var(--font-display); font-size: 20px; line-height: 28px; font-weight: 500; letter-spacing: -0.025em; }
+.text-h3 { font-family: var(--font-display); font-size: 17px; line-height: 22px; font-weight: 500; letter-spacing: -0.025em; }
+.text-item-title { font-family: var(--font-display); font-size: 16px; line-height: 24px; font-weight: 500; letter-spacing: -0.025em; }
+.text-body-lg { font-family: var(--font-sans); font-size: 15px; line-height: 22px; font-weight: 400; }
+.text-body { font-family: var(--font-sans); font-size: 14px; line-height: 22px; font-weight: 400; }
+.text-body-strong { font-family: var(--font-sans); font-size: 14px; line-height: 22px; font-weight: 600; }
+.text-small { font-family: var(--font-sans); font-size: 13px; line-height: 20px; font-weight: 400; }
+.text-caption { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 400; }
+.text-overline { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.text-code { font-family: var(--font-mono); font-size: 13px; line-height: 20px; font-weight: 400; }

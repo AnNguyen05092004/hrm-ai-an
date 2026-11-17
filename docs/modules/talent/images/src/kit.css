@@ -1,0 +1,76 @@
+/* Bộ khung dùng chung cho các sơ đồ luồng */
+:root {
+  --ink: #1F2937; --muted: #6B7280; --line: #9AA5B8;
+  --actor: #3F48A6;
+  --ai: #E8902F;   --ai-bg: #FFF5E8;
+  --code: #4F6BD8; --code-bg: #EEF2FF;
+  --human: #2E9E6A; --human-bg: #EAF7F0;
+  --sys: #64748B;  --sys-bg: #F3F5F8;
+  --ask: #B7791F;  --ask-bg: #FFFBEB;
+  --deny: #C11D2A; --deny-bg: #FFF1F1;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #fff; }
+body { font-family: 'Helvetica Neue', Arial, sans-serif; color: var(--ink); }
+#canvas { position: relative; display: block; width: max-content; padding: 30px 36px 26px; background: #fff; }
+svg.links { position: absolute; left: 0; top: 0; overflow: visible; z-index: 1; }
+svg.links text { font-family: 'Helvetica Neue', Arial, sans-serif; }
+
+.title { font-size: 21px; font-weight: 800; color: #1F2560; }
+.subtitle { font-size: 13px; color: var(--muted); margin: 4px 0 26px; }
+
+.row { display: flex; gap: 44px; align-items: flex-start; }
+.row.center { align-items: center; }
+.col { display: flex; flex-direction: column; gap: 32px; }
+.col.tight { gap: 14px; }
+.grow { flex: 1; }
+
+/* Ô bước */
+.box { position: relative; z-index: 2; border-radius: 10px; padding: 12px 14px 10px; font-size: 13px; line-height: 1.5;
+       background: #fff; border: 1.6px solid var(--line); }
+.box h4 { margin: 0 0 3px; font-size: 14px; font-weight: 700; line-height: 1.35; }
+.box p { margin: 0; color: #374151; }
+.box .kind { position: absolute; top: -10px; left: 12px; font-size: 10px; font-weight: 800; letter-spacing: .05em;
+             padding: 2px 8px; border-radius: 10px; color: #fff; white-space: nowrap; }
+.box.actor { background: var(--actor); border-color: #1F2560; color: #fff; }
+.box.actor p { color: #DCE0FF; }
+.box.actor .kind { background: #1F2560; }
+.box.ai    { background: var(--ai-bg);    border-color: var(--ai); }    .box.ai .kind    { background: var(--ai); }
+.box.code  { background: var(--code-bg);  border-color: var(--code); }  .box.code .kind  { background: var(--code); }
+.box.human { background: var(--human-bg); border-color: var(--human); } .box.human .kind { background: var(--human); }
+.box.sys   { background: var(--sys-bg);   border-color: var(--sys); }   .box.sys .kind   { background: var(--sys); }
+.box.ask   { background: var(--ask-bg);   border-color: var(--ask); border-style: dashed; } .box.ask .kind { background: var(--ask); }
+.box.deny  { background: var(--deny-bg);  border-color: var(--deny); border-style: dashed; color: #7F1D1D; }
+.box.deny .kind { background: var(--deny); }
+.box.plain { border-color: #E5E7EB; }
+
+/* Nút và nhãn */
+.btn { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 2px 10px; border-radius: 12px;
+       border: 1.3px solid currentColor; margin: 6px 6px 0 0; background: #fff; white-space: nowrap; }
+.btn.primary { background: var(--human); border-color: var(--human); color: #fff; }
+.chip { display: inline-block; font-size: 11.5px; padding: 2px 9px; border-radius: 12px; background: #fff;
+        border: 1px solid #D1D5DB; margin: 4px 4px 0 0; white-space: nowrap; color: #374151; }
+.quote { font-style: italic; }
+.mono { font-family: 'SF Mono', Menlo, monospace; font-size: 12px; }
+
+/* Làn */
+.lane { position: relative; border: 1.6px solid #E3E6EE; border-radius: 16px; padding: 34px 22px 22px; background: #FAFBFD; }
+.lane > .lane-title { position: absolute; top: -14px; left: 18px; background: #3F48A6; color: #fff; font-weight: 800;
+                      font-size: 13px; padding: 5px 14px; border-radius: 14px; letter-spacing: .03em; z-index: 3; }
+
+/* Mức khẩn */
+.lv { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 1px 8px; border-radius: 10px; color: #fff; }
+.lv.k { background: #DC2626; } .lv.c { background: #EA7A0C; } .lv.t { background: #2563EB; } .lv.th { background: #9CA3AF; }
+
+/* Chú thích */
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 12.5px; color: #374151; margin-top: 26px;
+          padding-top: 14px; border-top: 1px solid #ECEEF2; align-items: center; }
+.legend b { font-weight: 700; margin-right: 2px; }
+.legend i { display: inline-block; width: 16px; height: 14px; border-radius: 4px; border: 1.6px solid; margin-right: 6px; vertical-align: -2px; }
+.legend i.actor { background: var(--actor); border-color: #1F2560; }
+.legend i.ai    { background: var(--ai-bg); border-color: var(--ai); }
+.legend i.code  { background: var(--code-bg); border-color: var(--code); }
+.legend i.human { background: var(--human-bg); border-color: var(--human); }
+.legend i.sys   { background: var(--sys-bg); border-color: var(--sys); }
+.legend i.ask   { background: var(--ask-bg); border-color: var(--ask); border-style: dashed; }
+.legend i.deny  { background: var(--deny-bg); border-color: var(--deny); border-style: dashed; }

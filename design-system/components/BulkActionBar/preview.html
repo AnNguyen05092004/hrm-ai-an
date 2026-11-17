@@ -1,0 +1,22 @@
+<!-- @dsCard group="Hiển thị" height=298 -->
+<!doctype html>
+<html lang="vi">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"><title>BulkActionBar</title></head>
+<body>
+<div class="pv-col">
+  <div class="wf-table-wrap"><table class="wf-table">
+    <thead><tr><th class="wf-th-check"><label class="wf-check"><input type="checkbox" id="all" aria-label="Chọn tất cả"></label></th><th>Nhân viên</th><th>Ngày</th><th>Xác nhận của quản lý</th></tr></thead>
+    <tbody>
+      <tr aria-selected="true"><td><label class="wf-check"><input type="checkbox" checked aria-label="Chọn Thái Bảo Trân"></label></td><td>Thái Bảo Trân</td><td>15/11</td><td><span class="wf-badge wf-badge--success">Đã xác nhận</span></td></tr>
+      <tr aria-selected="true"><td><label class="wf-check"><input type="checkbox" checked aria-label="Chọn Doãn Văn Quý"></label></td><td>Doãn Văn Quý</td><td>15/11</td><td><span class="wf-badge wf-badge--success">Đã xác nhận</span></td></tr>
+      <tr><td><label class="wf-check"><input type="checkbox" disabled aria-label="Chưa chọn được"></label></td><td>Lê Hoài An</td><td>14/11</td><td><span class="wf-badge wf-badge--warning">Chờ quản lý</span></td></tr>
+    </tbody></table></div>
+  <div class="wf-bulk" role="region" aria-label="Thao tác hàng loạt">
+    <span>Đã chọn <b>2</b> ticket</span>
+    <button class="wf-btn wf-btn--ghost wf-btn--sm">Bỏ chọn</button>
+    <div class="wf-bulk-end"><button class="wf-btn wf-btn--ghost wf-btn--sm">Từ chối</button><button class="wf-btn wf-btn--primary wf-btn--sm">Phê duyệt 2 ticket</button></div>
+  </div>
+</div>
+<script>document.getElementById('all').indeterminate = true;</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!-- @dsCard group="Biểu mẫu" height=315 -->
+<!doctype html>
+<html lang="vi">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"><title>DateTimeField</title></head>
+<body>
+<div class="pv-col" style="max-width:480px">
+  <div class="wf-field"><label class="wf-label" for="d1">Ngày nghỉ <span class="wf-req">*</span></label><span class="wf-input-icon"><svg class="wf-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><input id="d1" class="wf-input" type="date" value="2026-11-21"></span><span class="wf-help">Bạn còn 7,5 ngày phép năm.</span></div>
+  <div class="wf-field"><span class="wf-label">Giờ làm thêm <span class="wf-req">*</span></span>
+    <div class="wf-range"><input class="wf-input" type="time" value="18:00" aria-label="Từ giờ"><span>–</span><input class="wf-input" type="time" value="21:00" aria-label="Đến giờ"></div>
+    <span class="wf-help">Tối đa 4 giờ/ngày. Còn 18 giờ trong tháng.</span></div>
+  <div class="wf-field"><label class="wf-label" for="d3">Hạn hoàn thành</label><input id="d3" class="wf-input wf-input--error" type="date" value="2026-11-01"><span class="wf-help wf-help--error">Hạn đã qua. Chọn ngày từ 16/11/2026 trở đi.</span></div>
+</div>
+</body>
+</html>

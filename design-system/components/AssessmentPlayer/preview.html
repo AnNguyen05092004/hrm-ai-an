@@ -1,0 +1,31 @@
+<!-- @dsCard group="Đánh giá" height=436 -->
+<!doctype html>
+<html lang="vi">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"><title>AssessmentPlayer</title></head>
+<body>
+<div class="pv-col">
+<div class="wf-player">
+  <section class="wf-card">
+    <div class="wf-q-index">Câu 3 / 12 · 5 điểm</div>
+    <h3 class="wf-q-text" id="q3">Khi hai dịch vụ cùng ghi vào một tài khoản, cách nào đảm bảo không mất số dư?</h3>
+    <div class="wf-options" role="radiogroup" aria-labelledby="q3">
+      <label class="wf-option"><input type="radio" name="a"><span>Tăng thời gian chờ giữa hai lần ghi</span></label>
+      <label class="wf-option wf-option--selected"><input type="radio" name="a" checked><span>Dùng khóa lạc quan (optimistic lock) kèm số phiên bản bản ghi</span></label>
+      <label class="wf-option"><input type="radio" name="a"><span>Cho mỗi dịch vụ giữ một bản sao số dư riêng</span></label>
+      <label class="wf-option"><input type="radio" name="a"><span>Ghi vào tệp nhật ký rồi đối soát cuối ngày</span></label>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button class="wf-btn wf-btn--secondary wf-btn--sm"><svg class="wf-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4M5 4h13l-2 4 2 4H5"/></svg> Đánh dấu xem lại</button><span style="margin-left:auto;display:flex;gap:8px"><button class="wf-btn wf-btn--secondary wf-btn--sm">Câu trước</button><button class="wf-btn wf-btn--primary wf-btn--sm">Câu tiếp</button></span></div>
+    <p class="wf-help" style="margin:10px 0 0">Đã lưu lúc 09:14. Hỗ trợ AI tắt trong bài đánh giá chính thức.</p>
+  </section>
+  <aside class="wf-card" style="display:grid;gap:14px">
+    <div><div class="wf-help">Thời gian còn lại</div><div class="wf-timer wf-timer--soon" role="timer"><svg class="wf-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> 08:42</div></div>
+    <div class="wf-progress"><div class="wf-progress-label"><span>Đã trả lời</span><b>5/12</b></div><div class="wf-progress-track"><i style="width:42%"></i></div></div>
+    <nav class="wf-qnav" aria-label="Điều hướng câu hỏi">
+      <button class="is-done" aria-label="Câu 1, đã trả lời">1</button><button class="is-done is-flag" aria-label="Câu 2, đã trả lời, đánh dấu xem lại">2</button><button aria-current="step" aria-label="Câu 3, đang làm">3</button><button aria-label="Câu 4, chưa trả lời">4</button><button class="is-done" aria-label="Câu 5, đã trả lời">5</button>
+      <button aria-label="Câu 6">6</button><button aria-label="Câu 7">7</button><button class="is-done" aria-label="Câu 8">8</button><button aria-label="Câu 9">9</button><button aria-label="Câu 10">10</button>
+    </nav>
+    <button class="wf-btn wf-btn--outline wf-btn--sm wf-btn--block">Nộp bài</button>
+  </aside>
+</div></div>
+</body>
+</html>

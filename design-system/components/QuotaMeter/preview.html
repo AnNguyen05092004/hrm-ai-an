@@ -1,0 +1,22 @@
+<!-- @dsCard group="Hiển thị" height=436 -->
+<!doctype html>
+<html lang="vi">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"><title>QuotaMeter</title></head>
+<body>
+<div class="pv-col" style="max-width:520px;gap:24px">
+<div class="wf-quota">
+  <div class="wf-quota-row"><div class="wf-quota-top"><span>OT trong ngày</span><b>3 / 4 giờ</b></div><div class="wf-quota-bar" role="img" aria-label="Đơn này chiếm 3 trên 4 giờ OT trong ngày"><b style="--v:75"></b></div></div>
+  <div class="wf-quota-row"><div class="wf-quota-top"><span>OT trong tháng</span><b>22 + 3 / 40 giờ</b></div><div class="wf-quota-bar" role="img" aria-label="Đã dùng 22 giờ, đơn này 3 giờ, hạn mức 40 giờ"><i style="--v:55"></i><b style="--v:7.5"></b></div></div>
+  <div class="wf-quota-row"><div class="wf-quota-top"><span>OT trong năm</span><b>143 + 3 / 200 giờ</b></div><div class="wf-quota-bar"><i style="--v:71.5"></i><b style="--v:1.5"></b></div></div>
+  <div class="wf-quota-note">Theo quy định hiện hành, hạn mức do công ty cấu hình.</div>
+</div>
+<div class="wf-quota">
+  <div class="wf-quota-row wf-quota-row--over"><div class="wf-quota-top"><span>OT trong ngày</span><b>5 / 4 giờ · vượt 1 giờ</b></div><div class="wf-quota-bar"><b class="is-over" style="--v:100"></b></div></div>
+  <div class="wf-alert wf-alert--danger"><svg class="wf-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><span>Đơn vượt 4 giờ/ngày nên chưa được tạo. Giảm xuống tối đa 4 giờ rồi gửi lại.</span></div>
+</div>
+<div class="wf-quota">
+  <div class="wf-quota-row"><div class="wf-quota-top"><span>Phép năm</span><b>5 ngày còn lại · 1 ngày đang giữ</b></div><div class="wf-quota-bar"><i style="--v:50"></i><b style="--v:10"></b></div><div class="wf-quota-note">1 ngày đang chờ quản lý duyệt. Sẽ trả lại nếu đơn không được duyệt.</div></div>
+</div>
+</div>
+</body>
+</html>
