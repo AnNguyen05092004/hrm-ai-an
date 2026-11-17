@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>thong-ke</title><link rel="stylesheet" href="kit.css">
+<style>
+  .side { width: 240px; font-size: 12.5px; }
+  .res { width: 470px; border-radius: 14px; border: 1.5px solid #D6DAE6; background: #fff; box-shadow: 0 6px 22px rgba(31,37,96,.10); overflow: hidden; position: relative; z-index: 2; }
+  .res .bar { background: #F1F3FA; padding: 9px 14px; font-size: 11.5px; color: #4B5563; border-bottom: 1px solid #E5E7EB; }
+  .res .bar b { color: #3F48A6; }
+  .res .body { padding: 12px 16px 14px; }
+  .res h4 { margin: 0 0 2px; font-size: 15px; }
+  .res .meta { font-size: 12px; color: #6B7280; }
+  .chart { display: flex; align-items: flex-end; gap: 26px; height: 150px; margin: 18px 0 6px; padding: 0 10px; border-bottom: 1.5px solid #CBD2E1; position: relative; }
+  .chart .limit { position: absolute; left: 0; right: 0; border-top: 1.5px dashed #DC2626; }
+  .chart .limit span { position: absolute; right: 0; top: -17px; font-size: 10.5px; color: #DC2626; font-weight: 700; }
+  .bcol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .bcol .v { font-size: 11.5px; font-weight: 700; color: #1F2937; margin-bottom: 3px; }
+  .bcol .b { width: 100%; background: #8EB8E8; border-radius: 5px 5px 0 0; }
+  .bcol .b.hi { background: #3F48A6; }
+  .xl { display: flex; gap: 26px; padding: 0 10px; font-size: 11.5px; color: #6B7280; }
+  .xl span { flex: 1; text-align: center; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 12px; }
+  td, th { padding: 4px 6px; border-bottom: 1px solid #EEF0F4; text-align: left; }
+  th { color: #6B7280; font-weight: 600; }
+  .warn { color: #C2410C; font-weight: 700; }
+  .cmt { margin-top: 12px; background: var(--ai-bg); border: 1px solid #F3C98F; border-radius: 8px; padding: 8px 10px; font-size: 12.5px; line-height: 1.5; }
+</style></head>
+<body><div id="canvas">
+  <div class="title">Luồng thống kê bằng lời</div>
+  <div class="subtitle">AI chỉ hiểu câu hỏi và viết nhận xét · code lọc quyền, truy vấn và vẽ biểu đồ · chỉ dùng danh mục chỉ số có sẵn</div>
+
+  <div class="row" style="gap:70px">
+    <div class="col" style="width:720px; gap:34px">
+      <div class="box actor" id="q" style="width:430px"><span class="kind">QUẢN LÝ</span>
+        <h4>Hỏi bằng câu tự nhiên</h4><p class="mono" style="color:#fff">/thongke OT team tháng 10 theo tuần</p></div>
+
+      <div class="row" style="gap:40px; align-items:center">
+        <div class="box ai" id="a1" style="width:430px"><span class="kind">★ AI</span>
+          <h4>Ánh xạ sang chỉ số có sẵn</h4>
+          <span class="chip">chỉ số: ot_hours</span><span class="chip">phạm vi: team của tôi</span><span class="chip">kỳ: 10/2026</span><span class="chip">nhóm theo: tuần</span></div>
+        <div class="col tight">
+          <div class="box ask side" id="x1"><span class="kind">CHƯA RÕ</span>Hỏi lại, ví dụ "tháng 10 năm nay?"</div>
+          <div class="box ask side" id="x2"><span class="kind">CHƯA HỖ TRỢ</span>Liệt kê các chỉ số có sẵn</div>
+        </div>
+      </div>
+
+      <div class="row" style="gap:40px; align-items:center">
+        <div class="box code" id="c1" style="width:430px"><span class="kind">CODE</span>
+          <h4>Giới hạn theo quyền</h4>
+          <span class="chip">Nhân viên: bản thân</span><span class="chip">Quản lý: team quản lý</span><span class="chip">HR: đơn vị được giao</span></div>
+        <div class="box deny side" id="x3"><span class="kind">NGOÀI PHẠM VI</span>Báo không có quyền; không trả số liệu một phần</div>
+      </div>
+
+      <div class="box code" id="c2" style="width:430px"><span class="kind">CODE</span>
+        <h4>Truy vấn + vẽ bảng, biểu đồ</h4><p>Cột / đường / tròn tùy loại chỉ số</p></div>
+
+      <div class="box ai" id="a2" style="width:430px"><span class="kind">★ AI</span>
+        <h4>Viết 2–3 dòng nhận xét</h4><p>Chỉ dùng số có trong bảng kết quả</p></div>
+    </div>
+
+    <div class="res" id="card">
+      <div class="bar">🔒 <b>Chỉ bạn thấy tin này</b> · Bot HR</div>
+      <div class="body">
+        <h4>Giờ OT team Backend · tháng 10/2026</h4>
+        <div class="meta">8 người · nguồn: HRM, cập nhật 09:00 hôm nay</div>
+        <div class="chart">
+          <div class="bcol"><span class="v">28h</span><div class="b" style="height:46.6%"></div></div>
+          <div class="bcol"><span class="v">35h</span><div class="b" style="height:58.3%"></div></div>
+          <div class="bcol"><span class="v">42h</span><div class="b hi" style="height:70%"></div></div>
+          <div class="bcol"><span class="v">31h</span><div class="b" style="height:51.6%"></div></div>
+        </div>
+        <div class="xl"><span>Tuần 1</span><span>Tuần 2</span><span>Tuần 3</span><span>Tuần 4</span></div>
+        <table>
+          <tr><th>Người gần chạm hạn mức tháng</th><th>Giờ OT tháng</th><th>Hạn mức</th></tr>
+          <tr><td>Nguyễn Văn K</td><td class="warn">37h</td><td>40h</td></tr>
+          <tr><td>Trần Thị M</td><td class="warn">36h</td><td>40h</td></tr>
+        </table>
+        <div class="cmt"><b>★ Nhận xét:</b> Tuần 3 cao nhất (42h). Tổng tháng 136h. 2 người đã dùng trên 90% hạn mức 40h/tháng.</div>
+        <span class="btn" style="margin-top:10px">Xem trên web HR</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="actor"></i>Người hỏi</span><span><i class="ai"></i>AI làm</span><span><i class="code"></i>Code làm</span>
+    <span><i class="ask"></i>Hỏi lại</span><span><i class="deny"></i>Từ chối</span>
+    <span style="margin-left:10px"><b>Chỉ số bản đầu:</b> phép · OT · công · ticket và SLA</span>
+  </div>
+</div>
+<script src="kit.js"></script>
+<script>
+  K.link('q', 'a1');
+  K.link('a1', 'x1', { from: 'r', to: 'l' }); K.link('a1', 'x2', { from: 'r', to: 'l' });
+  K.link('a1', 'c1');
+  K.link('c1', 'x3', { from: 'r', to: 'l', color: '#C11D2A' });
+  K.link('c1', 'c2'); K.link('c2', 'a2');
+  K.link('a2', 'card', { from: 'r', to: 'l', tx: 0.85, label: 'thẻ riêng', color: '#3F48A6' });
+  K.draw();
+</script>
+</body></html>

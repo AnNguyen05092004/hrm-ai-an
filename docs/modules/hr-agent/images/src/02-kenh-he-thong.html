@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>kenh</title><link rel="stylesheet" href="kit.css">
+<style>
+  .grid { display: grid; grid-template-columns: 860px; row-gap: 56px; }
+  .src { width: 133px; font-size: 12.5px; padding: 12px 11px 9px; }
+  .src h4 { font-size: 13px; }
+  .box.chan { border-color: #3F48A6; } .box.chan .kind { background: #3F48A6; }
+  ul { margin: 2px 0 0; padding-left: 16px; } li { margin: 1px 0; }
+</style></head>
+<body><div id="canvas">
+  <div class="title">Kênh và hệ thống</div>
+  <div class="subtitle">Nhân viên, quản lý, người duyệt dùng bot trong app chat và web HR</div>
+
+  <div class="grid">
+    <div class="row" style="gap:26px">
+      <div class="box chan" id="chat" style="width:440px"><span class="kind">KÊNH</span>
+        <h4>App chat nội bộ: Bot HR</h4>
+        <ul><li>Chat 1-1: hỏi chính sách, xin phép, OT, giải trình, gửi ticket</li>
+            <li>Lệnh <span class="mono">/tomtat</span>, <span class="mono">/thongke</span> trong nhóm hoặc chat riêng</li>
+            <li>Nút "Tóm tắt N tin chưa đọc"</li>
+            <li>Thẻ kết quả riêng: <b>chỉ người gõ thấy</b></li></ul></div>
+      <div class="box chan grow" id="web"><span class="kind">KÊNH</span>
+        <h4>Web HR</h4>
+        <ul><li>Duyệt ticket + panel kiểm tra thẩm quyền</li>
+            <li>Quản lý ma trận phân quyền, SLA, cài đặt</li>
+            <li>Xem thống kê chi tiết</li></ul></div>
+    </div>
+
+    <div class="lane" id="agent"><div class="lane-title">HR Agent</div>
+      <div class="row" style="gap:16px">
+        <div class="box ai grow"><span class="kind">★ AI</span><h4>LLM</h4>
+          <p>Hiểu câu chat, trích thông tin, tóm tắt, phân loại, chấm mức khẩn, viết nhận xét</p></div>
+        <div class="box code grow"><span class="kind">CODE</span><h4>Công cụ</h4>
+          <p>Đọc/ghi HRM, tra ma trận, truy vấn chỉ số, đọc tin nhắn. Đã lọc theo quyền người dùng</p></div>
+        <div class="box code grow"><span class="kind">CODE</span><h4>Quy tắc</h4>
+          <p>Ngưỡng ma trận, hạn mức OT, số dư phép, SLA, không tự duyệt</p></div>
+      </div>
+    </div>
+
+    <div class="row" style="gap:12px">
+      <div class="box sys src" id="s1"><span class="kind">HRM</span><h4>HRM</h4>Sơ đồ tổ chức, phép, OT, công, lịch nghỉ</div>
+      <div class="box sys src" id="s2"><span class="kind">DỮ LIỆU</span><h4>Ma trận phân quyền</h4>File Excel đã nhập, có phiên bản</div>
+      <div class="box sys src" id="s3"><span class="kind">RAG</span><h4>Kho chính sách</h4>Quy chế nội bộ + Bộ luật Lao động</div>
+      <div class="box sys src" id="s4"><span class="kind">APP CHAT</span><h4>Tin nhắn nhóm</h4>Chỉ đọc khi được gọi, không lưu</div>
+      <div class="box sys src" id="s5"><span class="kind">EMAIL</span><h4>Email</h4>Thông báo ticket cho người nhận</div>
+      <div class="box sys src" id="s6"><span class="kind">DỮ LIỆU</span><h4>Ticket + SLA</h4>Lưu trong HR Agent, kèm nhật ký</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:#fff;border-color:#3F48A6"></i>Kênh người dùng</span>
+    <span><i class="ai"></i>AI làm</span>
+    <span><i class="code"></i>Code / quy tắc làm</span>
+    <span><i class="sys"></i>Hệ thống, nguồn dữ liệu</span>
+  </div>
+</div>
+<script src="kit.js"></script>
+<script>
+  K.link('chat', 'agent', { tx: 0.255 });
+  K.link('web', 'agent', { tx: 0.772 });
+  ['s1', 's2', 's3', 's4', 's5', 's6'].forEach(s => K.link('agent', s, { tx: 0.72 }));
+  K.draw();
+</script>
+</body></html>

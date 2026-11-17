@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>dinh-tuyen</title><link rel="stylesheet" href="kit.css">
+<style>
+  .card { margin-top: 8px; background: #fff; border: 1px solid #CDE9DA; border-radius: 8px; padding: 8px 10px; font-size: 12.5px; line-height: 1.55; }
+  .card b { color: #1F2937; }
+  .side { width: 250px; font-size: 12.5px; }
+  .outs { display: grid; grid-template-columns: 1fr 1fr; gap: 26px 16px; }
+  .note { margin-top: 22px; font-size: 12.5px; color: #374151; background: #F8FAFC; border: 1px solid #E5E7EB; border-radius: 10px; padding: 10px 14px; max-width: 1360px; }
+</style></head>
+<body><div id="canvas">
+  <div class="title">Luồng định tuyến theo thẩm quyền</div>
+  <div class="subtitle">Ví dụ: nhân viên xin tạm ứng 15 triệu công tác phí · AI chỉ trích thông tin, code chọn người duyệt, con người bấm gửi và quyết định</div>
+
+  <div class="row" style="gap:64px; align-items:stretch">
+    <!-- GỬI -->
+    <div class="lane" style="width:760px"><div class="lane-title">GỬI</div>
+      <div class="col" style="gap:34px">
+        <div class="box actor" id="s1" style="width:430px"><span class="kind">NHÂN VIÊN</span>
+          <h4>Chat yêu cầu với bot</h4>
+          <p class="quote">"Xin tạm ứng 15 triệu công tác phí Đà Nẵng 20–22/11"</p></div>
+
+        <div class="row" style="gap:40px; align-items:center">
+          <div class="box ai" id="s2" style="width:430px"><span class="kind">★ AI</span>
+            <h4>Trích thông tin</h4>
+            <span class="chip">Loại: Tạm ứng công tác phí</span><span class="chip">Số tiền: 15.000.000</span><span class="chip">Ngày: 20–22/11</span></div>
+          <div class="box ask side" id="s2b"><span class="kind">THIẾU THÔNG TIN</span>
+            Bot hỏi lại, không đoán<br><span class="quote">"Mục đích chuyến đi là gì?"</span></div>
+        </div>
+
+        <div class="box code" id="s3" style="width:430px"><span class="kind">CODE</span>
+          <h4>Tra ma trận đang hiệu lực</h4>
+          <p><b>FIN-TA-01</b> · mức 5–20 triệu<br>Chuỗi duyệt: Kế toán kiểm tra → Trưởng phòng phê duyệt</p></div>
+
+        <div class="row" style="gap:40px">
+          <div class="box code" id="s4" style="width:430px"><span class="kind">CODE</span>
+            <h4>Tra HRM ra người cụ thể</h4>
+            <p>Trưởng phòng của nhân viên = <b>Trần B</b></p></div>
+          <div class="col tight">
+            <div class="box sys side" id="b1"><b>B nghỉ phép đã duyệt</b> + dòng ma trận cho ủy quyền → gửi <b>Lê C</b></div>
+            <div class="box sys side" id="b2"><b>B chính là người gửi</b> → lên cấp kế tiếp (không tự duyệt)</div>
+            <div class="box deny side" id="b3"><b>Không có ai trong vai trò</b> → chuyển HR xử lý tay</div>
+          </div>
+        </div>
+
+        <div class="box human" id="s5" style="width:430px"><span class="kind">NGƯỜI QUYẾT</span>
+          <h4>Nhân viên xem thẻ xác nhận</h4>
+          <div class="card">Gửi: <b>Kế toán</b> → <b>Lê C</b> (thay Trần B)<br>
+            Căn cứ: FIN-TA-01, mức 5–20 triệu, ma trận v3 (hiệu lực 01/11/2026)<br>
+            Minh chứng bắt buộc: kế hoạch công tác<br>
+            <span class="btn">Sửa</span><span class="btn primary">Gửi</span></div></div>
+
+        <div class="box sys" id="s6" style="width:430px"><span class="kind">HỆ THỐNG</span>
+          <h4>Tạo ticket và thông báo</h4>
+          <p>Email + tin trong app chat cho người nhận · bắt đầu tính SLA · lưu mã task, phiên bản ma trận, lý do chọn người</p></div>
+      </div>
+    </div>
+
+    <!-- NHẬN -->
+    <div class="lane" style="width:600px"><div class="lane-title">NHẬN</div>
+      <div class="col" style="gap:34px">
+        <div class="box actor" id="r1"><span class="kind">NGƯỜI NHẬN</span>
+          <h4>Mở ticket</h4><p>Từ email hoặc app chat → mở trên web HR</p></div>
+        <div class="box code" id="r2"><span class="kind">CODE</span>
+          <h4>Kiểm tra lại theo ma trận ĐANG hiệu lực</h4>
+          <p>So giá trị ticket với ngưỡng; kiểm tra ủy quyền còn hạn; so phiên bản lúc gửi với hiện tại</p></div>
+        <div class="box ai" id="r3"><span class="kind">★ AI + CODE</span>
+          <h4>Gói minh chứng cho người nhận</h4>
+          <span class="chip">Dòng ma trận</span><span class="chip">Điều khoản quy chế (RAG)</span><span class="chip">File đính kèm</span>
+          <span class="chip">Số dư phép / giờ OT</span><span class="chip">Lịch sử các bước duyệt</span><br>
+          <span class="chip" style="border-color:#E8902F;color:#9A4A00">★ Đối chiếu số liệu: hóa đơn 18 triệu ≠ ticket 15 triệu</span></div>
+        <div class="outs">
+          <div class="box human" id="o1"><span class="kind">ĐÚNG THẨM QUYỀN</span>
+            <p>Hiện căn cứ và minh chứng</p>
+            <span class="btn primary">Duyệt</span><span class="btn">Từ chối</span><span class="btn">Yêu cầu bổ sung</span></div>
+          <div class="box ask" id="o2"><span class="kind">VƯỢT THẨM QUYỀN</span>
+            <p>"Mức 25 triệu cần Giám đốc khối: <b>Phạm D</b>"</p>
+            <span class="btn">Chuyển cho Phạm D</span><br><small>Agent chỉ đề xuất, người nhận bấm</small></div>
+          <div class="box ask" id="o3"><span class="kind">MA TRẬN ĐÃ ĐỔI</span>
+            <p>Hiện khác biệt giữa v3 (lúc gửi) và v4 (hiện tại); người nhận chọn xử lý tiếp hay chuyển</p></div>
+          <div class="box deny" id="o4"><span class="kind">KHÔNG XÁC ĐỊNH</span>
+            <p>Không khớp dòng ma trận nào</p><span class="btn">Chuyển HR</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note"><b>Vì sao người nhận vẫn phải kiểm tra lại:</b> ma trận có thể đổi sau khi gửi, ủy quyền có thể đã hết hạn, ticket có thể bị sửa, hoặc ticket được tạo tay không qua agent.</div>
+  <div class="legend">
+    <span><i class="actor"></i>Người dùng</span><span><i class="ai"></i>AI làm</span><span><i class="code"></i>Code / quy tắc</span>
+    <span><i class="human"></i>Con người quyết</span><span><i class="ask"></i>Hỏi lại / cần chọn</span><span><i class="sys"></i>Hệ thống</span><span><i class="deny"></i>Chuyển HR / dừng</span>
+  </div>
+</div>
+<script src="kit.js"></script>
+<script>
+  K.link('s1', 's2', { fx: 0.5, tx: 0.5 });
+  K.link('s2', 's2b', { from: 'r', to: 'l', label: 'Thiếu?' });
+  K.link('s2b', 's2', { from: 'b', to: 'b', tx: 0.85, dash: true, color: '#B7791F', out: 14, label: 'trả lời', lx: null });
+  K.link('s2', 's3');
+  K.link('s3', 's4');
+  ['b1', 'b2', 'b3'].forEach(b => K.link('s4', b, { from: 'r', to: 'l' }));
+  K.link('s4', 's5');
+  K.link('s5', 's6');
+  K.link('s6', 'r1', { from: 'r', to: 'l', mid: 0.86, label: 'ticket', color: '#3F48A6' });
+  K.link('r1', 'r2'); K.link('r2', 'r3');
+  ['o1', 'o2'].forEach(o => K.link('r3', o, { mid: 0.5 }));
+  K.link('r3', 'o3', { from: 'l', to: 'l', fx: 0.85, out: 12 });
+  K.link('r3', 'o4', { from: 'r', to: 'r', fx: 0.85, out: 12 });
+  K.draw();
+</script>
+</body></html>

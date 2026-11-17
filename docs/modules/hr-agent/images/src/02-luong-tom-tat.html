@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>tom-tat</title><link rel="stylesheet" href="kit.css">
+<style>
+  .trig { width: 150px; font-size: 12.5px; padding: 12px 10px 9px; }
+  .trig .mono { font-size: 12px; color: #fff; }
+  .chk { margin: 4px 0 0; padding-left: 0; list-style: none; }
+  .chk li::before { content: '✓ '; color: var(--code); font-weight: 800; }
+  /* thẻ kết quả */
+  .res { width: 520px; border-radius: 14px; border: 1.5px solid #D6DAE6; background: #fff; box-shadow: 0 6px 22px rgba(31,37,96,.10); overflow: hidden; position: relative; z-index: 2; }
+  .res .bar { background: #F1F3FA; padding: 9px 14px; font-size: 11.5px; color: #4B5563; display: flex; justify-content: space-between; border-bottom: 1px solid #E5E7EB; }
+  .res .bar b { color: #3F48A6; }
+  .res .hd { padding: 12px 16px 8px; }
+  .res .hd h4 { margin: 0; font-size: 15px; }
+  .res .meta { font-size: 12px; color: #6B7280; margin-top: 3px; line-height: 1.5; }
+  .res .sec { padding: 4px 16px 6px; }
+  .res .sec h5 { margin: 8px 0 4px; font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: #6B7280; }
+  .it { display: grid; grid-template-columns: 1fr auto 18px; gap: 8px; align-items: start; font-size: 13px; padding: 6px 0; border-bottom: 1px dashed #EEF0F4; }
+  .it small { display: block; color: #6B7280; font-size: 11.5px; margin-top: 1px; }
+  .it .go { color: #3F48A6; font-weight: 800; }
+  .res .ft { font-size: 11.5px; color: #6B7280; padding: 8px 16px 12px; }
+</style></head>
+<body><div id="canvas">
+  <div class="title">Luồng tóm tắt chat nhóm</div>
+  <div class="subtitle">Bot chỉ đọc khi được gọi · kết quả chỉ người gõ lệnh thấy · mỗi ý có link về tin gốc</div>
+
+  <div class="row" style="gap:70px">
+    <div class="col" style="width:660px; gap:36px">
+      <div class="row" style="gap:12px" id="trigs">
+        <div class="box actor trig" id="t1"><span class="kind">LỆNH</span><span class="mono">/tomtat 200</span><br>200 tin gần nhất</div>
+        <div class="box actor trig" id="t2"><span class="kind">LỆNH</span><span class="mono">/tomtat từ hôm qua</span><br>theo thời gian</div>
+        <div class="box actor trig" id="t3"><span class="kind">NÚT</span>"Tóm tắt 86 tin chưa đọc"<br><small>hiện khi ≥ 30 tin</small></div>
+        <div class="box actor trig" id="t4"><span class="kind">MENU TIN</span>"Tóm tắt tin này"<br><small>một tin dài</small></div>
+      </div>
+
+      <div class="row" style="gap:36px; align-items:center">
+        <div class="box code" id="c1" style="width:400px"><span class="kind">CODE</span>
+          <h4>Kiểm tra trước khi đọc</h4>
+          <ul class="chk"><li>Người gõ là thành viên nhóm</li><li>Nhóm không bị admin tắt tóm tắt</li><li>Khoảng ≤ 500 tin</li></ul></div>
+        <div class="box deny" id="c1x" style="width:220px"><span class="kind">KHÔNG ĐẠT</span>
+          Báo lý do, chỉ người gõ thấy. Quá 500 tin thì yêu cầu thu hẹp khoảng</div>
+      </div>
+
+      <div class="box code" id="c2" style="width:400px"><span class="kind">CODE</span>
+        <h4>Lấy tin</h4><p>Chỉ tin người gõ được xem · không lưu tin gốc · ảnh và file chỉ lấy tên</p></div>
+
+      <div class="box ai" id="a1" style="width:400px"><span class="kind">★ AI</span>
+        <h4>Tóm tắt, phân loại, chấm mức khẩn</h4>
+        <p>Dài thì chia đoạn rồi gộp. Mỗi ý: loại · mức khẩn · lý do · id tin gốc</p></div>
+
+      <div class="box code" id="c3" style="width:400px"><span class="kind">CODE</span>
+        <h4>Kiểm tra đầu ra</h4>
+        <ul class="chk"><li>Bỏ ý không có tin gốc</li><li>Đếm số tin đã đọc / bỏ qua</li><li>Mức chung = ý khẩn nhất</li></ul></div>
+    </div>
+
+    <div class="res" id="card">
+      <div class="bar"><span>🔒 <b>Chỉ bạn thấy tin này</b> · Bot HR</span><span>giữ 7 ngày</span></div>
+      <div class="hd"><h4>Nhóm "Dự án Orion" <span class="lv k" style="margin-left:6px">KHẨN</span></h4>
+        <div class="meta">86 tin · 14 người · 08:10 hôm qua → 09:30 hôm nay<br>Bỏ qua 12 tin chào hỏi/sticker · 3 ảnh, 2 file chỉ liệt kê tên</div></div>
+      <div class="sec">
+        <h5>Quyết định</h5>
+        <div class="it"><div>Lùi demo sang thứ 6<small>Lý do: đổi mốc giao cho khách</small></div><span class="lv c">CAO</span><span class="go">↗</span></div>
+        <h5>Việc cần làm</h5>
+        <div class="it"><div>An gửi báo giá trước 17h nay<small>Lý do: hạn trong hôm nay</small></div><span class="lv k">KHẨN</span><span class="go">↗</span></div>
+        <h5>Câu hỏi chưa ai trả lời</h5>
+        <div class="it"><div>Ai duyệt server staging?<small>Lý do: đang chặn QA</small></div><span class="lv c">CAO</span><span class="go">↗</span></div>
+        <h5>Nhắc đến bạn</h5>
+        <div class="it"><div>@An xem lại hợp đồng phụ lục 2<small>Lý do: chưa có hạn</small></div><span class="lv t">THƯỜNG</span><span class="go">↗</span></div>
+        <h5>Sự cố / thông báo</h5>
+        <div class="it" style="border-bottom:0"><div>Họp toàn công ty dời sang 15h<small>Lý do: chỉ để biết</small></div><span class="lv th">THẤP</span><span class="go">↗</span></div>
+      </div>
+      <div class="ft">↗ mở đúng tin gốc trong nhóm · Tóm tắt chỉ để đọc, không tạo việc từ đây</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="actor"></i>Cách kích hoạt</span><span><i class="ai"></i>AI làm</span><span><i class="code"></i>Code kiểm tra</span><span><i class="deny"></i>Dừng, báo lý do</span>
+    <span style="margin-left:10px"><span class="lv k">KHẨN</span> ≤ 24 giờ, sự cố, pháp lý</span><span><span class="lv c">CAO</span> ≤ 3 ngày, đang chặn việc</span>
+    <span><span class="lv t">THƯỜNG</span> cần làm, chưa gấp</span><span><span class="lv th">THẤP</span> để biết</span>
+  </div>
+</div>
+<script src="kit.js"></script>
+<script>
+  ['t1', 't2', 't3', 't4'].forEach(t => K.link(t, 'c1', { tx: 0.5 }));
+  K.link('c1', 'c1x', { from: 'r', to: 'l', label: 'Không đạt', color: '#C11D2A' });
+  K.link('c1', 'c2'); K.link('c2', 'a1'); K.link('a1', 'c3');
+  K.link('c3', 'card', { from: 'r', to: 'l', tx: 0.82, mid: 0.5, label: 'thẻ riêng', color: '#3F48A6' });
+  K.draw();
+</script>
+</body></html>
