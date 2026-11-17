@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>luong-tong</title><link rel="stylesheet" href="kit.css">
+<style>
+  .r { display: flex; gap: 46px; align-items: stretch; }
+  .r > .box { width: 228px; }
+  .pad { padding-left: 24px; }
+  .side { width: 236px; }
+  .when { font-size: 11.5px; font-weight: 800; color: #3F48A6; letter-spacing: .04em; margin: 0 0 8px 24px; }
+</style></head>
+<body><div id="canvas">
+  <div class="title">Luồng tổng: thu thập hồ sơ nhân viên mới</div>
+  <div class="subtitle">Email để mời và nhắc · nộp và hỏi trên cổng web có trợ lý chat · HR quyết định từng mục</div>
+
+  <div class="row" style="gap:56px">
+    <div class="col" style="gap:50px">
+      <div>
+        <div class="when">KHI ỨNG VIÊN NHẬN OFFER</div>
+        <div class="r pad">
+          <div class="box human" id="h1"><span class="kind">HR</span><h4>Xác nhận tiếp nhận</h4><p>Offer đã nhận, có ngày bắt đầu</p></div>
+          <div class="box code" id="c1"><span class="kind">CODE</span><h4>Sinh checklist riêng</h4><p>Theo loại hợp đồng, vị trí; chia đợt 1 / đợt 2</p></div>
+          <div class="box human" id="h2"><span class="kind">HR</span><h4>Xem checklist</h4><p>Thêm/bớt mục nếu cần rồi bấm gửi lời mời</p></div>
+          <div class="box ai" id="a1"><span class="kind">★ AI + CODE</span><h4>Email mời</h4><p>AI soạn lời chào + danh sách mục; code gửi kèm link cổng</p></div>
+        </div>
+      </div>
+
+      <div class="lane" id="lane"><div class="lane-title">Cổng onboarding · nhân viên mới (đợt 1, trước ngày đầu đi làm)</div>
+        <div class="r">
+          <div class="box ai" id="a3"><span class="kind">★ AI</span><h4>Kiểm tra từng file</h4><p>Nhận loại giấy, kiểm ảnh, hạn, trích và đối chiếu (sơ đồ sau)</p></div>
+          <div class="box actor" id="n2"><span class="kind">NHÂN VIÊN</span><h4>Tải giấy tờ trong chat</h4><p>Chụp ảnh hoặc PDF, từng file hay nhiều file một lúc</p></div>
+          <div class="box ai" id="a2"><span class="kind">★ AI</span><h4>Trợ lý hỏi thêm</h4><p>"Bạn có người phụ thuộc không? Đã có mã BHXH chưa?" → bật mục "nếu có"</p></div>
+          <div class="box actor" id="n1"><span class="kind">NHÂN VIÊN</span><h4>Mở link, nhập OTP</h4><p>Thấy checklist và % tiến độ</p></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="when" style="margin-left:170px">HR XỬ LÝ · NGÀY ĐẦU ĐI LÀM</div>
+        <div class="r pad">
+          <div class="box human" id="h3"><span class="kind">HR</span><h4>Duyệt từng mục</h4><p>Ảnh gốc cạnh dữ liệu trích, cờ và lời giải thích → duyệt hoặc yêu cầu bổ sung</p></div>
+          <div class="box human" id="h4"><span class="kind">HR · NGÀY ĐẦU</span><h4>Nhận bản công chứng</h4><p>Đối chiếu với bản đã nộp online, tick "đã nhận"</p></div>
+          <div class="box code" id="c3"><span class="kind">CODE</span><h4>Ghi hồ sơ HRM</h4><p>Dữ liệu đã duyệt tự điền vào hồ sơ nhân viên</p></div>
+          <div class="box sys" id="s1"><span class="kind">ĐỢT 2 · 30 NGÀY</span><h4>Nộp tiếp qua bot HR</h4><p>Người phụ thuộc, BHXH, giấy tờ công ty cũ: cùng checklist, trong app chat</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col" style="gap:40px; padding-top:150px">
+      <div class="box code side" id="rm"><span class="kind">CODE + ★ AI</span><h4>Nhắc 3 ngày/lần</h4>
+        <p>Code quyết định khi nào nhắc; AI viết nội dung theo đúng mục còn thiếu và lý do. Không ghi số CCCD, số tài khoản trong email</p></div>
+      <div class="box deny side" id="od"><span class="kind">QUÁ HẠN</span>Báo HR phụ trách; HR gia hạn hoặc gọi trực tiếp</div>
+      <div class="box sys side" id="done"><span class="kind">DỪNG NHẮC</span>Không còn mục bắt buộc nào chờ nhân viên làm (còn chờ HR hay chờ bản giấy thì không nhắc)</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="actor"></i>Nhân viên mới</span><span><i class="ai"></i>AI làm</span><span><i class="code"></i>Code / quy tắc</span>
+    <span><i class="human"></i>HR quyết định</span><span><i class="sys"></i>Bước sau / trạng thái</span><span><i class="deny"></i>Cảnh báo</span>
+  </div>
+</div>
+<script src="kit.js"></script>
+<script>
+  K.link('h1', 'c1', { from: 'r', to: 'l' }); K.link('c1', 'h2', { from: 'r', to: 'l' }); K.link('h2', 'a1', { from: 'r', to: 'l' });
+  K.link('a1', 'n1', { label: 'email + link', color: '#3F48A6' });
+  K.link('n1', 'a2', { from: 'l', to: 'r' }); K.link('a2', 'n2', { from: 'l', to: 'r' }); K.link('n2', 'a3', { from: 'l', to: 'r' });
+  K.link('a3', 'n2', { from: 't', to: 't', out: 18, dash: true, color: '#C11D2A', label: 'nộp lại / giải thích' });
+  K.link('a3', 'h3', { label: 'đạt hoặc có cờ', color: '#2E9E6A', dy: -8 });
+  K.link('h3', 'h4', { from: 'r', to: 'l' }); K.link('h4', 'c3', { from: 'r', to: 'l' }); K.link('c3', 's1', { from: 'r', to: 'l', dash: true });
+  K.link('rm', 'n1', { from: 'l', to: 'r', color: '#4F6BD8', label: 'email nhắc' });
+  K.link('rm', 'od', { dash: true, color: '#C11D2A' });
+  K.draw();
+</script>
+</body></html>

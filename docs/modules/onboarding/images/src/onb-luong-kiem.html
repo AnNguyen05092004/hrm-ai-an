@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>luong-kiem</title><link rel="stylesheet" href="kit.css">
+<style>
+  .main { width: 400px; }
+  .out { width: 250px; }
+  .chk { margin: 4px 0 0; padding-left: 0; list-style: none; }
+  .chk li::before { content: '✓ '; color: var(--code); font-weight: 800; }
+  /* khung chat */
+  .chat { width: 470px; border-radius: 14px; border: 1.5px solid #D6DAE6; background: #fff; box-shadow: 0 6px 22px rgba(31,37,96,.10);
+          overflow: hidden; position: relative; z-index: 2; font-size: 13px; line-height: 1.5; }
+  .chat .bar { background: #3F48A6; color: #fff; padding: 10px 14px; }
+  .chat .bar b { font-size: 14px; }
+  .chat .bar small { display: block; color: #DCE0FF; font-size: 11.5px; }
+  .prog { height: 7px; background: rgba(255,255,255,.25); border-radius: 4px; margin-top: 7px; overflow: hidden; }
+  .prog i { display: block; height: 100%; width: 33%; background: #9CCF96; }
+  .msgs { padding: 12px 14px 14px; background: #F7F8FB; display: flex; flex-direction: column; gap: 9px; }
+  .m { max-width: 84%; padding: 8px 11px; border-radius: 12px; }
+  .m.bot { background: #fff; border: 1px solid #E5E7EB; align-self: flex-start; border-top-left-radius: 4px; }
+  .m.me { background: #E7EBFF; align-self: flex-end; border-top-right-radius: 4px; }
+  .file { font-family: 'SF Mono', Menlo, monospace; font-size: 12px; }
+  .tag { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 1px 8px; border-radius: 10px; color: #fff; margin-top: 5px; }
+  .tag.re { background: #C11D2A; } .tag.ex { background: #B7791F; } .tag.ok { background: #2E9E6A; }
+  .m .btn { margin-top: 6px; color: #3F48A6; }
+</style></head>
+<body><div id="canvas">
+  <div class="title">Kiểm tra một giấy tờ khi nhân viên tải lên</div>
+  <div class="subtitle">AI chỉ có 3 kết quả: đạt · cần nộp lại · cần giải thích. AI không tự từ chối; HR quyết định</div>
+
+  <div class="row" style="gap:60px">
+    <div class="col" style="gap:30px">
+      <div class="box actor main" id="u"><span class="kind">NHÂN VIÊN</span><h4>Tải file trong khung chat</h4><p>Ảnh hoặc PDF; một file có thể chứa nhiều giấy</p></div>
+      <div class="box code main" id="c1"><span class="kind">CODE</span><h4>Kiểm tra file</h4>
+        <ul class="chk"><li>Ảnh hoặc PDF, tối đa 10 MB</li><li>Không trùng file đã nộp</li></ul></div>
+      <div class="row" style="gap:40px; align-items:center">
+        <div class="box ai main" id="a1"><span class="kind">★ AI</span><h4>Nhận loại giấy và kiểm ảnh</h4>
+          <p>Thuộc mục nào trong checklist · rõ, đủ mặt, đủ trang · còn hạn. PDF nhiều trang thì tách từng giấy</p></div>
+        <div class="box deny out" id="re"><span class="kind">CẦN NỘP LẠI</span>Nói rõ lỗi và cách chụp lại; mục giữ trạng thái "Cần nộp lại"</div>
+      </div>
+      <div class="box ai main" id="a2"><span class="kind">★ AI + CODE</span><h4>Trích thông tin</h4>
+        <p>AI đọc "mù": không được biết giá trị mong đợi từ offer/CV. CCCD gắn chip: code đọc mã QR, không cần OCR. Code kiểm định dạng; trường AI không chắc được tô vàng. Giấy khám sức khỏe, người phụ thuộc: không trích</p></div>
+      <div class="box actor main" id="cf"><span class="kind">NHÂN VIÊN</span><h4>Xác nhận dữ liệu trích</h4><p>Xem ảnh cạnh giá trị AI đọc, sửa nếu sai. Số CCCD, ngày sinh, số tài khoản, mã BHXH phải bấm xác nhận từng trường. Trường đã sửa được đánh dấu cho HR</p></div>
+      <div class="row" style="gap:40px; align-items:center">
+        <div class="box code main" id="c2"><span class="kind">CODE + ★ AI</span><h4>Đối chiếu chéo (trên dữ liệu đã xác nhận)</h4>
+          <p>Code so họ tên, ngày sinh, số CCCD giữa các giấy và với offer. AI so trường, ngành với CV khi viết khác nhau (ví dụ "KHMT" và "Computer Science")</p></div>
+        <div class="box ask out" id="ex"><span class="kind">CẦN GIẢI THÍCH</span>AI hỏi trước: "mình đọc sai, hay giấy ghi đúng như vậy?". Đọc sai → sửa, đối chiếu lại. Ghi đúng → nhân viên giải thích / nộp giấy bổ sung, gắn cờ cho HR</div>
+      </div>
+      <div class="box human main" id="hr"><span class="kind">HR</span><h4>Chờ HR duyệt</h4><p>Ảnh gốc cạnh dữ liệu; thấy giá trị AI đọc và giá trị nhân viên sửa. Duyệt hoặc yêu cầu bổ sung</p></div>
+    </div>
+
+    <div class="chat" id="chat">
+      <div class="bar"><b>Trợ lý hồ sơ · VinSmart Future</b><small>Trần Minh Khoa · Kỹ sư AI · bắt đầu 01/12/2026</small>
+        <small style="margin-top:6px">Đợt 1: 2/6 hoàn tất · 2 chờ HR / bản giấy · còn 2 mục · hạn 30/11</small><div class="prog"><i></i></div></div>
+      <div class="msgs">
+        <div class="m bot">Chào Khoa! Đợt 1 bạn còn 2 mục: <b>Bằng tốt nghiệp</b> và <b>Tài khoản ngân hàng</b>. Bạn tải ảnh lên đây nhé.</div>
+        <div class="m me"><span class="file">📎 bang-tot-nghiep.jpg</span></div>
+        <div class="m bot">Ảnh bị lóa ở góc phải nên mình không đọc được năm tốt nghiệp. Bạn chụp lại ở chỗ không có đèn chiếu thẳng giúp mình nhé.<br><span class="tag re">CẦN NỘP LẠI</span></div>
+        <div class="m me"><span class="file">📎 bang-tot-nghiep-2.jpg</span></div>
+        <div class="m bot">Đã đọc được ✓ Đại học Bách khoa Hà Nội · Khoa học máy tính · 2024.<br>Mình đọc tên trên bằng là <b>"Trần Minh Khôi"</b>, còn CCCD là <b>"Trần Minh Khoa"</b>. Mình đọc sai, hay bằng ghi đúng như vậy?<br>
+          <span class="btn">Bạn đọc sai, sửa lại</span> · <span class="btn">Bằng ghi đúng vậy</span><br><span class="tag ex">CẦN GIẢI THÍCH</span></div>
+        <div class="m me">Bằng ghi đúng vậy, trường in sai dấu. Mình có giấy xác nhận của trường 📎</div>
+        <div class="m bot">Mình đã ghi lại và chuyển HR xem. Mục này đang <b>chờ HR duyệt</b>; bản công chứng bạn mang theo vào ngày đầu nhé.<br><span class="tag ok">CHỜ HR</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="actor"></i>Nhân viên mới</span><span><i class="ai"></i>AI làm</span><span><i class="code"></i>Code kiểm tra</span>
+    <span><i class="human"></i>HR quyết định</span><span><i class="deny"></i>Cần nộp lại</span><span><i class="ask"></i>Cần giải thích</span>
+  </div>
+</div>
+<script src="kit.js"></script>
+<script>
+  K.link('u', 'c1'); K.link('c1', 'a1'); K.link('a1', 'a2', { label: 'đạt' }); K.link('a2', 'cf'); K.link('cf', 'c2'); K.link('c2', 'hr', { label: 'khớp' });
+  K.link('a1', 're', { from: 'r', to: 'l', color: '#C11D2A', label: 'lỗi rõ' });
+  K.link('c2', 'ex', { from: 'r', to: 'l', color: '#B7791F', label: 'lệch' });
+  K.link('ex', 'cf', { from: 't', to: 'r', dash: true, color: '#B7791F', label: 'AI đọc sai → sửa' });
+  K.link('ex', 'hr', { from: 'b', to: 'r', dash: true, color: '#B7791F', label: 'kèm cờ' });
+  K.link('c1', 're', { from: 'r', to: 't', color: '#C11D2A', dash: true });
+  K.draw();
+</script>
+</body></html>

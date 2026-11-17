@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Onboarding mindmap</title>
+<style>html,body{margin:0;background:#fff}svg{display:block}</style>
+</head>
+<body>
+<svg id="m" xmlns="http://www.w3.org/2000/svg"></svg>
+<script>
+// Nội dung mind map: nhánh to → nhánh con → lá (bao nhiêu cấp cũng được).
+// Node viết dạng chuỗi, hoặc { t: 'Tên', ai: 1, c: [con...] }. ai: 1 = chức năng có dùng AI.
+// Sửa ở đây rồi chạy: bash images/src/render.sh mindmap
+const DATA = {
+  title: 'AI Onboarding: hồ sơ',
+  right: [
+    { t: 'Checklist và tiến độ', color: '#E8948C', c: [
+      { t: 'Checklist riêng từng người', c: [
+        'Code sinh theo loại hợp đồng, vị trí', { t: 'Trợ lý hỏi thêm để bật mục "nếu có"', ai: 1 }, 'HR thêm/bớt mục trước khi mời'] },
+      { t: 'Hai đợt nộp', c: ['Đợt 1: trước ngày đầu đi làm', 'Đợt 2: trong 30 ngày đầu'] },
+      { t: 'Tiến độ %', c: ['Trạng thái từng mục', 'Xong = HR duyệt + đã nhận bản công chứng'] },
+    ] },
+    { t: 'Kênh trao đổi', ai: 1, color: '#EFAA75', c: [
+      { t: 'Email mời và nhắc', ai: 1, c: [
+        'Link vào cổng + OTP', { t: 'Nội dung theo đúng mục còn thiếu', ai: 1 }, '3 ngày/lần, quá hạn báo HR', 'Không chứa dữ liệu cá nhân'] },
+      { t: 'Cổng web có trợ lý chat', ai: 1, c: [
+        'Tải giấy tờ ngay trong chat', { t: 'Phản hồi ngay từng file', ai: 1 }, { t: 'Hỏi về giấy tờ, có trích hướng dẫn', ai: 1 }] },
+      { t: 'Sau ngày đầu đi làm', c: ['Mục đợt 2 nộp tiếp qua bot HR trong app chat'] },
+    ] },
+  ],
+  left: [
+    { t: 'AI kiểm tra giấy tờ', ai: 1, color: '#E7A2B6', c: [
+      { t: 'Nhận diện', ai: 1, c: ['Đúng loại giấy, đúng mục', 'Ảnh rõ, đủ mặt, đủ trang', 'Còn hạn'] },
+      { t: 'Trích thông tin', ai: 1, c: ['Họ tên, ngày sinh, số CCCD, bằng cấp, số tài khoản…', 'AI đọc mù; CCCD gắn chip đọc mã QR', 'Nhân viên xác nhận, sửa nếu sai'] },
+      { t: 'Đối chiếu chéo', ai: 1, c: ['Giữa các giấy tờ', 'Với CV và offer', 'Chạy trên dữ liệu đã xác nhận', 'Lệch → hỏi "AI đọc sai hay giấy ghi vậy?"', 'Giấy ghi vậy → giải thích + gắn cờ'] },
+      { t: 'Không bao giờ tự từ chối', c: ['Chỉ: đạt · cần nộp lại · cần giải thích'] },
+    ] },
+    { t: 'HR duyệt và ghi HRM', color: '#8EB8E8', c: [
+      { t: 'Duyệt từng mục', c: ['Ảnh gốc cạnh dữ liệu trích', 'Xem cờ + lời giải thích', 'Duyệt hoặc yêu cầu bổ sung'] },
+      { t: 'Ngày đầu đi làm', c: ['Đối chiếu bản công chứng / bản gốc', 'Tick "đã nhận"'] },
+      { t: 'Ghi hồ sơ nhân viên', c: ['Tự điền HRM sau khi HR duyệt', 'Nhân viên không khai lại form'] },
+    ] },
+  ],
+};
+
+const FONT = "'Helvetica Neue', Arial, sans-serif";
+const ROW = 31, SUB_GAP = 10, BLOCK_GAP = 22, BRANCH_H = 38, CENTER_GAP = 160, SPINE = 16, MARGIN = 36;
+const STAR = '#F0A04B';
+const ctx = document.createElement('canvas').getContext('2d');
+const tw = (t, size, weight) => { ctx.font = `${weight} ${size}px ${FONT}`; return ctx.measureText(t).width; };
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); return `rgb(${[n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v * f)).join(',')})`; };
+
+const norm = (n, lvl, color) => {
+  n = typeof n === 'string' ? { t: n } : n;
+  n.lvl = lvl; n.color = n.color || color; n.c = (n.c || []).map(c => norm(c, lvl + 1, n.color));
+  if (lvl === 1) { n.size = 16; n.weight = 700; n.w = tw(n.t, 16, 700) + 36 + (n.ai ? 26 : 0); }
+  else {
+    const sub = n.c.length > 0;
+    n.size = sub ? 14.5 : 13.5; n.weight = sub ? 700 : 400;
+    n.w = tw(n.t, n.size, n.weight) + (n.ai ? 22 : 0) + 24;
+  }
+  // chiều cao khối
+  if (!n.c.length) n.h = lvl === 1 ? BRANCH_H : ROW;
+  else {
+    const gap = n.c.some(c => c.c.length) ? SUB_GAP : 0;
+    n.h = Math.max(n.c.reduce((s, c) => s + c.h, 0) + gap * (n.c.length - 1), lvl === 1 ? BRANCH_H : ROW);
+  }
+  return n;
+};
+
+const center = { w: tw(DATA.title, 30, 800) + 80, h: 62 };
+let minX = -center.w / 2, maxX = center.w / 2, minY = -center.h / 2, maxY = center.h / 2;
+const grow = (x, y) => { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); };
+
+// y: với nhánh to là tâm khối; với node gạch chân là đường gạch chân
+function place(n, top, dir, xIn) {
+  n.dir = dir; n.xIn = xIn; n.xOut = xIn + dir * n.w;
+  if (n.c.length) {
+    const gap = n.c.some(c => c.c.length) ? SUB_GAP : 0;
+    const inner = n.c.reduce((s, c) => s + c.h, 0) + gap * (n.c.length - 1);
+    let y = top + (n.h - inner) / 2;
+    const spine = n.xOut + dir * SPINE;
+    n.spine = spine;
+    n.c.forEach(c => { place(c, y, dir, spine); y += c.h + gap; });
+    n.y = (n.c[0].y + n.c[n.c.length - 1].y) / 2;
+  } else n.y = n.lvl === 1 ? top + n.h / 2 : top + ROW / 2 + 9;
+  grow(n.xOut, n.y - 24); grow(n.xOut, n.y + 24);
+}
+for (const [side, dir] of [['right', 1], ['left', -1]]) {
+  const list = DATA[side].map(b => norm(b, 1));
+  DATA[side] = list;
+  const total = list.reduce((s, b) => s + b.h, 0) + BLOCK_GAP * (list.length - 1);
+  let y = -total / 2;
+  list.forEach(b => { place(b, y, dir, dir * (center.w / 2 + CENTER_GAP)); y += b.h + BLOCK_GAP; });
+}
+
+const out = [];
+const star = (x, y, r) => {
+  const pts = [];
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.42 : r * 0.95;
+    pts.push(`${(x + rr * Math.cos(a)).toFixed(2)},${(y + rr * Math.sin(a)).toFixed(2)}`);
+  }
+  return `<circle cx="${x}" cy="${y}" r="${r + 3}" fill="${STAR}" stroke="#fff" stroke-width="1.5"/>` +
+         `<polygon points="${pts.join(' ')}" fill="none" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/>`;
+};
+const text = (x, y, t, size, weight, color, anchor = 'start') =>
+  `<text x="${x}" y="${y}" font-family="${esc(FONT)}" font-size="${size}" font-weight="${weight}" fill="${color}" text-anchor="${anchor}" dominant-baseline="central">${esc(t)}</text>`;
+
+// Đường từ trung tâm tới nhánh to
+[...DATA.right, ...DATA.left].forEach(b => {
+  const near = Math.abs(b.y) < center.h / 2 + 8;
+  const sx = near ? b.dir * center.w / 2 : b.dir * center.w * 0.28;
+  const sy = near ? b.y : Math.sign(b.y) * center.h / 2;
+  const c1 = near ? `${(sx + b.xIn) / 2},${sy}` : `${sx},${sy + (b.y - sy) * 0.85}`;
+  const c2 = `${sx + (b.xIn - sx) * 0.45},${b.y}`;
+  out.push(`<path d="M${sx},${sy} C${c1} ${c2} ${b.xIn},${b.y}" fill="none" stroke="${b.color}" stroke-width="2" stroke-linecap="round"/>`);
+});
+
+// Ngoặc nối cha → con, rồi chữ
+function draw(n) {
+  const d = n.dir, line = shade(n.color, 0.95);
+  n.c.forEach(c => {
+    const r = 7, s = n.spine;
+    let p;
+    if (Math.abs(c.y - n.y) < 1) p = `M${n.xOut},${n.y} H${c.xOut}`;
+    else {
+      const sg = Math.sign(c.y - n.y);
+      p = `M${n.xOut},${n.y} H${s - d * r} Q${s},${n.y} ${s},${n.y + sg * r} V${c.y - sg * r} Q${s},${c.y} ${s + d * r},${c.y} H${c.xOut}`;
+    }
+    out.push(`<path d="${p}" fill="none" stroke="${line}" stroke-width="${c.c.length ? 2 : 1.6}" stroke-linecap="round" stroke-linejoin="round"/>`);
+    draw(c);
+  });
+  if (n.lvl === 1) {
+    const left = Math.min(n.xIn, n.xOut), top = n.y - BRANCH_H / 2;
+    out.push(`<rect x="${left}" y="${top}" width="${n.w}" height="${BRANCH_H}" rx="7" fill="${n.color}"/>`);
+    let x = left + 18;
+    if (n.ai) { out.push(star(x + 8, n.y, 6.5)); x += 26; }
+    out.push(text(x, n.y + 0.5, n.t, 16, 700, '#262626'));
+  } else {
+    // node gạch chân: phần gạch chân là đoạn cuối của đường nối từ cha
+    let x = d > 0 ? n.xIn + 12 : n.xOut + 12;
+    if (n.ai) { out.push(star(x + 7, n.y - 11, 5.5)); x += 21; }
+    out.push(text(x, n.y - 11, n.t, n.size, n.weight, n.c.length ? shade(n.color, 0.5) : '#2B2B2B'));
+  }
+}
+[...DATA.right, ...DATA.left].forEach(draw);
+
+// Trung tâm
+out.push(`<rect x="${-center.w / 2}" y="${-center.h / 2}" width="${center.w}" height="${center.h}" rx="8" fill="#3F48A6" stroke="#1F2560" stroke-width="2"/>`);
+out.push(text(0, 1, DATA.title, 30, 800, '#ffffff', 'middle'));
+
+// Chú thích (giữa, phía trên)
+const lgW = 210, lgH = 66, lgX = -lgW / 2, lgY = minY - lgH - 10;
+grow(lgX, lgY);
+out.push(`<rect x="${lgX}" y="${lgY}" width="${lgW}" height="${lgH}" rx="6" fill="#fff" stroke="#E2E2E2"/>`);
+out.push(text(0, lgY + 16, 'Chú thích', 13, 500, '#333', 'middle'));
+out.push(`<line x1="${lgX + 14}" y1="${lgY + 31}" x2="${lgX + lgW - 14}" y2="${lgY + 31}" stroke="#E5E5E5"/>`);
+out.push(star(lgX + 30, lgY + 49, 5.5));
+out.push(text(lgX + 46, lgY + 49, 'Chức năng có dùng AI', 13, 400, '#333'));
+
+const W = Math.ceil(maxX - minX + MARGIN * 2), H = Math.ceil(maxY - minY + MARGIN * 2);
+const svg = document.getElementById('m');
+svg.setAttribute('width', W); svg.setAttribute('height', H);
+svg.setAttribute('viewBox', `${minX - MARGIN} ${minY - MARGIN} ${W} ${H}`);
+svg.innerHTML = `<rect x="${minX - MARGIN}" y="${minY - MARGIN}" width="${W}" height="${H}" fill="#fff"/>` + out.join('');
+document.title = `${W}x${H}`;
+</script>
+</body>
+</html>
