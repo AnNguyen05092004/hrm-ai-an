@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>tutor</title><link rel="stylesheet" href="kit.css">
+<style>
+  .wrap { display: flex; gap: 28px; align-items: flex-start; }
+  .player { width: 560px; border-radius: 14px; border: 1.5px solid #D6DAE6; overflow: hidden; background: #fff; box-shadow: 0 6px 22px rgba(31,37,96,.10); }
+  .video { height: 300px; background: linear-gradient(135deg, #1F2560, #3F48A6); color: #fff; padding: 26px 30px; position: relative; }
+  .video .slide-t { font-size: 22px; font-weight: 800; }
+  .video ul { margin: 14px 0 0; padding-left: 20px; font-size: 15px; line-height: 1.8; color: #DCE0FF; }
+  .video .ai { position: absolute; right: 14px; top: 12px; font-size: 10.5px; background: rgba(255,255,255,.18); padding: 3px 9px; border-radius: 10px; }
+  .video .cap { position: absolute; left: 30px; right: 30px; bottom: 16px; font-size: 13px; background: rgba(0,0,0,.45); padding: 6px 10px; border-radius: 6px; }
+  .bar { height: 6px; background: #E5E7EB; position: relative; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 41%; background: #E8902F; }
+  .bar b { position: absolute; top: -4px; width: 3px; height: 14px; background: #1F2560; }
+  .chap { padding: 10px 16px 14px; font-size: 13px; }
+  .chap h5 { margin: 4px 0 8px; font-size: 12px; color: #6B7280; letter-spacing: .04em; }
+  .chap div { display: flex; gap: 10px; padding: 4px 8px; border-radius: 6px; }
+  .chap div.on { background: #FFF5E8; font-weight: 700; }
+  .chap span { font-family: 'SF Mono', Menlo, monospace; color: #3F48A6; width: 44px; }
+  .chat { width: 430px; border-radius: 14px; border: 1.5px solid #D6DAE6; background: #fff; box-shadow: 0 6px 22px rgba(31,37,96,.10); overflow: hidden; font-size: 13px; line-height: 1.5; }
+  .chat .top { background: #E8902F; color: #fff; padding: 10px 14px; font-weight: 800; }
+  .chat .top small { display: block; font-weight: 400; color: #FFF0DD; }
+  .msgs { padding: 12px 14px; background: #F7F8FB; display: flex; flex-direction: column; gap: 9px; }
+  .m { max-width: 88%; padding: 8px 11px; border-radius: 12px; }
+  .m.bot { background: #fff; border: 1px solid #E5E7EB; align-self: flex-start; border-top-left-radius: 4px; }
+  .m.me { background: #E7EBFF; align-self: flex-end; border-top-right-radius: 4px; }
+  .jump { display: inline-block; margin-top: 6px; font-weight: 700; color: #3F48A6; border: 1.3px solid #3F48A6; border-radius: 12px; padding: 1px 10px; font-size: 12px; }
+  .src { display: block; font-size: 11px; color: #6B7280; margin-top: 4px; }
+</style></head>
+<body><div id="canvas">
+  <div class="title">AI Tutor: hỏi để học nhanh đúng phần mình chưa biết</div>
+  <div class="subtitle">Khóa "Docker cho kỹ sư Backend" (skill Container · mức 2) · video do AI tạo từ tài liệu nội bộ, đã duyệt · Tutor tắt khi thi</div>
+
+  <div class="wrap">
+    <div class="player">
+      <div class="video"><span class="ai">Nội dung do AI tạo · đã được chuyên gia duyệt</span>
+        <div class="slide-t">Bài 3 · Lưu dữ liệu với Volume</div>
+        <ul><li>Container bị xóa thì dữ liệu bên trong mất</li><li>Volume: vùng lưu do Docker quản lý</li><li>Bind mount: gắn thư mục máy thật</li></ul>
+        <div class="cap">"…volume vẫn còn sau khi container bị xóa, nên dùng cho database…"</div>
+      </div>
+      <div class="bar"><i></i><b style="left:41%"></b></div>
+      <div class="chap"><h5>CHƯƠNG (AI CHIA TỪ LỜI ĐỌC)</h5>
+        <div><span>00:00</span>Vì sao cần lưu dữ liệu</div>
+        <div class="on"><span>12:40</span>Volume là gì, tạo và gắn volume</div>
+        <div><span>18:05</span>Bind mount và khi nào dùng</div>
+        <div><span>23:30</span>Sao lưu volume của database</div>
+      </div>
+    </div>
+
+    <div class="chat">
+      <div class="top">★ AI Tutor<small>Trả lời từ nội dung khóa đã duyệt · có nguồn</small></div>
+      <div class="msgs">
+        <div class="m me">Volume khác bind mount chỗ nào? Mình chỉ cần học phần này thôi</div>
+        <div class="m bot">Volume do Docker quản lý, nằm ngoài thư mục dự án, hợp để lưu database. Bind mount gắn thẳng một thư mục trên máy, hợp khi dev cần sửa code và thấy ngay.<br>
+          <span class="jump">▶ Bài 3 · 12:40 Volume</span><span class="jump">▶ Bài 3 · 18:05 Bind mount</span>
+          <span class="src">Nguồn: "Hướng dẫn Docker nội bộ v2", mục 3.1–3.2</span></div>
+        <div class="m me">Còn Docker Swarm thì sao?</div>
+        <div class="m bot">Khóa này không nói về Swarm. Trong thư viện có:<br>
+          <span class="jump">▶ "Vận hành container" · Bài 5 · 04:15</span>
+          <span class="src">Khóa thuộc PM-OPS · skill Điều phối container · mức 3</span></div>
+        <div class="m me">Swarm với Kubernetes cái nào công ty dùng?</div>
+        <div class="m bot">Mình không tìm thấy thông tin này trong tài liệu đã duyệt nên không trả lời. Bạn hỏi giảng viên phụ trách khóa nhé.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="kit.js"></script>
+<script>K.draw();</script>
+</body></html>

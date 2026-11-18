@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>luong-tong</title><link rel="stylesheet" href="kit.css">
+<style>
+  .r { display: flex; gap: 46px; align-items: stretch; }
+  .r > .box { width: 214px; }
+</style></head>
+<body><div id="canvas">
+  <div class="title">Luồng tổng: soạn → học → thi → cập nhật năng lực</div>
+  <div class="subtitle">Lớp AI đặt trên LMS có sẵn · LMS lo cổng học, giao khóa, lưu kết quả · kết quả thi đạt gửi sang Talent</div>
+
+  <div class="col" style="gap:56px">
+    <div class="lane"><div class="lane-title">A · Soạn khóa học</div>
+      <div class="r">
+        <div class="box actor" id="a1"><span class="kind">NGƯỜI SOẠN</span><h4>Đưa tài liệu nguồn</h4><p>Tài liệu nội bộ được phép dùng; skill, mức, đối tượng</p></div>
+        <div class="box ai" id="a2"><span class="kind">★ AI</span><h4>Outline → bài học</h4><p>Bài đọc, slide, câu hỏi luyện tập; mỗi đoạn trích nguồn; nêu phần chưa đủ căn cứ</p></div>
+        <div class="box ai" id="a3"><span class="kind">★ AI</span><h4>Tạo video</h4><p>Slide + giọng đọc AI; chép lời, chia chương, gắn mốc thời gian</p></div>
+        <div class="box human" id="a4"><span class="kind">CHUYÊN GIA</span><h4>Rà soát, duyệt</h4><p>Sửa nội dung sai; chưa duyệt thì không xuất bản</p></div>
+        <div class="box sys" id="a5"><span class="kind">LMS</span><h4>Xuất bản, có phiên bản</h4><p>Tài liệu nguồn đổi → AI chỉ ra bài, đoạn video cần làm lại</p></div>
+      </div>
+    </div>
+
+    <div class="lane"><div class="lane-title">B · Học</div>
+      <div class="r">
+        <div class="box actor" id="b1"><span class="kind">NHÂN VIÊN</span><h4>Sẵn sàng thi</h4><p>Vào bài thi chính thức; Tutor tắt</p></div>
+        <div class="box ai" id="b2"><span class="kind">★ AI TUTOR</span><h4>Khóa này không có?</h4><p>Tìm trong cả thư viện; không có thì nói rõ, không đoán</p></div>
+        <div class="box ai" id="b3"><span class="kind">★ AI TUTOR</span><h4>Hỏi khi chưa hiểu</h4><p>Trả lời có nguồn; "ở đâu?" → nhảy tới đúng phút video</p></div>
+        <div class="box actor" id="b4"><span class="kind">NHÂN VIÊN</span><h4>Học trên LMS</h4><p>Video, bài đọc, bài luyện tập</p></div>
+        <div class="box sys" id="b5"><span class="kind">LMS</span><h4>Giao khóa / tự đăng ký</h4><p>Từ kế hoạch đào tạo hoặc lộ trình cá nhân (Talent)</p></div>
+      </div>
+    </div>
+
+    <div class="lane"><div class="lane-title">C · Thi và chấm</div>
+      <div class="r">
+        <div class="box code" id="c1"><span class="kind">CODE</span><h4>Phát đề riêng</h4><p>Rút từ ngân hàng đã duyệt, xáo thứ tự; giới hạn giờ, số lượt</p></div>
+        <div class="box code" id="c2"><span class="kind">CODE + ★ AI</span><h4>Giám sát (nếu bật)</h4><p>Báo trước, đồng ý; AI chỉ gắn cờ: rời khung hình, người thứ hai, chuyển tab, dán code</p></div>
+        <div class="box code" id="c3"><span class="kind">CODE + ★ AI</span><h4>Chấm</h4><p>Trắc nghiệm, test case: code chấm. Tự luận: AI chấm nháp. Code: AI nhận xét chất lượng</p></div>
+        <div class="box human" id="c4"><span class="kind">NGƯỜI CHẤM</span><h4>Xác nhận</h4><p>Phần tự luận, rubric và đoạn bị gắn cờ</p></div>
+        <div class="box sys" id="c5"><span class="kind">KẾT QUẢ</span><h4>Đạt / chưa đạt</h4><p>Đạt → gửi mức sang Talent (tối đa 3). Chưa đạt → AI chỉ bài, đoạn video cần học lại</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="actor"></i>Người soạn / nhân viên</span><span><i class="ai"></i>AI làm</span><span><i class="code"></i>Code / quy tắc</span>
+    <span><i class="human"></i>Người duyệt / chấm</span><span><i class="sys"></i>LMS có sẵn</span>
+  </div>
+</div>
+<script src="kit.js"></script>
+<script>
+  for (let i = 1; i < 5; i++) K.link('a' + i, 'a' + (i + 1), { from: 'r', to: 'l' });
+  for (let i = 5; i > 1; i--) K.link('b' + i, 'b' + (i - 1), { from: 'l', to: 'r' });
+  for (let i = 1; i < 5; i++) K.link('c' + i, 'c' + (i + 1), { from: 'r', to: 'l' });
+  K.link('a5', 'b5', { from: 'b', to: 't', label: 'khóa đã duyệt', fx: 0.5, tx: 0.5, mid: 0.5 });
+  K.link('b1', 'c1', { from: 'b', to: 't' });
+  K.link('c5', 'b4', { from: 't', to: 'b', dash: true, color: '#C11D2A', label: 'chưa đạt: học lại đúng phần thiếu' });
+  K.draw();
+</script>
+</body></html>
