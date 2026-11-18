@@ -88,7 +88,7 @@ export const skillEvents = pgTable('skill_events', {
   createdAt: created(),
 })
 
-export type KpiSkill = { skillId: string; why?: string; boost?: number }
+export type KpiSkill = { skillId: string; why?: string; boost?: number; positions?: string[] }
 export const kpis = pgTable('kpis', {
   id: id(),
   orgId: text('org_id').notNull().references(() => orgs.id),

@@ -8,6 +8,7 @@ import { learnRoutes } from './learn/routes.js'
 import { tutorRoutes } from './tutor/routes.js'
 import { examRoutes, gradingRoutes } from './exams/routes.js'
 import { analyticsRoutes } from './analytics/routes.js'
+import { workforceRoutes } from './workforce/routes.js'
 // đăng ký các job nền
 import './sources/service.js'
 import './kits/service.js'
@@ -23,4 +24,5 @@ export async function registerModules(app: FastifyInstance): Promise<void> {
   await app.register(examRoutes, { prefix: '/api/exams' })
   await app.register(gradingRoutes, { prefix: '/api/grading' })
   await app.register(analyticsRoutes, { prefix: '/api' })
+  await app.register(workforceRoutes, { prefix: '/api/workforce' })
 }
