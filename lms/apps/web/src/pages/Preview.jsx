@@ -162,7 +162,7 @@ function VideoPlayer({ art, preview, onTutorJump, seek }) {
         <div>
           {real ? (
             <div className="relative aspect-video overflow-hidden rounded-xl bg-black">
-              <video ref={vref} src={art.render.url} className="h-full w-full" controls onTimeUpdate={(e) => setT(e.currentTarget.currentTime)} onPlay={() => setPlay(true)} onPause={() => setPlay(false)}><track kind="captions" src={art.render.vtt} srcLang="vi" label="Tiếng Việt" default /></video>
+              <video ref={vref} src={`${art.render.url}#t=0.5`} className="h-full w-full" controls onTimeUpdate={(e) => setT(e.currentTarget.currentTime)} onPlay={() => setPlay(true)} onPause={() => setPlay(false)}><track kind="captions" src={art.render.vtt} srcLang="vi" label="Tiếng Việt" default /></video>
               {cp && <div className="absolute inset-0 grid place-items-center bg-black/60 p-6"><div className="w-[440px] rounded-xl bg-white p-6"><div className="text-[12px] font-bold uppercase tracking-wider text-neutral-500">Điểm kiểm tra</div><div className="mt-2 font-lato text-[19px] font-bold">{cp.q}</div><div className="mt-4 space-y-2">{cp.choices.map((c, i) => <button key={i} onClick={() => answer(i === cp.correct)} className="block w-full rounded-lg border border-line px-4 py-2.5 text-left text-[14px] hover:border-brand">{c}</button>)}</div></div></div>}
             </div>
           ) : <VideoStage art={art} t={t} playing={play} onToggle={toggle} cp={cp} onAnswer={answer} />}

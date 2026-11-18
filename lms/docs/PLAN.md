@@ -84,14 +84,9 @@ Mỗi phase xong: chạy test + build, review diff (`/code-review`), sửa, comm
 | P2 Học + Tutor | Xong | 6e9e5d7 |
 | P3 Thi & chấm | Xong, đã review và sửa | 6e9e5d7 |
 | P4 Năng lực đội ngũ | Xong | a1fb1ca |
-| P5 Video AI | Đang làm: `modules/video` (resvg vẽ slide + TTS + ffmpeg ghép, VTT, dùng lại đoạn không đổi). Dựng thử OK (6 đoạn, 112 giây). Chưa commit | — |
+| P5 Video AI, seed nguồn, README | Xong: dựng video thật, tab Lời đọc, test video + đổi nguồn (F05), README + file demo | xem git log |
 
-Việc còn lại:
-1. Web: nút "Dựng video" + trạng thái trong VideoEditor (`POST /api/artifacts/:id/render`, theo dõi job, `reload()` sau khi xong); nút "Tạo video từ slide" đã gọi `/to-video`.
-2. Test API cho video (mock: dựng không có TTS, kiểm tra quyền `/api/media`).
-3. Seed: gắn `srcRef` cho khối mẫu để demo "tài liệu nguồn đổi"; seed lại DB dev sạch (`npm run db:seed` trong apps/api).
-4. README chạy hệ thống, `.env.example`, kịch bản demo; dọn `apps/web/src/legacy` (chỉ để tham khảo, không build).
-5. Review toàn bộ lần cuối (`/code-review`), commit, push nhánh `feat/lms-app`.
+Việc còn lại (tùy chọn): màn đổi mật khẩu, SSO, sandbox code bằng container, hàng đợi job riêng khi chạy nhiều máy chủ, Hướng dẫn từng bước tạo bằng AI.
 
 Cách chạy: `cd lms && docker compose up -d db && (cd apps/api && npm run db:seed && npm run dev)` và `cd apps/web && npx vite`. Test: `cd apps/api && npx vitest run`.
 

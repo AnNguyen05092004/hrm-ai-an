@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { db, schema, sqlClient } from './client.js'
 import { hashPassword } from '../lib/auth.js'
 import { fold } from '../lib/text.js'
@@ -107,6 +107,21 @@ export async function seed(): Promise<{ orgId: string; authorId: string; learner
     await chunkExisting(s.id)
   }
 
+  // gắn trích nguồn của nội dung mẫu với đoạn nguồn thật (để phát hiện khi tài liệu nguồn đổi)
+  const chunks = await db.select({ id: schema.sourceChunks.id, sourceId: schema.sourceChunks.sourceId, section: schema.sourceChunks.section, version: schema.sourceChunks.version, name: schema.sources.name })
+    .from(schema.sourceChunks).innerJoin(schema.sources, eq(schema.sources.id, schema.sourceChunks.sourceId))
+  const refOf = (src?: string): Json | undefined => {
+    if (!src) return undefined
+    const [file, sec] = src.split(' · ')
+    const c = chunks.find((x) => x.name === file && x.section === sec)
+    return c ? { sourceId: c.sourceId, chunkId: c.id, version: c.version } : undefined
+  }
+  const link = (c: Json): Json => ({
+    ...c,
+    ...(c.lessons ? { lessons: c.lessons.map((l: Json) => (l.blocks ? { ...l, blocks: l.blocks.map((b: Json) => ({ ...b, ...(refOf(b.src) ? { srcRef: refOf(b.src) } : {}) })) } : l)) } : {}),
+    ...(c.quiz ? { quiz: { ...c.quiz, questions: c.quiz.questions.map((q: Json) => ({ ...q, ...(refOf(q.src) ? { srcRef: refOf(q.src) } : {}) })) } } : {}),
+  })
+
   const artIds: Record<string, string> = {}
   for (const k of P.kits as Json[]) {
     const [kit] = await db.insert(schema.kits).values({
@@ -120,14 +135,14 @@ export async function seed(): Promise<{ orgId: string; authorId: string; learner
       if (!a) continue
       const published = a.status === 'published'
       const [row] = await db.insert(schema.artifacts).values({
-        orgId, kitId: kit.id, type: a.type, title: a.title, summary: a.summary, content: contentOf(a),
+        orgId, kitId: kit.id, type: a.type, title: a.title, summary: a.summary, content: link(contentOf(a)),
         status: published ? 'published' : 'draft', publishedVersion: published ? 1 : null, img: a.img,
         updatedAt: vnDate(a.updated.split(' ')[0]),
       }).returning()
       artIds[aid] = row.id
       if (published) {
         await db.insert(schema.artifactVersions).values({
-          artifactId: row.id, version: 1, title: a.title, summary: a.summary, content: contentOf(a), publishedBy: author.id, note: 'Bản đầu',
+          artifactId: row.id, version: 1, title: a.title, summary: a.summary, content: link(contentOf(a)), publishedBy: author.id, note: 'Bản đầu',
         })
       }
     }

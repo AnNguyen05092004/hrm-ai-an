@@ -359,6 +359,30 @@ export function VideoStage({ art, t, playing, onToggle, cp, onAnswer }) {
   )
 }
 
+
+/** Dựng video thật từ slide + giọng đọc AI; sửa slide/lời đọc thì chỉ dựng lại đoạn đổi */
+function RenderPanel({ art, onReload }) {
+  const { say } = useStore()
+  const r = art.render ?? { status: 'none' }
+  const rendering = r.status === 'rendering'
+  useEffect(() => { if (!rendering) return; const i = setInterval(onReload, 3000); return () => clearInterval(i) }, [rendering]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (!art.slides?.length) return null
+  const start = async () => { try { await post(`/artifacts/${art.id}/render`, {}); say('Đang dựng video bằng giọng đọc AI'); onReload() } catch (e) { say(e.message) } }
+  return (
+    <div className="mb-5 rounded-xl border border-line p-4">
+      <div className="flex items-center gap-3 text-[14px]">
+        <Film size={18} className="text-rose-500" />
+        <div className="flex-1">{rendering ? <span className="flex items-center gap-2 font-medium"><RefreshCw size={14} className="spin" />Đang dựng video…</span>
+          : r.status === 'done' ? <span><b>Video đã dựng</b> · {fmtTime(art.duration)} · {r.total} đoạn{r.reused ? `, dùng lại ${r.reused} đoạn không đổi` : ''}</span>
+            : r.status === 'failed' ? <span className="text-red-600">Dựng lỗi: {r.error}</span>
+              : <span className="text-neutral-600">Chưa dựng. Lời đọc lấy từ ghi chú từng slide, giọng đọc AI có sẵn.</span>}</div>
+        <button className="btn-dark btn-sm h-9" disabled={rendering} onClick={start}><Sparkles size={14} />{r.status === 'done' ? 'Dựng lại phần đã sửa' : 'Dựng video'}</button>
+      </div>
+      {r.status === 'done' && r.url && <video key={r.url} src={`${r.url}#t=0.5`} controls className="mt-3 w-full rounded-lg bg-black"><track kind="captions" src={r.vtt} srcLang="vi" label="Tiếng Việt" default /></video>}
+    </div>
+  )
+}
+
 export function VideoEditor({ art, kit, up, saveText, onRestored }) {
   const { say } = useStore()
   const set = artSet(art, up)
@@ -366,7 +390,7 @@ export function VideoEditor({ art, kit, up, saveText, onRestored }) {
   const [t, setT] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [share, setShare] = useState(false)
-  const [tab, setTab] = useState('ch')
+  const [tab, setTab] = useState(art.slides?.length ? 'vo' : 'ch')
   const ref = useRef()
   const upA = (fn) => set((d) => fn(d.artifacts[art.id]))
   useEffect(() => { if (!playing) return; ref.current = setInterval(() => setT((x) => Math.min(art.duration, x + 4)), 100); return () => clearInterval(ref.current) }, [playing])
@@ -379,6 +403,7 @@ export function VideoEditor({ art, kit, up, saveText, onRestored }) {
         <div className="scroll-thin overflow-y-auto p-8">
           <h1 className="mb-1 font-lato text-[26px] font-black"><Editable value={art.title} className="block" placeholder="Tên video" onChange={(v) => upA((a) => { a.title = v })} /></h1>
           <p className="mb-5 text-[14px] text-neutral-600"><Editable value={art.summary} multiline className="block" placeholder="Mô tả ngắn" onChange={(v) => upA((a) => { a.summary = v })} /></p>
+          <RenderPanel art={art} onReload={onRestored} />
           <VideoStage art={art} t={t} playing={playing} onToggle={() => setPlaying(!playing)} />
           <div className="mt-5">
             <div className="relative h-10">
@@ -396,7 +421,7 @@ export function VideoEditor({ art, kit, up, saveText, onRestored }) {
           </div>
         </div>
         <aside className="flex flex-col border-l border-line">
-          <div className="flex border-b border-line px-4">{[['ch', 'Chương'], ['cp', 'Điểm kiểm tra'], ['tr', 'Lời thoại']].map(([k, l]) => <button key={k} onClick={() => setTab(k)} className={`-mb-px border-b-2 px-3 py-3.5 text-[14px] ${tab === k ? 'border-ink font-semibold' : 'border-transparent text-neutral-500'}`}>{l}</button>)}</div>
+          <div className="flex border-b border-line px-4">{[...(art.slides?.length ? [['vo', 'Lời đọc']] : []), ['ch', 'Chương'], ['cp', 'Điểm kiểm tra'], ['tr', 'Lời thoại']].map(([k, l]) => <button key={k} onClick={() => setTab(k)} className={`-mb-px border-b-2 px-3 py-3.5 text-[14px] ${tab === k ? 'border-ink font-semibold' : 'border-transparent text-neutral-500'}`}>{l}</button>)}</div>
           <div className="scroll-thin flex-1 overflow-y-auto p-4">
             {tab === 'ch' && <>{art.chapters.map((c, i) => <div key={i} className="group/c mb-2 flex w-full items-center gap-3 rounded-xl border border-line p-3"><button onClick={() => setT(c.t)} className="w-12 shrink-0 text-left font-mono text-[13px] text-sky-700 hover:underline" title="Tua tới đây">{fmtTime(c.t)}</button><span className="text-[14px] text-neutral-400">{i + 1}.</span><Editable value={c.title} className="block flex-1 text-[14px] font-medium" placeholder="Tên chương" onChange={(v) => upA((a) => { a.chapters[i].title = v })} />{art.chapters.length > 1 && <button title="Xóa chương" onClick={() => upA((a) => { a.chapters.splice(i, 1) })} className="text-neutral-400 opacity-0 hover:text-red-600 group-hover/c:opacity-100"><Trash2 size={14} /></button>}</div>)}
               <button onClick={() => { upA((a) => { a.chapters.push({ t: Math.round(t), title: '' }); a.chapters.sort((x, y) => x.t - y.t) }); say(`Đã thêm chương tại ${fmtTime(t)}`) }} className="btn-line btn-sm mt-2 w-full"><Plus size={14} />Thêm chương tại {fmtTime(t)}</button></>}
@@ -405,6 +430,7 @@ export function VideoEditor({ art, kit, up, saveText, onRestored }) {
                 <div className="mt-2 space-y-1">{c.choices.map((o, oi) => <div key={oi} className="group/o flex items-center gap-2 text-[13px]"><button title="Đặt làm đáp án đúng" onClick={() => upA((a) => { a.checkpoints[ci].correct = oi })} className={`h-3.5 w-3.5 shrink-0 rounded-full border-2 ${oi === c.correct ? 'border-emerald-600 bg-emerald-500' : 'border-neutral-400'}`} /><Editable value={o} className="block flex-1" placeholder={`Lựa chọn ${oi + 1}`} onChange={(v) => upA((a) => { a.checkpoints[ci].choices[oi] = v })} />{c.choices.length > 2 && <button onClick={() => upA((a) => { const k = a.checkpoints[ci]; k.choices.splice(oi, 1); if (k.correct >= k.choices.length) k.correct = 0 })} className="text-neutral-400 opacity-0 group-hover/o:opacity-100"><X size={13} /></button>}</div>)}</div>
                 <MiniBtn onClick={() => upA((a) => { a.checkpoints[ci].choices.push('') })} className="mt-1"><Plus size={12} />Thêm lựa chọn</MiniBtn></div>)}
               <button onClick={() => { upA((a) => { a.checkpoints.push({ t: Math.round(t), q: '', choices: ['', ''], correct: 0 }); a.checkpoints.sort((x, y) => x.t - y.t) }); say(`Đã thêm điểm kiểm tra tại ${fmtTime(t)}`) }} className="btn-line btn-sm mt-2 w-full"><Plus size={14} />Thêm điểm kiểm tra tại {fmtTime(t)}</button></>}
+            {tab === 'vo' && <><p className="mb-3 text-[13px] text-neutral-500">Lời giọng AI đọc cho từng đoạn. Sửa xong bấm "Dựng lại phần đã sửa": chỉ đoạn đổi được dựng lại, lời thoại và chương tự cập nhật theo thời lượng thật.</p>{art.slides.map((sl, si) => <div key={sl.id ?? si} className="mb-3 rounded-lg border border-line p-3"><div className="text-[13px] font-semibold"><Editable value={sl.title} className="block" placeholder="Tiêu đề slide" onChange={(v) => upA((a) => { a.slides[si].title = v })} /></div><div className="mt-1 text-[14px] text-neutral-700"><Editable value={sl.notes ?? ''} multiline className="block" placeholder="Lời đọc cho đoạn này" onChange={(v) => upA((a) => { a.slides[si].notes = v })} /></div></div>)}</>}
             {tab === 'tr' && art.transcript.map((x, xi) => <div key={xi} className={`group mb-1 flex gap-3 rounded-lg p-2 ${t >= x.t ? 'bg-orange-50/60' : ''}`}><button onClick={() => setT(x.t)} className="w-12 shrink-0 font-mono text-[12px] text-sky-700">{fmtTime(x.t)}</button><Editable value={x.x} multiline className="block flex-1 text-[14px]" placeholder="Lời thoại" onChange={(v) => upA((a) => { a.transcript[xi].x = v })} />{art.ai && <button onClick={() => say(`Đã tạo lại riêng đoạn ${fmtTime(x.t)}, không làm lại cả video`)} className="opacity-0 group-hover:opacity-100"><RefreshCw size={14} className="text-violet-600" /></button>}</div>)}
           </div>
         </aside>
