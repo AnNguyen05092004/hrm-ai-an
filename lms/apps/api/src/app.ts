@@ -2,6 +2,9 @@ import Fastify, { type FastifyInstance } from 'fastify'
 import cookie from '@fastify/cookie'
 import multipart from '@fastify/multipart'
 import rateLimit from '@fastify/rate-limit'
+import fastifyStatic from '@fastify/static'
+import path from 'node:path'
+import { env } from './env.js'
 import { serializerCompiler, validatorCompiler, type ZodTypeProvider, hasZodFastifySchemaValidationErrors } from 'fastify-type-provider-zod'
 import { AppError } from './lib/errors.js'
 import { authRoutes } from './modules/auth.js'
@@ -16,6 +19,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
   await app.register(cookie)
   await app.register(multipart, { limits: { fileSize: MAX_UPLOAD, files: 5 } })
   await app.register(rateLimit, { max: 600, timeWindow: '1 minute' })
+  await app.register(fastifyStatic, { root: path.resolve(process.cwd(), env.STORAGE_DIR), serve: false })
 
   // Chống CSRF: mọi request ghi phải có header riêng (form từ trang khác không gửi được header này)
   app.addHook('onRequest', async (req) => {

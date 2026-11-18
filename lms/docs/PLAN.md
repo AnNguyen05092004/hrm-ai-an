@@ -74,3 +74,25 @@ Mỗi phase xong: chạy test + build, review diff (`/code-review`), sửa, comm
 | Người học gọi Tutor khi đang thi | Kiểm tra phía server: đang có lượt thi chính thức mở thì từ chối |
 | Chi phí AI | Hạn mức theo tổ chức (bảng `ai_usage`), model nhỏ mặc định, mock khi test |
 | Code người thi treo máy | Worker + vm timeout 2 giây, giới hạn bộ nhớ, không có `require`/mạng |
+
+## 6. Tiến độ (cập nhật 19/11/2026, 01:40)
+
+| Phase | Trạng thái | Commit |
+|---|---|---|
+| P0 Nền | Xong | 5ee57b2 |
+| P1 Soạn khóa | Xong (đã test trình duyệt với OpenAI thật) | 5ee57b2 |
+| P2 Học + Tutor | Xong | 6e9e5d7 |
+| P3 Thi & chấm | Xong, đã review và sửa | 6e9e5d7 |
+| P4 Năng lực đội ngũ | Xong | a1fb1ca |
+| P5 Video AI | Đang làm: `modules/video` (resvg vẽ slide + TTS + ffmpeg ghép, VTT, dùng lại đoạn không đổi). Dựng thử OK (6 đoạn, 112 giây). Chưa commit | — |
+
+Việc còn lại:
+1. Web: nút "Dựng video" + trạng thái trong VideoEditor (`POST /api/artifacts/:id/render`, theo dõi job, `reload()` sau khi xong); nút "Tạo video từ slide" đã gọi `/to-video`.
+2. Test API cho video (mock: dựng không có TTS, kiểm tra quyền `/api/media`).
+3. Seed: gắn `srcRef` cho khối mẫu để demo "tài liệu nguồn đổi"; seed lại DB dev sạch (`npm run db:seed` trong apps/api).
+4. README chạy hệ thống, `.env.example`, kịch bản demo; dọn `apps/web/src/legacy` (chỉ để tham khảo, không build).
+5. Review toàn bộ lần cuối (`/code-review`), commit, push nhánh `feat/lms-app`.
+
+Cách chạy: `cd lms && docker compose up -d db && (cd apps/api && npm run db:seed && npm run dev)` và `cd apps/web && npx vite`. Test: `cd apps/api && npx vitest run`.
+
+Ghi chú quyết định: web giữ JSX (tái dùng prototype, TS ở backend nơi cần an toàn kiểu); sandbox code là worker + vm, env rỗng, chỉ truyền chuỗi vào vm (production nên thay bằng container).

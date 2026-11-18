@@ -40,8 +40,9 @@ export const artifactRoutes: FastifyPluginAsyncZod = async (app) => {
     if (a.status === 'generating') throw badRequest('Tài liệu đang được AI soạn, chờ xong rồi sửa')
     const { content, ...rest } = req.body
     if (content && JSON.stringify(content).length > MAX_CONTENT) throw badRequest('Nội dung quá lớn')
-    const plan = (a.content as Record<string, unknown>).plan
-    const [r] = await db.update(schema.artifacts).set({ ...rest, ...(content ? { content: { ...content, plan } } : {}), updatedAt: new Date() }).where(eq(schema.artifacts.id, a.id)).returning()
+    // plan và render do server quản lý, không để bản lưu từ trình duyệt ghi đè
+    const { plan, render } = a.content as Record<string, unknown>
+    const [r] = await db.update(schema.artifacts).set({ ...rest, ...(content ? { content: { ...content, plan, ...(render ? { render } : {}) } } : {}), updatedAt: new Date() }).where(eq(schema.artifacts.id, a.id)).returning()
     return { ok: true, updated: artifactMeta(r).updated }
   })
 
