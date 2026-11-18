@@ -37,7 +37,7 @@ export const learnRoutes: FastifyPluginAsyncZod = async (app) => {
         passed: myAtts.some((x) => x.status === 'passed'), grading: myAtts.some((x) => x.status === 'grading'),
       }
     })
-    return { items, skills: mine.map((s) => ({ ...s, name: skills.find((k) => k.id === s.skillId)?.name ?? s.skillId })) }
+    return { items, skills: mine.map((s) => ({ ...s, name: skills.find((k) => k.id === s.skillId)?.name ?? s.skillId })), skillNames: Object.fromEntries(skills.map((k) => [k.id, k.name])) }
   })
 
   app.get('/s/:slug', { schema: { params: z.object({ slug: z.string() }) } }, async (req) => {

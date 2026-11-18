@@ -327,6 +327,7 @@ export function DeckEditor({ art, kit, up, saveText, onRestored }) {
 
 // Khung hình video: video AI tạo hiện slide theo chương; video tải lên hiện cảnh quay
 function frameOf(art, i) {
+  if (art.slides?.[i]) return art.slides[i]
   if (art.frames?.[i]) return art.frames[i]
   const ch = art.chapters[i]; const next = art.chapters[i + 1]?.t ?? Infinity
   const lines = art.transcript.filter((x) => x.t >= ch.t && x.t < next).map((x) => { const v = x.x.replace(/\.$/, ''); return v.length > 78 ? v.slice(0, v.lastIndexOf(' ', 76)) + '…' : v })

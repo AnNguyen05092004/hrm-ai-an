@@ -25,7 +25,7 @@ function GenCard({ a }) {
 
 export default function KitPage() {
   const { id } = useParams(); const nav = useNavigate()
-  const { say } = useStore()
+  const { say, confirmBox } = useStore()
   const { me } = useMe()
   const qc = useQueryClient()
   const { doc: kit, up, saveState, reload } = useKit(id)
@@ -48,11 +48,11 @@ export default function KitPage() {
   }
   const regen = async (a) => { try { await post(`/artifacts/${a.id}/regenerate`); await live.refetch() } catch (e) { say(e.message) } }
   const remove = async (a) => {
-    if (!confirm(`Xóa "${a.title}"? Thao tác này không hoàn tác được.`)) return
+    if (!(await confirmBox(`Xóa "${a.title}"? Thao tác này không hoàn tác được.`, { ok: 'Xóa', danger: true }))) return
     try { await del(`/artifacts/${a.id}`); await live.refetch(); qc.invalidateQueries({ queryKey: ['kits'] }); say('Đã xóa tài liệu') } catch (e) { say(e.message) }
   }
   const delKit = async () => {
-    if (!confirm(`Xóa cả bộ "${kit.title}" và ${arts.length} tài liệu? Thao tác này không hoàn tác được.`)) return
+    if (!(await confirmBox(`Xóa cả bộ "${kit.title}" và ${arts.length} tài liệu? Thao tác này không hoàn tác được.`, { ok: 'Xóa', danger: true }))) return
     await del(`/kits/${id}`); qc.invalidateQueries({ queryKey: ['kits'] }); nav('/library')
   }
   const ch = changes.data ?? []

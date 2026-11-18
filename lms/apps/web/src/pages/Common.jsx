@@ -122,11 +122,11 @@ function AssignForm({ art, published, onDone }) {
 
 /** Lịch sử phiên bản đã xuất bản, khôi phục vào bản nháp */
 export function Snapshots({ art, onRestored }) {
-  const { say } = useStore()
+  const { say, confirmBox } = useStore()
   const [o, setO] = useState(false)
   const v = useQuery({ queryKey: ['versions', art.id], queryFn: () => get(`/artifacts/${art.id}/versions`), enabled: o })
   const restore = async (n) => {
-    if (!confirm(`Thay bản nháp hiện tại bằng nội dung phiên bản ${n}?`)) return
+    if (!(await confirmBox(`Thay bản nháp hiện tại bằng nội dung phiên bản ${n}?`, { ok: 'Khôi phục' }))) return
     try { await post(`/artifacts/${art.id}/versions/${n}/restore`); setO(false); say(`Đã khôi phục phiên bản ${n} vào bản nháp`); onRestored?.() } catch (e) { say(e.message) }
   }
   return (

@@ -263,6 +263,7 @@ function QuizEditor({ art, up, onBack }) {
 }
 
 export default function CourseEditor({ art, kit, up, saveText, onRestored }) {
+  const { confirmBox } = useStore()
   const [params, setParams] = useSearchParams()
   const nav = useNavigate()
   const [share, setShare] = useState(false)
@@ -285,7 +286,7 @@ export default function CourseEditor({ art, kit, up, saveText, onRestored }) {
             <div key={x.id} className="group/l flex items-center gap-4 border-b border-line py-5">
               {x.kind === 'quiz' ? <HelpCircle size={20} /> : <AlignLeft size={20} />}
               <div className="min-w-0 flex-1"><div className="text-[18px] font-semibold">{x.kind === 'quiz' ? 'Bài kiểm tra' : <Editable value={x.title} className="block" placeholder="Tên bài học" onChange={(v) => up((a) => { a.lessons.find((y) => y.id === x.id).title = v })} />}</div><div className="text-[13px] text-neutral-500">{x.kind === 'quiz' ? `${art.quiz.mode === 'official' ? 'Thi chính thức' : 'Luyện tập'} · mức ${art.quiz.level} · ${art.quiz.questions.filter((y) => y.approved).length}/${art.quiz.questions.length} câu đã duyệt${art.quiz.proctor ? ' · có giám sát' : ''}` : `Bài học · ${x.blocks.length} khối${x.blocks.some((b) => b.t === 'gap') ? ' · có chỗ thiếu căn cứ' : ''}`}</div></div>
-              {x.kind !== 'quiz' && <button title="Xóa bài" onClick={() => { if (confirm(`Xóa bài "${x.title}"?`)) up((a) => { a.lessons = a.lessons.filter((y) => y.id !== x.id) }) }} className="icon-btn h-8 w-8 opacity-0 group-hover/l:opacity-100"><Trash2 size={16} /></button>}
+              {x.kind !== 'quiz' && <button title="Xóa bài" onClick={async () => { if (await confirmBox(`Xóa bài "${x.title}"?`, { ok: 'Xóa', danger: true })) up((a) => { a.lessons = a.lessons.filter((y) => y.id !== x.id) }) }} className="icon-btn h-8 w-8 opacity-0 group-hover/l:opacity-100"><Trash2 size={16} /></button>}
               <button className="btn-line btn-sm h-9" onClick={() => setParams({ l: x.id })}>{x.kind === 'quiz' ? 'Mở bài kiểm tra' : 'Mở bài học'}</button>
             </div>
           ))}
