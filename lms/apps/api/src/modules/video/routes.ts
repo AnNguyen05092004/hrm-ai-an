@@ -7,6 +7,7 @@ import { me, requireAuthor, requireUser } from '../../lib/auth.js'
 import { badRequest, conflict, notFound } from '../../lib/errors.js'
 import { enqueue } from '../../lib/jobs.js'
 import { uid } from '../../lib/ids.js'
+import { tts } from '../../lib/ai/index.js'
 import { getArtifact } from '../artifacts/routes.js'
 import { viewable } from '../learn/access.js'
 import './render.js'
@@ -38,6 +39,13 @@ export const videoRoutes: FastifyPluginAsyncZod = async (app) => {
     const [v] = await db.insert(schema.artifacts).values({ orgId: u.orgId, kitId: deck.kitId, type: 'video', title: `Video: ${deck.title}`, summary: 'Video do AI tạo từ bộ slide và giọng đọc AI, đã chép lời và chia chương.', img: 'video', content }).returning()
     await enqueue(u.orgId, 'video.render', { artifactId: v.id }, u.id)
     return { id: v.id }
+  })
+
+  // Nghe thử lời đọc của một slide bằng giọng AI có sẵn
+  app.post('/tts', { preHandler: requireAuthor, schema: { body: z.object({ text: z.string().trim().min(1).max(2000) }) } }, async (req, reply) => {
+    const audio = await tts(me(req).orgId, req.body.text)
+    if (!audio) throw badRequest('Đang chạy AI giả lập nên chưa có giọng đọc. Đặt AI_PROVIDER=openai để nghe thử')
+    return reply.type('audio/mpeg').send(audio)
   })
 
   // Phát video/phụ đề: chỉ người được xem tài liệu mới tải được

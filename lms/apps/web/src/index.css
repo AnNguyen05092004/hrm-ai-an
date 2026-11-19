@@ -41,3 +41,12 @@ h1, h2, h3, h4 { @apply font-display; }
 .ed:hover { box-shadow: 0 0 0 1px rgba(120, 120, 130, .35); }
 .ed:focus { box-shadow: 0 0 0 2px #7dd3fc; background-color: rgba(240, 249, 255, .35); }
 .ed:empty::before { content: attr(data-ph); color: #a3a3a3; pointer-events: none; }
+
+/* Định dạng slide (SlideKit) */
+.fx-color, .fx-color * { color: var(--fx-c) !important; }
+.fx-bold, .fx-bold * { font-weight: 700 !important; }
+.fx-normal, .fx-normal * { font-weight: 400 !important; }
+.fx-italic, .fx-italic * { font-style: italic !important; }
+.fx-left, .fx-left * { text-align: left; }
+.fx-center, .fx-center * { text-align: center; justify-content: center; }
+.fx-right, .fx-right * { text-align: right; justify-content: flex-end; }

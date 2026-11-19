@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { SlidersHorizontal, X, Plus, ChevronDown, Home, User, ListChecks, Type, Pencil, ZoomIn, ZoomOut, Trophy, CheckCircle2, XCircle, MinusCircle, ChevronRight, RotateCcw, Play, Pause, Copy, Trash2, MessageSquare, StickyNote, Sparkles, AudioLines, RefreshCw, Flag, Film, FileText, ChevronLeft, Captions } from 'lucide-react'
+import { SlidersHorizontal, X, Plus, ChevronDown, Home, User, ListChecks, Type, Pencil, ZoomIn, ZoomOut, Trophy, CheckCircle2, XCircle, MinusCircle, ChevronRight, RotateCcw, Play, Pause, Trash2, StickyNote, Sparkles, AudioLines, RefreshCw, Flag, Film, FileText, ChevronLeft, Captions } from 'lucide-react'
 import { useStore, uid } from '../store'
 import { fmtTime } from '../data'
 import { Avatar, Modal, Tip, Thumb } from '../ui'
@@ -9,7 +9,8 @@ import { post } from '../api'
 
 // Cho phép mã soạn cũ dạng set(d => d.artifacts[art.id]...) ghi vào bản nháp đang mở
 const artSet = (art, up) => (fn) => up((a) => fn({ artifacts: { [art.id]: a } }))
-import { Editable, EditableList, MiniBtn } from '../edit'
+import { Editable, MiniBtn } from '../edit'
+import { Slide, SlideCanvas } from './SlideKit'
 
 /* ================= TÌNH HUỐNG ================= */
 
@@ -207,57 +208,29 @@ export function ScenarioEditor({ art, kit, up, saveText, onRestored }) {
 
 /* ================= BỘ SLIDE ================= */
 
-// Kích thước theo bề ngang khung (cqw) nên cùng một slide hiển thị đẹp ở ảnh nhỏ, trình chiếu và video
-const u = (px) => `${(px / 9.6).toFixed(3)}cqw`
-export function Slide({ s, n, total, onEdit }) {
-  return <div className="h-full w-full" style={{ containerType: 'inline-size' }}><SlideBody s={s} n={n} total={total} onEdit={onEdit} /></div>
-}
-// onEdit có thì mọi chữ trên slide sửa tại chỗ
-function SlideBody({ s, n, total, onEdit }) {
-  const T = (k, ph, multi) => onEdit ? <Editable value={s[k] || ''} onChange={(v) => onEdit({ [k]: v })} className="block" placeholder={ph} multiline={multi} /> : s[k]
-  const L = (k, render, ph = 'Nhập ý') => onEdit ? <EditableList items={s[k]?.length ? s[k] : ['']} onChange={(v) => onEdit({ [k]: v })} placeholder={ph} itemClass="block flex-1" render={render} /> : (s[k] || []).map((x, i) => <Fragment key={i}>{render(x, i)}</Fragment>)
-  const cell = (path, v, ph) => onEdit ? <Editable value={v} className="block" placeholder={ph} onChange={(nv) => onEdit(path(nv))} /> : v
-  if (s.layout === 'cover') return (
-    <Thumb img={s.img || 'desk'} className="h-full">
-      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-900/60 to-slate-900/10" />
-      <div className="absolute inset-y-0 left-0 flex max-w-[78%] flex-col justify-end text-white" style={{ padding: `${u(56)} ${u(60)}` }}>
-        {(s.kicker || onEdit) && <div className="font-lato font-bold uppercase text-orange-300" style={{ fontSize: u(13), letterSpacing: '0.14em' }}>{T('kicker', 'Nhãn nhỏ (tùy chọn)')}</div>}
-        <div className="font-lato font-black leading-[1.08]" style={{ fontSize: u(46), marginTop: u(10) }}>{T('title', 'Tiêu đề')}</div>
-        {(s.sub || onEdit) && <div className="font-serif opacity-85" style={{ fontSize: u(19), marginTop: u(14) }}>{T('sub', 'Phụ đề (tùy chọn)')}</div>}
-        <div className="bg-brand" style={{ width: u(64), height: u(5), marginTop: u(26) }} />
-      </div>
-    </Thumb>
-  )
-  return (
-    <div className="relative flex h-full flex-col overflow-hidden bg-white" style={{ padding: `${u(46)} ${u(60)} ${u(54)} ${u(64)}` }}>
-      <div className="absolute inset-y-0 left-0 bg-brand" style={{ width: u(8) }} />
-      {(s.kicker || onEdit) && <div className="font-lato font-bold uppercase text-brand" style={{ fontSize: u(12), letterSpacing: '0.14em' }}>{T('kicker', 'Nhãn nhỏ (tùy chọn)')}</div>}
-      <div className="font-lato font-bold leading-tight text-ink" style={{ fontSize: u(32) }}>{T('title', 'Tiêu đề slide')}</div>
-      <div className="flex flex-1 flex-col justify-center" style={{ paddingBottom: u(10) }}><div>
-        {s.layout === 'bullets' && L('items', (x, i) => <div className="flex items-center font-serif text-neutral-800" style={{ fontSize: u(20), gap: u(16), marginBottom: u(16) }}><span className="grid shrink-0 place-items-center rounded-full bg-orange-50 font-lato font-bold text-brand" style={{ width: u(34), height: u(34), fontSize: u(15) }}>{i + 1}</span>{x}</div>)}
-        {s.layout === 'steps' && <div className="flex" style={{ gap: u(14) }}>{L('items', (x, i) => <div className="flex-1 rounded-lg border border-orange-200 bg-orange-50/70" style={{ padding: u(18) }}><div className="font-lato font-black text-brand" style={{ fontSize: u(34) }}>{String(i + 1).padStart(2, '0')}</div><div className="font-serif text-neutral-800" style={{ fontSize: u(16), marginTop: u(8) }}>{x}</div></div>, 'Bước')}</div>}
-        {s.layout === 'two' && <div className="grid grid-cols-2" style={{ gap: u(18) }}>{(s.cols || [[''], ['']]).map((c, ci) => <div key={ci} className={`rounded-lg ${ci ? 'bg-slate-50' : 'bg-orange-50/70'}`} style={{ padding: u(22) }}><div className={`font-lato font-bold ${ci ? 'text-slate-700' : 'text-brand'}`} style={{ fontSize: u(20) }}>{cell((v) => ({ cols: s.cols.map((cc, j) => (j === ci ? [v, ...cc.slice(1)] : cc)) }), c[0], 'Tiêu đề cột')}</div>
-          {onEdit ? <EditableList items={c.slice(1).length ? c.slice(1) : ['']} onChange={(v) => onEdit({ cols: s.cols.map((cc, j) => (j === ci ? [cc[0], ...v] : cc)) })} itemClass="block flex-1" render={(el) => <div className="flex font-serif text-neutral-800" style={{ fontSize: u(16), marginTop: u(10), gap: u(6) }}>·{el}</div>} /> : c.slice(1).map((x, i) => <div key={i} className="font-serif text-neutral-800" style={{ fontSize: u(16), marginTop: u(10) }}>· {x}</div>)}</div>)}</div>}
-        {s.layout === 'table' && <table className="w-full overflow-hidden rounded-lg font-serif" style={{ fontSize: u(15) }}><thead className="bg-ink font-lato text-white"><tr>{s.head.map((h, j) => <th key={j} className="text-left font-semibold" style={{ padding: `${u(10)} ${u(14)}` }}>{cell((v) => ({ head: s.head.map((x, k) => (k === j ? v : x)) }), h, 'Cột')}</th>)}</tr></thead><tbody>{s.rows.map((r, i) => <tr key={i} className={i % 2 ? 'bg-neutral-50' : 'bg-white'}>{r.map((c, j) => <td key={j} className={j === 0 ? 'font-semibold' : ''} style={{ padding: `${u(10)} ${u(14)}` }}>{cell((v) => ({ rows: s.rows.map((x, k) => (k === i ? x.map((y, m) => (m === j ? v : y)) : x)) }), c, '…')}</td>)}</tr>)}</tbody></table>}
-        {s.layout === 'stat' && <div className="grid" style={{ gridTemplateColumns: `repeat(${s.stats.length}, 1fr)`, gap: u(24), marginTop: u(20) }}>{s.stats.map(([v, l], i) => <div key={i} className="border-t-4 border-brand" style={{ paddingTop: u(16) }}><div className="font-lato font-black leading-none text-ink" style={{ fontSize: u(56) }}>{cell((nv) => ({ stats: s.stats.map((x, k) => (k === i ? [nv, x[1]] : x)) }), v, 'Số')}</div><div className="font-serif text-neutral-600" style={{ fontSize: u(15), marginTop: u(12) }}>{cell((nv) => ({ stats: s.stats.map((x, k) => (k === i ? [x[0], nv] : x)) }), l, 'Mô tả')}</div></div>)}</div>}
-        {s.layout === 'quote' && <div className="relative" style={{ paddingLeft: u(56), marginTop: u(10) }}><div className="absolute left-0 font-serif leading-none text-brand/40" style={{ fontSize: u(110), top: u(-20) }}>“</div><div className="font-serif italic leading-snug text-neutral-800" style={{ fontSize: u(28) }}>{T('quote', 'Câu trích dẫn', true)}</div><div className="flex font-lato font-semibold text-neutral-500" style={{ fontSize: u(15), marginTop: u(20), gap: u(6) }}>—{T('by', 'Người nói')}</div></div>}
-        {s.layout === 'image' && <div className="grid grid-cols-[1fr_0.9fr] items-start" style={{ gap: u(28) }}><div>{L('items', (x) => <div className="flex font-serif text-neutral-800" style={{ fontSize: u(18), gap: u(12), marginBottom: u(16) }}><span className="shrink-0 rounded-full bg-brand" style={{ width: u(8), height: u(8), marginTop: u(10) }} />{x}</div>)}</div><Thumb img={s.img || 'desk'} className="rounded-lg" ><div style={{ paddingTop: '68%' }} /></Thumb></div>}
-      </div></div>
-      <div className="absolute flex items-center justify-between font-lato text-neutral-400" style={{ left: u(64), right: u(60), bottom: u(18), fontSize: u(11) }}><span>LMS · Công ty demo</span>{n && <span>{n}{total ? ` / ${total}` : ''}</span>}</div>
-    </div>
-  )
-}
+export { Slide }
 
-// Đổi bố cục: thêm sẵn trường còn thiếu, giữ tiêu đề và các ý đã có
-const LAYOUTS = [['cover', 'Bìa'], ['bullets', 'Danh sách'], ['steps', 'Các bước'], ['image', 'Ảnh + ý chính'], ['two', 'Hai cột'], ['table', 'Bảng'], ['stat', 'Số liệu'], ['quote', 'Trích dẫn']]
-function relayout(x, layout) {
-  const items = x.items?.length ? x.items : (x.cols ? x.cols.flatMap((c) => c.slice(1)) : ['', ''])
-  x.layout = layout
-  if (['bullets', 'steps', 'image'].includes(layout)) x.items = items
-  if (layout === 'two' && !x.cols) x.cols = [['Cột 1', ...items.slice(0, 2)], ['Cột 2', ...items.slice(2, 4)]]
-  if (layout === 'table' && !x.head) { x.head = ['Cột 1', 'Cột 2']; x.rows = [['', ''], ['', '']] }
-  if (layout === 'stat' && !x.stats) x.stats = [['0', 'Mô tả'], ['0', 'Mô tả'], ['0', 'Mô tả']]
-  if (layout === 'quote' && x.quote == null) { x.quote = ''; x.by = '' }
+/** Nghe thử lời đọc bằng giọng AI thật */
+function VoicePreview({ text }) {
+  const { say } = useStore()
+  const [state, setState] = useState('idle')
+  const audio = useRef(null)
+  useEffect(() => () => audio.current?.pause(), [])
+  const play = async () => {
+    if (state === 'playing') { audio.current?.pause(); setState('idle'); return }
+    if (!text?.trim()) { say('Slide này chưa có ghi chú để đọc'); return }
+    setState('loading')
+    try {
+      const res = await fetch('/api/tts', { method: 'POST', headers: { 'x-lms': '1', 'content-type': 'application/json' }, body: JSON.stringify({ text }) })
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error?.message ?? 'Không tạo được giọng đọc')
+      const url = URL.createObjectURL(await res.blob())
+      audio.current?.pause()
+      audio.current = new Audio(url)
+      audio.current.onended = () => { setState('idle'); URL.revokeObjectURL(url) }
+      await audio.current.play(); setState('playing')
+    } catch (e) { say(e.message); setState('idle') }
+  }
+  return <button onClick={play} disabled={state === 'loading'} className="flex items-center gap-1 text-[13px] font-medium text-violet-700 disabled:opacity-50">{state === 'loading' ? <RefreshCw size={14} className="spin" /> : state === 'playing' ? <Pause size={14} /> : <AudioLines size={14} />}{state === 'playing' ? 'Dừng' : 'Nghe thử giọng AI'}</button>
 }
 
 export function DeckEditor({ art, kit, up, saveText, onRestored }) {
@@ -287,21 +260,13 @@ export function DeckEditor({ art, kit, up, saveText, onRestored }) {
           ))}
         </aside>
         <div className="flex flex-1 flex-col bg-neutral-50">
-          <div className="flex flex-1 items-center justify-center p-8">
-            <div className="w-full max-w-[880px]">
-              <div className="mb-3 flex items-center gap-2 text-[13px]">
-                <span className="text-neutral-500">Bố cục</span>
-                <select value={s.layout} onChange={(e) => upS((x) => relayout(x, e.target.value))} className="rounded-lg border border-line bg-white px-2 py-1 text-[13px] font-medium outline-none">{LAYOUTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-                <span className="text-neutral-400">· Bấm vào chữ trên slide để sửa. Enter thêm ý mới.</span>
-                <div className="flex-1" />
-                <Tip label="Nhân đôi slide" className="h-8 w-8" onClick={() => { set((d) => { const sl = d.artifacts[art.id].slides; sl.splice(cur + 1, 0, { ...structuredClone(sl[cur]), id: uid('s') }) }); setCur(cur + 1); say('Đã nhân đôi slide') }}><Copy size={15} /></Tip>
-                <Tip label="Xóa slide" className="h-8 w-8" onClick={() => { if (art.slides.length > 1) { set((d) => d.artifacts[art.id].slides.splice(cur, 1)); setCur(Math.max(0, cur - 1)) } }}><Trash2 size={15} /></Tip>
-              </div>
-              <div className="relative aspect-video w-full overflow-hidden rounded-xl shadow-pop"><Slide s={s} n={cur + 1} total={art.slides.length} onEdit={(patch) => upS((x) => { Object.assign(x, patch) })} /></div>
-            </div>
+          <div className="scroll-thin flex min-h-0 flex-1 justify-center overflow-y-auto p-8">
+            <SlideCanvas key={cur} artId={art.id} s={s} n={cur + 1} total={art.slides.length} upS={upS}
+              onDuplicate={() => { set((d) => { const sl = d.artifacts[art.id].slides; sl.splice(cur + 1, 0, { ...structuredClone(sl[cur]), id: uid('s') }) }); setCur(cur + 1); say('Đã nhân đôi slide') }}
+              onDelete={art.slides.length > 1 ? () => { set((d) => d.artifacts[art.id].slides.splice(cur, 1)); setCur(Math.max(0, cur - 1)) } : undefined} />
           </div>
           <div className="border-t border-line bg-white px-6 py-4">
-            <div className="flex items-center gap-2 text-[14px] font-semibold"><StickyNote size={15} />Ghi chú người trình bày<span className="font-normal text-neutral-500">Slide {cur + 1}</span><div className="flex-1" /><button onClick={() => say('Đã tạo giọng đọc AI từ ghi chú')} className="flex items-center gap-1 text-[13px] font-medium text-violet-700"><AudioLines size={14} />Đọc bằng giọng AI</button></div>
+            <div className="flex items-center gap-2 text-[14px] font-semibold"><StickyNote size={15} />Ghi chú người trình bày<span className="font-normal text-neutral-500">Slide {cur + 1}</span><div className="flex-1" /><VoicePreview text={s.notes} /></div>
             <div className="mt-2 min-h-[56px] text-[15px]"><Editable value={s.notes} multiline className="block min-h-[44px]" placeholder="Ghi chú cho người trình bày, cũng là lời đọc khi tạo video" onChange={(v) => upS((x) => { x.notes = v })} /></div>
           </div>
         </div>
@@ -313,7 +278,7 @@ export function DeckEditor({ art, kit, up, saveText, onRestored }) {
       <Modal open={vid} onClose={() => setVid(false)} title="Tạo video từ slide" sub="AI ghép slide với giọng đọc từ ghi chú người trình bày, rồi chép lời và chia chương." w={560}
         footer={<button className="btn-dark h-10" onClick={async () => { try { const r = await post(`/artifacts/${art.id}/to-video`, {}); setVid(false); say('Đang tạo video bằng giọng đọc AI. Video mới ở dạng bản nháp.'); nav(`/edit/${r.id}`) } catch (e) { say(e.message) } }}><Sparkles size={16} />Tạo video</button>}>
         <div className="space-y-3 text-[14px]">
-          <div><div className="mb-1 font-medium">Giọng đọc</div><select className="field py-2"><option>Giọng nữ miền Bắc · AI có sẵn</option><option>Giọng nam miền Nam · AI có sẵn</option></select><p className="mt-1 text-[12px] text-neutral-500">Chỉ dùng giọng có sẵn của dịch vụ. Không nhân bản giọng người thật khi chưa có đồng ý.</p></div>
+          <div className="flex items-center gap-2 rounded-xl bg-neutral-50 p-3"><AudioLines size={16} />Giọng đọc AI có sẵn của dịch vụ (alloy), không nhân bản giọng người thật</div>
           <div className="flex items-center gap-2 rounded-xl bg-neutral-50 p-3"><Captions size={16} />Video ghi rõ "Nội dung do AI tạo"</div>
           <div className="flex items-center gap-2 rounded-xl bg-neutral-50 p-3"><RefreshCw size={16} />Sửa lời đọc hoặc slide thì chỉ tạo lại đoạn đó, không làm lại cả video</div>
         </div>
@@ -360,25 +325,21 @@ export function VideoStage({ art, t, playing, onToggle, cp, onAnswer }) {
 }
 
 
-/** Dựng video thật từ slide + giọng đọc AI; sửa slide/lời đọc thì chỉ dựng lại đoạn đổi */
+/** Trạng thái dựng video thật từ slide + giọng đọc AI; sửa slide/lời đọc thì chỉ dựng lại đoạn đổi */
 function RenderPanel({ art, onReload }) {
   const { say } = useStore()
   const r = art.render ?? { status: 'none' }
   const rendering = r.status === 'rendering'
   useEffect(() => { if (!rendering) return; const i = setInterval(onReload, 3000); return () => clearInterval(i) }, [rendering]) // eslint-disable-line react-hooks/exhaustive-deps
-  if (!art.slides?.length) return null
   const start = async () => { try { await post(`/artifacts/${art.id}/render`, {}); say('Đang dựng video bằng giọng đọc AI'); onReload() } catch (e) { say(e.message) } }
   return (
-    <div className="mb-5 rounded-xl border border-line p-4">
-      <div className="flex items-center gap-3 text-[14px]">
-        <Film size={18} className="text-rose-500" />
-        <div className="flex-1">{rendering ? <span className="flex items-center gap-2 font-medium"><RefreshCw size={14} className="spin" />Đang dựng video…</span>
-          : r.status === 'done' ? <span><b>Video đã dựng</b> · {fmtTime(art.duration)} · {r.total} đoạn{r.reused ? `, dùng lại ${r.reused} đoạn không đổi` : ''}</span>
-            : r.status === 'failed' ? <span className="text-red-600">Dựng lỗi: {r.error}</span>
-              : <span className="text-neutral-600">Chưa dựng. Lời đọc lấy từ ghi chú từng slide, giọng đọc AI có sẵn.</span>}</div>
-        <button className="btn-dark btn-sm h-9" disabled={rendering} onClick={start}><Sparkles size={14} />{r.status === 'done' ? 'Dựng lại phần đã sửa' : 'Dựng video'}</button>
-      </div>
-      {r.status === 'done' && r.url && <video key={r.url} src={`${r.url}#t=0.5`} controls className="mt-3 w-full rounded-lg bg-black"><track kind="captions" src={r.vtt} srcLang="vi" label="Tiếng Việt" default /></video>}
+    <div className="mb-4 flex items-center gap-3 rounded-xl border border-line p-4 text-[14px]">
+      <Film size={18} className="shrink-0 text-rose-500" />
+      <div className="flex-1">{rendering ? <span className="flex items-center gap-2 font-medium"><RefreshCw size={14} className="spin" />Đang dựng video… (mỗi đoạn vài giây)</span>
+        : r.status === 'done' ? <span><b>Video đã dựng</b> · {fmtTime(art.duration)} · {r.total} đoạn{r.reused ? `, dùng lại ${r.reused} đoạn không đổi` : ''}</span>
+          : r.status === 'failed' ? <span className="text-red-600">Dựng lỗi: {r.error}</span>
+            : <span className="text-neutral-600">Chưa dựng. Hình lấy từ slide, lời đọc lấy từ ghi chú từng slide, giọng đọc AI có sẵn.</span>}</div>
+      <button className="btn-dark btn-sm h-9 shrink-0" disabled={rendering} onClick={start}><Sparkles size={14} />{r.status === 'done' ? 'Dựng lại phần đã sửa' : 'Dựng video'}</button>
     </div>
   )
 }
@@ -387,51 +348,73 @@ export function VideoEditor({ art, kit, up, saveText, onRestored }) {
   const { say } = useStore()
   const set = artSet(art, up)
   const nav = useNavigate()
+  const fromSlides = !!art.slides?.length
+  const rendered = fromSlides && art.render?.status === 'done' && art.render.url
   const [t, setT] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [share, setShare] = useState(false)
-  const [tab, setTab] = useState(art.slides?.length ? 'vo' : 'ch')
+  const [tab, setTab] = useState(fromSlides ? 'vo' : 'ch')
+  const [cur, setCur] = useState(0)
   const ref = useRef()
+  const vref = useRef()
   const upA = (fn) => set((d) => fn(d.artifacts[art.id]))
-  useEffect(() => { if (!playing) return; ref.current = setInterval(() => setT((x) => Math.min(art.duration, x + 4)), 100); return () => clearInterval(ref.current) }, [playing])
-  useEffect(() => { if (t >= art.duration) setPlaying(false) }, [t])
+  // video tải lên (dữ liệu mẫu) không có tệp thật: phát mô phỏng theo chương
+  useEffect(() => { if (!playing || rendered) return; ref.current = setInterval(() => setT((x) => Math.min(art.duration, x + 4)), 100); return () => clearInterval(ref.current) }, [playing, rendered])
+  useEffect(() => { if (!rendered && t >= art.duration) setPlaying(false) }, [t])
+  const seek = (x) => { setT(x); if (vref.current) vref.current.currentTime = x; if (fromSlides) { const i = art.chapters.findLastIndex((c) => c.t <= x); if (i >= 0 && i < art.slides.length) setCur(i) } }
+  const sl = fromSlides ? art.slides[Math.min(cur, art.slides.length - 1)] : null
+  const upS = (fn) => upA((a) => fn(a.slides[Math.min(cur, a.slides.length - 1)]))
   return (
     <div className="flex h-full flex-col">
       <ArtifactTop art={art} kit={kit} saveText={saveText} onRestored={onRestored} onShare={() => setShare(true)} onPreview={() => nav(`/preview/${art.id}`)} />
       <DraftBar art={art} />
-      <div className="grid flex-1 grid-cols-[1fr_400px] overflow-hidden">
-        <div className="scroll-thin overflow-y-auto p-8">
+      <div className="grid min-h-0 flex-1 grid-cols-[1fr_400px] grid-rows-[minmax(0,1fr)] overflow-hidden">
+        <div className="scroll-thin min-h-0 overflow-y-auto p-8">
           <h1 className="mb-1 font-lato text-[26px] font-black"><Editable value={art.title} className="block" placeholder="Tên video" onChange={(v) => upA((a) => { a.title = v })} /></h1>
           <p className="mb-5 text-[14px] text-neutral-600"><Editable value={art.summary} multiline className="block" placeholder="Mô tả ngắn" onChange={(v) => upA((a) => { a.summary = v })} /></p>
-          <RenderPanel art={art} onReload={onRestored} />
-          <VideoStage art={art} t={t} playing={playing} onToggle={() => setPlaying(!playing)} />
-          <div className="mt-5">
+          {fromSlides && <RenderPanel art={art} onReload={onRestored} />}
+          {rendered ? <video ref={vref} key={art.render.url} src={`${art.render.url}#t=0.5`} controls className="aspect-video w-full rounded-xl bg-black" onTimeUpdate={(e) => setT(e.currentTarget.currentTime)}><track kind="captions" src={art.render.vtt} srcLang="vi" label="Tiếng Việt" default /></video>
+            : fromSlides ? <div className="relative aspect-video overflow-hidden rounded-xl bg-neutral-100"><Slide s={sl} n={cur + 1} total={art.slides.length} /><span className="absolute right-3 top-3 rounded bg-black/60 px-2 py-1 text-[12px] text-white">Xem trước slide {cur + 1} · bấm Dựng video để có video thật</span></div>
+              : <VideoStage art={art} t={t} playing={playing} onToggle={() => setPlaying(!playing)} />}
+          <div className="mt-4">
             <div className="relative h-10">
               <div className="absolute left-0 right-0 top-4 h-2 rounded-full bg-neutral-200" />
-              <div className="absolute left-0 top-4 h-2 rounded-full bg-brand" style={{ width: `${(t / art.duration) * 100}%` }} />
-              {art.chapters.map((c) => <button key={c.t} onClick={() => setT(c.t)} className="absolute top-2 h-6 w-1 rounded bg-neutral-500" style={{ left: `${(c.t / art.duration) * 100}%` }} title={c.title} />)}
-              {art.checkpoints.map((c) => <span key={c.t} className="absolute top-0 grid h-5 w-5 -translate-x-1/2 place-items-center rounded-full bg-violet-600 text-white" style={{ left: `${(c.t / art.duration) * 100}%` }}><Flag size={11} /></span>)}
+              <div className="absolute left-0 top-4 h-2 rounded-full bg-brand" style={{ width: `${Math.min(100, (t / (art.duration || 1)) * 100)}%` }} />
+              {art.chapters.map((c) => <button key={c.t} onClick={() => seek(c.t)} className="absolute top-2 h-6 w-1 rounded bg-neutral-500" style={{ left: `${(c.t / (art.duration || 1)) * 100}%` }} title={c.title} />)}
+              {art.checkpoints.map((c) => <span key={c.t} className="absolute top-0 grid h-5 w-5 -translate-x-1/2 place-items-center rounded-full bg-violet-600 text-white" style={{ left: `${(c.t / (art.duration || 1)) * 100}%` }}><Flag size={11} /></span>)}
             </div>
-            <div className="flex text-[13px] text-neutral-500"><span>{fmtTime(t)}</span><div className="flex-1" /><span>{fmtTime(art.duration)}</span></div>
+            <div className="flex text-[13px] text-neutral-500"><span>{fmtTime(t)}</span><span className="ml-3">Vạch xám: chương · cờ tím: điểm kiểm tra</span><div className="flex-1" /><span>{fmtTime(art.duration)}</span></div>
           </div>
+          {fromSlides && <div className="mt-6 rounded-2xl border border-line bg-neutral-50 p-5">
+            <div className="mb-3 flex items-center gap-2 text-[15px] font-semibold">Slide trong video<span className="font-normal text-neutral-500">{art.slides.length} slide · sửa xong bấm "Dựng lại phần đã sửa"</span></div>
+            <div className="scroll-thin mb-4 flex gap-2 overflow-x-auto pb-1">{art.slides.map((x, i) => <button key={x.id ?? i} onClick={() => seek(art.chapters[i]?.t ?? 0)} className={`aspect-video w-[132px] shrink-0 overflow-hidden rounded-lg border-2 ${i === cur ? 'border-neutral-700' : 'border-line'}`}><Slide s={x} n={i + 1} /></button>)}</div>
+            <div className="flex justify-center"><SlideCanvas key={cur} artId={art.id} s={sl} n={cur + 1} total={art.slides.length} upS={upS} /></div>
+            <div className="mt-4 rounded-xl border border-line bg-white p-4"><div className="flex items-center gap-2 text-[14px] font-semibold"><AudioLines size={15} />Lời đọc slide {cur + 1}<div className="flex-1" /><VoicePreview text={sl.notes} /></div>
+              <div className="mt-2 text-[15px]"><Editable value={sl.notes ?? ''} multiline className="block min-h-[44px]" placeholder="Lời giọng AI đọc khi slide này hiện" onChange={(v) => upS((x) => { x.notes = v })} /></div></div>
+          </div>}
           <div className="mt-6 grid grid-cols-3 gap-3 text-[13px]">
             <div className="rounded-xl border border-line p-3"><div className="text-neutral-500">Nguồn video</div><div className="mt-1 font-semibold">{art.ai ? 'AI tạo từ bộ slide' : 'Tải lên'}</div></div>
             <div className="rounded-xl border border-line p-3"><div className="text-neutral-500">Giọng đọc</div><div className="mt-1 font-semibold">{art.voice}</div></div>
-            <div className="rounded-xl border border-line p-3"><div className="text-neutral-500">Chép lời và chia chương</div><div className="mt-1 font-semibold text-emerald-700">Đã xong · {art.chapters.length} chương</div></div>
+            <div className="rounded-xl border border-line p-3"><div className="text-neutral-500">Chép lời và chia chương</div><div className="mt-1 font-semibold text-emerald-700">{fromSlides && !rendered ? 'Có sau khi dựng' : `Đã xong · ${art.chapters.length} chương`}</div></div>
           </div>
         </div>
-        <aside className="flex flex-col border-l border-line">
-          <div className="flex border-b border-line px-4">{[...(art.slides?.length ? [['vo', 'Lời đọc']] : []), ['ch', 'Chương'], ['cp', 'Điểm kiểm tra'], ['tr', 'Lời thoại']].map(([k, l]) => <button key={k} onClick={() => setTab(k)} className={`-mb-px border-b-2 px-3 py-3.5 text-[14px] ${tab === k ? 'border-ink font-semibold' : 'border-transparent text-neutral-500'}`}>{l}</button>)}</div>
-          <div className="scroll-thin flex-1 overflow-y-auto p-4">
-            {tab === 'ch' && <>{art.chapters.map((c, i) => <div key={i} className="group/c mb-2 flex w-full items-center gap-3 rounded-xl border border-line p-3"><button onClick={() => setT(c.t)} className="w-12 shrink-0 text-left font-mono text-[13px] text-sky-700 hover:underline" title="Tua tới đây">{fmtTime(c.t)}</button><span className="text-[14px] text-neutral-400">{i + 1}.</span><Editable value={c.title} className="block flex-1 text-[14px] font-medium" placeholder="Tên chương" onChange={(v) => upA((a) => { a.chapters[i].title = v })} />{art.chapters.length > 1 && <button title="Xóa chương" onClick={() => upA((a) => { a.chapters.splice(i, 1) })} className="text-neutral-400 opacity-0 hover:text-red-600 group-hover/c:opacity-100"><Trash2 size={14} /></button>}</div>)}
-              <button onClick={() => { upA((a) => { a.chapters.push({ t: Math.round(t), title: '' }); a.chapters.sort((x, y) => x.t - y.t) }); say(`Đã thêm chương tại ${fmtTime(t)}`) }} className="btn-line btn-sm mt-2 w-full"><Plus size={14} />Thêm chương tại {fmtTime(t)}</button></>}
-            {tab === 'cp' && <>{art.checkpoints.map((c, ci) => <div key={ci} className="group/p mb-2 rounded-xl border border-line p-3"><div className="flex items-center gap-2 text-[13px] text-violet-700"><Flag size={13} /><button onClick={() => setT(c.t)} className="hover:underline">{fmtTime(c.t)}</button><div className="flex-1" /><button title="Xóa điểm kiểm tra" onClick={() => upA((a) => { a.checkpoints.splice(ci, 1) })} className="text-neutral-400 opacity-0 hover:text-red-600 group-hover/p:opacity-100"><Trash2 size={14} /></button></div>
+        <aside className="flex min-h-0 flex-col border-l border-line">
+          <div className="flex border-b border-line px-4">{[...(fromSlides ? [['vo', 'Lời đọc']] : []), ['ch', 'Chương'], ['cp', 'Điểm kiểm tra'], ['tr', 'Lời thoại']].map(([k, l]) => <button key={k} onClick={() => setTab(k)} className={`-mb-px border-b-2 px-3 py-3.5 text-[14px] ${tab === k ? 'border-ink font-semibold' : 'border-transparent text-neutral-500'}`}>{l}</button>)}</div>
+          <div className="scroll-thin min-h-0 flex-1 overflow-y-auto p-4">
+            {tab === 'ch' && (fromSlides
+              ? <><p className="mb-3 text-[13px] text-neutral-500">Mỗi slide là một chương, tên chương là tiêu đề slide, mốc thời gian theo thời lượng thật khi dựng.</p>{art.chapters.map((c, i) => <button key={i} onClick={() => seek(c.t)} className="mb-2 flex w-full items-center gap-3 rounded-xl border border-line p-3 text-left hover:bg-neutral-50"><span className="w-12 shrink-0 font-mono text-[13px] text-sky-700">{fmtTime(c.t)}</span><span className="text-[14px] text-neutral-400">{i + 1}.</span><span className="flex-1 text-[14px] font-medium">{c.title}</span></button>)}</>
+              : <>{art.chapters.map((c, i) => <div key={i} className="group/c mb-2 flex w-full items-center gap-3 rounded-xl border border-line p-3"><button onClick={() => seek(c.t)} className="w-12 shrink-0 text-left font-mono text-[13px] text-sky-700 hover:underline" title="Tua tới đây">{fmtTime(c.t)}</button><span className="text-[14px] text-neutral-400">{i + 1}.</span><Editable value={c.title} className="block flex-1 text-[14px] font-medium" placeholder="Tên chương" onChange={(v) => upA((a) => { a.chapters[i].title = v })} />{art.chapters.length > 1 && <button title="Xóa chương" onClick={() => upA((a) => { a.chapters.splice(i, 1) })} className="text-neutral-400 opacity-0 hover:text-red-600 group-hover/c:opacity-100"><Trash2 size={14} /></button>}</div>)}
+                <button onClick={() => { upA((a) => { a.chapters.push({ t: Math.round(t), title: '' }); a.chapters.sort((x, y) => x.t - y.t) }); say(`Đã thêm chương tại ${fmtTime(t)}`) }} className="btn-line btn-sm mt-2 w-full"><Plus size={14} />Thêm chương tại {fmtTime(t)}</button></>)}
+            {tab === 'cp' && <>{art.checkpoints.map((c, ci) => <div key={ci} className="group/p mb-2 rounded-xl border border-line p-3"><div className="flex items-center gap-2 text-[13px] text-violet-700"><Flag size={13} /><button onClick={() => seek(c.t)} className="hover:underline">{fmtTime(c.t)}</button><div className="flex-1" /><button title="Xóa điểm kiểm tra" onClick={() => upA((a) => { a.checkpoints.splice(ci, 1) })} className="text-neutral-400 opacity-0 hover:text-red-600 group-hover/p:opacity-100"><Trash2 size={14} /></button></div>
                 <div className="mt-1 text-[14px] font-medium"><Editable value={c.q} multiline className="block" placeholder="Câu hỏi" onChange={(v) => upA((a) => { a.checkpoints[ci].q = v })} /></div>
                 <div className="mt-2 space-y-1">{c.choices.map((o, oi) => <div key={oi} className="group/o flex items-center gap-2 text-[13px]"><button title="Đặt làm đáp án đúng" onClick={() => upA((a) => { a.checkpoints[ci].correct = oi })} className={`h-3.5 w-3.5 shrink-0 rounded-full border-2 ${oi === c.correct ? 'border-emerald-600 bg-emerald-500' : 'border-neutral-400'}`} /><Editable value={o} className="block flex-1" placeholder={`Lựa chọn ${oi + 1}`} onChange={(v) => upA((a) => { a.checkpoints[ci].choices[oi] = v })} />{c.choices.length > 2 && <button onClick={() => upA((a) => { const k = a.checkpoints[ci]; k.choices.splice(oi, 1); if (k.correct >= k.choices.length) k.correct = 0 })} className="text-neutral-400 opacity-0 group-hover/o:opacity-100"><X size={13} /></button>}</div>)}</div>
                 <MiniBtn onClick={() => upA((a) => { a.checkpoints[ci].choices.push('') })} className="mt-1"><Plus size={12} />Thêm lựa chọn</MiniBtn></div>)}
-              <button onClick={() => { upA((a) => { a.checkpoints.push({ t: Math.round(t), q: '', choices: ['', ''], correct: 0 }); a.checkpoints.sort((x, y) => x.t - y.t) }); say(`Đã thêm điểm kiểm tra tại ${fmtTime(t)}`) }} className="btn-line btn-sm mt-2 w-full"><Plus size={14} />Thêm điểm kiểm tra tại {fmtTime(t)}</button></>}
-            {tab === 'vo' && <><p className="mb-3 text-[13px] text-neutral-500">Lời giọng AI đọc cho từng đoạn. Sửa xong bấm "Dựng lại phần đã sửa": chỉ đoạn đổi được dựng lại, lời thoại và chương tự cập nhật theo thời lượng thật.</p>{art.slides.map((sl, si) => <div key={sl.id ?? si} className="mb-3 rounded-lg border border-line p-3"><div className="text-[13px] font-semibold"><Editable value={sl.title} className="block" placeholder="Tiêu đề slide" onChange={(v) => upA((a) => { a.slides[si].title = v })} /></div><div className="mt-1 text-[14px] text-neutral-700"><Editable value={sl.notes ?? ''} multiline className="block" placeholder="Lời đọc cho đoạn này" onChange={(v) => upA((a) => { a.slides[si].notes = v })} /></div></div>)}</>}
-            {tab === 'tr' && art.transcript.map((x, xi) => <div key={xi} className={`group mb-1 flex gap-3 rounded-lg p-2 ${t >= x.t ? 'bg-orange-50/60' : ''}`}><button onClick={() => setT(x.t)} className="w-12 shrink-0 font-mono text-[12px] text-sky-700">{fmtTime(x.t)}</button><Editable value={x.x} multiline className="block flex-1 text-[14px]" placeholder="Lời thoại" onChange={(v) => upA((a) => { a.transcript[xi].x = v })} />{art.ai && <button onClick={() => say(`Đã tạo lại riêng đoạn ${fmtTime(x.t)}, không làm lại cả video`)} className="opacity-0 group-hover:opacity-100"><RefreshCw size={14} className="text-violet-600" /></button>}</div>)}
+              <p className="mb-2 text-[13px] text-neutral-500">Video dừng ở mốc này và hỏi người học. Tua video tới đúng chỗ rồi bấm thêm.</p>
+              <button onClick={() => { upA((a) => { a.checkpoints.push({ t: Math.round(t), q: '', choices: ['', ''], correct: 0 }); a.checkpoints.sort((x, y) => x.t - y.t) }); say(`Đã thêm điểm kiểm tra tại ${fmtTime(t)}`) }} className="btn-line btn-sm w-full"><Plus size={14} />Thêm điểm kiểm tra tại {fmtTime(t)}</button></>}
+            {tab === 'vo' && <><p className="mb-3 text-[13px] text-neutral-500">Lời giọng AI đọc cho từng slide. Sửa xong bấm "Dựng lại phần đã sửa": chỉ đoạn đổi được dựng lại, lời thoại và chương tự cập nhật theo thời lượng thật.</p>{art.slides.map((x, si) => <div key={x.id ?? si} className={`mb-3 rounded-lg border p-3 ${si === cur ? 'border-neutral-500' : 'border-line'}`} onFocusCapture={() => setCur(si)}><div className="text-[13px] font-semibold"><Editable value={x.title} className="block" placeholder="Tiêu đề slide" onChange={(v) => upA((a) => { a.slides[si].title = v })} /></div><div className="mt-1 text-[14px] text-neutral-700"><Editable value={x.notes ?? ''} multiline className="block" placeholder="Lời đọc cho đoạn này" onChange={(v) => upA((a) => { a.slides[si].notes = v })} /></div></div>)}</>}
+            {tab === 'tr' && <>{fromSlides && <p className="mb-3 text-[13px] text-neutral-500">Lời thoại chép từ lời đọc khi dựng. Muốn đổi thì sửa ở tab Lời đọc rồi dựng lại.</p>}
+              {!art.transcript.length && <p className="text-[14px] text-neutral-500">Chưa có lời thoại. Dựng video để tạo.</p>}
+              {art.transcript.map((x, xi) => <div key={xi} className={`mb-1 flex gap-3 rounded-lg p-2 ${t >= x.t ? 'bg-orange-50/60' : ''}`}><button onClick={() => seek(x.t)} className="w-12 shrink-0 font-mono text-[12px] text-sky-700">{fmtTime(x.t)}</button>{fromSlides ? <span className="flex-1 text-[14px]">{x.x}</span> : <Editable value={x.x} multiline className="block flex-1 text-[14px]" placeholder="Lời thoại" onChange={(v) => upA((a) => { a.transcript[xi].x = v })} />}</div>)}</>}
           </div>
         </aside>
       </div>

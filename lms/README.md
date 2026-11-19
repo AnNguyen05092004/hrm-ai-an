@@ -59,7 +59,8 @@ Muốn chạy không cần key: đặt `AI_PROVIDER=mock` trong `.env`.
 | Tài liệu nguồn | Tải PDF, DOCX, TXT, MD rồi tìm theo nghĩa. Tải bản mới thì chỉ ra bài, slide, câu hỏi nào đang trích phần bị đổi |
 | Soạn bộ đào tạo | Nhập mục tiêu → AI soạn chi tiết → dàn ý → 4 loại tài liệu (Tài liệu nhanh, Slide, Tình huống, Video). Mọi khối đều ghi nguồn. Chỗ nguồn không đủ được đánh dấu. AI cảnh báo khi nguồn mâu thuẫn hoặc có nội dung nhạy cảm |
 | Soạn tại chỗ | Bấm vào chữ là sửa, tự lưu. Sửa từng khối bằng AI, sinh câu hỏi theo mức. Xuất bản có phiên bản, khôi phục được bản cũ |
-| Video AI | Slide + lời đọc → giọng AI → MP4 có phụ đề, chương theo thời lượng thật. Sửa slide nào chỉ dựng lại đoạn đó |
+| Slide | 8 bố cục, sửa chữ tại chỗ; định dạng như phần mềm trình chiếu: kéo di chuyển, cỡ chữ, màu, đậm/nghiêng, căn lề, hộp chữ tự do, màu nền; sửa slide bằng AI; nghe thử lời đọc bằng giọng AI |
+| Video AI | Slide + lời đọc → giọng AI → MP4 có phụ đề, chương theo thời lượng thật (giữ đúng định dạng slide). Sửa slide ngay trong trang video; sửa slide nào chỉ dựng lại đoạn đó |
 | Học | Giao khóa theo người hoặc bộ phận, có hạn. Theo dõi tiến độ. Có đường dẫn chia sẻ trong công ty |
 | AI Tutor | Chỉ trả lời từ nội dung đã xuất bản, kèm nguồn và nút nhảy tới bài hoặc phút video. Tìm sang khóa khác. Không có câu trả lời thì nói rõ và gom câu hỏi cho người soạn. Tự tắt khi người học đang thi |
 | Thi và chấm | Mỗi người một đề riêng, rút từ ngân hàng câu đã duyệt. Có giờ thi, số lượt, lưu liên tục, làm tiếp được khi mất mạng. Trắc nghiệm và bài code JavaScript chấm tự động. AI chấm nháp tự luận theo rubric, người chấm xác nhận |

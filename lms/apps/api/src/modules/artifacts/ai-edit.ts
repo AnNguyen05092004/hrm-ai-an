@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { badRequest } from '../../lib/errors.js'
 import { aiRewrite } from '../kits/ai.js'
 import { searchSources } from '../sources/service.js'
 
@@ -9,12 +10,16 @@ export async function aiEditBlock(orgId: string, sourceIds: string[], kind: stri
   const text = JSON.stringify(value).slice(0, 4000)
   const hits = await searchSources(orgId, sourceIds, `${instruction} ${text.slice(0, 500)}`, 5)
   const r = await aiRewrite(orgId, Loose, value, `${instruction} (phần cần sửa là một ${kind})`, hits, () => ({ json: JSON.stringify(value) }))
+  let out: Record<string, unknown>
   try {
-    const out = JSON.parse(r.json) as Record<string, unknown>
-    return { ...out, id: value.id }
+    out = JSON.parse(r.json) as Record<string, unknown>
   } catch {
-    return value
+    throw badRequest('AI trả về nội dung không hợp lệ, thử lại hoặc diễn đạt yêu cầu khác')
   }
+  if (!out || typeof out !== 'object' || Array.isArray(out)) throw badRequest('AI trả về nội dung không hợp lệ, thử lại')
+  // giữ định danh, loại khối và nguồn trích của bản gốc: AI chỉ sửa nội dung
+  const keep = Object.fromEntries(['id', 't', 'type', 'src', 'srcRef', 'level', 'approved', 'layout', 'st', 'boxes', 'bg', 'img'].filter((k) => k in value).map((k) => [k, value[k]]))
+  return { ...out, ...keep }
 }
 
 import { aiJson } from '../../lib/ai/index.js'

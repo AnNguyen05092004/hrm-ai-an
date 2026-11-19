@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { setupApp } from './helpers.js'
 import { drainJobs } from '../src/lib/jobs.js'
+import { slideSvg } from '../src/modules/video/render.js'
 
 describe('AI video from slides', () => {
   const ctx = setupApp()
@@ -38,5 +39,20 @@ describe('AI video from slides', () => {
     expect(r.status).toBe(403)
     const bad = await ctx.author('GET', `/api/media/${videoId}/..%2F..%2Fsecret.mp4`)
     expect(bad.status).toBe(404)
+  })
+
+  it('applies slide formatting (move, size, color, text boxes, background) to the rendered frame', () => {
+    const svg = slideSvg({ layout: 'bullets', title: 'Tiêu đề', items: ['Ý một'], bg: '#fff7ed', st: { title: { color: '#2563eb', size: 1.5, x: 10 } }, boxes: [{ id: 'b', x: 50, y: 60, w: 30, text: 'Hộp chữ', fill: '#111827', color: '#ffffff' }] }, 1, 1)
+    expect(svg).toContain('fill="#fff7ed"')
+    expect(svg).toContain('fill="#2563eb"')
+    expect(svg).toMatch(/scale\(1\.5\)/)
+    expect(svg).toContain('Hộp chữ')
+    // màu không hợp lệ bị bỏ qua, không chèn được vào SVG
+    expect(slideSvg({ layout: 'bullets', title: 'x', items: [], bg: '"/><script>' }, 1, 1)).not.toContain('<script>')
+  })
+
+  it('voice preview needs real AI and an author', async () => {
+    expect((await ctx.author('POST', '/api/tts', { text: 'Xin chào' })).status).toBe(400)
+    expect((await ctx.learner('POST', '/api/tts', { text: 'Xin chào' })).status).toBe(403)
   })
 })
