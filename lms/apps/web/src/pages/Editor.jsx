@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query'
 import { Spinner } from '../ui'
 import { useDoc, saveLabel, artifactBody } from '../hooks'
 import { get } from '../api'
-import CourseEditor from './CourseEditor'
+import CourseEditor, { ExamEditor } from './CourseEditor'
 import { ScenarioEditor, DeckEditor, VideoEditor, GuideEditor } from './OtherEditors'
 
-const EDITORS = { qr: CourseEditor, scenario: ScenarioEditor, deck: DeckEditor, video: VideoEditor, guide: GuideEditor }
+const EDITORS = { exam: ExamEditor, qr: CourseEditor, scenario: ScenarioEditor, deck: DeckEditor, video: VideoEditor, guide: GuideEditor }
 
 /** Mở tài liệu để soạn: tải bản nháp, tự lưu mọi thay đổi */
 export default function Editor() {

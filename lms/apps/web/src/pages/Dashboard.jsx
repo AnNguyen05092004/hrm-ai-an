@@ -168,7 +168,7 @@ export default function Dashboard() {
         </div>
         {kits.isLoading ? <div className="mt-5 grid grid-cols-3 gap-5">{[0, 1, 2].map((i) => <div key={i} className="skel h-72 rounded-2xl" />)}</div> : recent.length === 0 ? (
           <div className="mt-5 grid h-56 place-items-center rounded-2xl border-2 border-dashed border-line text-center">
-            <div><div className="text-[22px] font-medium text-neutral-500">Chưa có gì đang làm</div><p className="mt-2 text-neutral-500">Bộ đào tạo bạn bắt đầu sẽ hiện ở đây.</p></div>
+            <div><div className="text-[22px] font-medium text-neutral-500">Chưa có gì đang làm</div><p className="mt-2 text-neutral-500">Khóa học bạn bắt đầu sẽ hiện ở đây.</p></div>
           </div>
         ) : (
           <div className="mt-5 grid grid-cols-3 gap-5">
@@ -180,7 +180,7 @@ export default function Dashboard() {
                     <Thumb img={(a || k.artifacts[0])?.img || k.img || 'office'} className="h-40"><span className="absolute left-3 top-3 rounded-full ring-2 ring-white/70"><Avatar text={me.initials} size={24} color={me.color} /></span></Thumb>
                     <div className="px-4 pt-4">
                       <div className="flex items-center gap-1.5 text-[13px] font-medium">
-                        {a ? <><CornerDownRight size={14} className="text-neutral-400" /><FormatGlyph type={a.type} size={14} />{FORMATS[a.type].name}</> : <><Box size={14} className="text-emerald-600" />Bộ đào tạo<span className="font-normal text-neutral-500">· {k.stage !== 'ready' ? 'đang soạn' : `${k.artifacts.length} tài liệu`}</span></>}
+                        {a ? <><CornerDownRight size={14} className="text-neutral-400" /><FormatGlyph type={a.type} size={14} />{FORMATS[a.type].name}</> : <><Box size={14} className="text-emerald-600" />Khóa học<span className="font-normal text-neutral-500">· {k.stage !== 'ready' ? 'đang soạn' : `${k.artifacts.length} tài liệu`}</span></>}
                       </div>
                       <div className="mt-1.5 text-[15px] font-semibold leading-snug">{a ? a.title : k.title}</div>
                       <div className="mt-1 text-[13px] text-neutral-500">Cập nhật {(a || k).updated}</div>

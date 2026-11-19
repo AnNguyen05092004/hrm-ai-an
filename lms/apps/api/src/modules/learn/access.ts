@@ -6,12 +6,14 @@ import { forbidden, must } from '../../lib/errors.js'
 type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 export type Artifact = typeof schema.artifacts.$inferSelect
 
-/** Người học xem được: tài liệu đã xuất bản, được giao hoặc có đường dẫn chia sẻ. Người soạn xem mọi tài liệu trong tổ chức. */
+/** Người học xem được: tài liệu đã xuất bản, được giao, có đường dẫn chia sẻ (của tài liệu hoặc cả bộ). Người soạn xem mọi tài liệu trong tổ chức. */
 export async function canView(u: AuthUser, a: Artifact): Promise<boolean> {
   if (a.orgId !== u.orgId) return false
   if (u.role === 'author') return true
   if (!a.publishedVersion) return false
   if (a.shareSlug) return true
+  const [k] = await db.select({ shareSlug: schema.kits.shareSlug }).from(schema.kits).where(eq(schema.kits.id, a.kitId))
+  if (k?.shareSlug) return true
   const [as] = await db.select({ id: schema.assignments.id }).from(schema.assignments).where(and(eq(schema.assignments.artifactId, a.id), eq(schema.assignments.userId, u.id)))
   return !!as
 }

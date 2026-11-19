@@ -14,10 +14,10 @@ import {
 type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 export type Kit = typeof schema.kits.$inferSelect
 export type Artifact = typeof schema.artifacts.$inferSelect
-export interface PlanItem { type: GenType; title: string; summary: string; outline?: Json }
+export interface PlanItem { type: GenType | 'exam'; title: string; summary: string; outline?: Json }
 
 export const getKit = async (orgId: string, id: string): Promise<Kit> =>
-  must((await db.select().from(schema.kits).where(and(eq(schema.kits.id, id), eq(schema.kits.orgId, orgId))))[0], 'Bộ đào tạo')
+  must((await db.select().from(schema.kits).where(and(eq(schema.kits.id, id), eq(schema.kits.orgId, orgId))))[0], 'Khóa học')
 
 const fmt = (d: Date): string => d.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '')
 
@@ -42,7 +42,7 @@ export async function kitDto(k: Kit): Promise<Json> {
     id: k.id, title: k.title, desc: k.goal, goalText: d.goalText ?? '', audience: d.audience ?? '', goals: d.goals ?? [], takeaways: d.takeaways ?? [],
     metrics: d.metrics ?? [], practice: d.practice ?? 'balanced', delivery: d.delivery ?? 'self', plan: d.plan ?? [], warnings: d.warnings ?? [],
     skill: k.skillId, level: k.level, stage: k.stage, fromPlan: k.fromPlan, img: k.img, updated: fmt(k.updatedAt), updatedAt: k.updatedAt,
-    sources: srcs, sourceIds: k.sourceIds, artifacts: arts.map(artifactMeta), job: d.job ?? null,
+    sources: srcs, sourceIds: k.sourceIds, artifacts: arts.map(artifactMeta), job: d.job ?? null, shareSlug: k.shareSlug,
   }
 }
 
@@ -115,7 +115,7 @@ defineJob('kit.outline', async ({ job, report }) => {
   let done = 0
   await report(10, 'Lập dàn ý từng tài liệu')
   const out = await Promise.all(plan.map(async (p) => {
-    if (p.outline) return p
+    if (p.outline || p.type === 'exam') return p
     const hits = await gather(k.orgId, k.sourceIds, [`${p.title}. ${p.summary}`, ...brief.goals.slice(0, 2)], 5, 10)
     const outline = await draftOutline(k.orgId, p.type, brief, p, hits)
     done++
@@ -188,7 +188,7 @@ export function scenarioContent(r: ScenarioDraft): Json {
   }
 }
 
-const IMG_OF: Record<string, string> = { qr: 'office', deck: 'desk', scenario: 'person', video: 'video', guide: 'screen' }
+const IMG_OF: Record<string, string> = { qr: 'office', deck: 'desk', scenario: 'person', video: 'video', guide: 'screen', exam: 'desk' }
 
 export async function createArtifact(k: Kit, p: PlanItem, status: 'generating' | 'draft' = 'generating', content: Json = {}): Promise<Artifact> {
   const [a] = await db.insert(schema.artifacts).values({

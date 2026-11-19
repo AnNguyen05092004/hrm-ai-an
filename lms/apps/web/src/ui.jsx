@@ -1,4 +1,4 @@
-import { X, BookOpen, Presentation, ListChecks, Network, Video } from 'lucide-react'
+import { X, BookOpen, Presentation, ListChecks, Network, Video, ClipboardCheck } from 'lucide-react'
 import { FORMATS, IMG } from './data'
 import { useStore } from './store'
 
@@ -6,7 +6,7 @@ export const Logo = ({ size = 28 }) => (
   <div className="grid place-items-center rounded-lg bg-ink text-white font-display font-bold" style={{ width: size, height: size, fontSize: size * 0.55 }}>V</div>
 )
 
-const FICON = { qr: BookOpen, deck: Presentation, guide: ListChecks, scenario: Network, video: Video }
+const FICON = { qr: BookOpen, deck: Presentation, guide: ListChecks, scenario: Network, video: Video, exam: ClipboardCheck }
 export function FormatIcon({ type, size = 36, r = 10 }) {
   const f = FORMATS[type]; const I = FICON[type]
   return (

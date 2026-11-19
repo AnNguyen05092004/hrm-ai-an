@@ -1,9 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { Fragment, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Search, FileText, Box, Flag, ShieldCheck, Check, X, Upload, Trash2, RefreshCw, AlertTriangle, MessageSquareWarning, CheckCircle2, Hourglass, Code2 } from 'lucide-react'
 import { useStore, useMe } from '../store'
-import { FORMATS } from '../data'
+import { FORMATS, TYPE_ORDER } from '../data'
 import { Thumb, FormatGlyph, Status, Avatar, Spinner, Modal } from '../ui'
 import { TopOrg } from '../Shell'
 import { useSkills } from './KitFlow'
@@ -27,12 +27,12 @@ function Sources() {
   const upload = async (files) => {
     for (const f of files) {
       const form = new FormData(); form.append('file', f)
-      try { await api(`/sources${replaceId.current ? `?replace=${replaceId.current}` : ''}`, { method: 'POST', form }); say(replaceId.current ? `Đã tải bản mới của ${f.name}. Các bộ đào tạo dùng tài liệu này sẽ báo phần cần cập nhật.` : `Đã tải ${f.name}`) } catch (e) { say(e.message) }
+      try { await api(`/sources${replaceId.current ? `?replace=${replaceId.current}` : ''}`, { method: 'POST', form }); say(replaceId.current ? `Đã tải bản mới của ${f.name}. Các khóa học dùng tài liệu này sẽ báo phần cần cập nhật.` : `Đã tải ${f.name}`) } catch (e) { say(e.message) }
     }
     replaceId.current = null
     qc.invalidateQueries({ queryKey: ['sources'] })
   }
-  const remove = async (s) => { if (!(await confirmBox(`Xóa tài liệu "${s.name}"? Các bộ đào tạo đang dùng sẽ mất nguồn này.`, { ok: 'Xóa', danger: true }))) return; await del(`/sources/${s.id}`); qc.invalidateQueries({ queryKey: ['sources'] }) }
+  const remove = async (s) => { if (!(await confirmBox(`Xóa tài liệu "${s.name}"? Các khóa học đang dùng sẽ mất nguồn này.`, { ok: 'Xóa', danger: true }))) return; await del(`/sources/${s.id}`); qc.invalidateQueries({ queryKey: ['sources'] }) }
   const detail = useQuery({ queryKey: ['source', view], queryFn: () => get(`/sources/${view}`), enabled: !!view })
   return (
     <div className="mt-6">
@@ -64,14 +64,14 @@ export function Library() {
   const list = (kits.data ?? []).filter((k) => !q || `${k.title} ${k.artifacts.map((a) => a.title).join(' ')}`.toLowerCase().includes(q.toLowerCase()))
   const arts = list.flatMap((k) => k.artifacts.map((a) => ({ ...a, kit: k })))
   return (
-    <Page title="Thư viện" sub="Bộ đào tạo, tài liệu và tài liệu nguồn của công ty.">
-      <Tabs value={tab} onChange={setTab} items={[['kits', 'Bộ đào tạo', kits.data?.length], ['arts', 'Tài liệu', arts.length], ['sources', 'Tài liệu nguồn']]} />
+    <Page title="Thư viện" sub="Khóa học, tài liệu và tài liệu nguồn của công ty.">
+      <Tabs value={tab} onChange={setTab} items={[['kits', 'Khóa học', kits.data?.length], ['arts', 'Tài liệu', arts.length], ['sources', 'Tài liệu nguồn']]} />
       {tab !== 'sources' && <div className="mt-5 flex w-[360px] items-center gap-2 rounded-lg border border-line px-3"><Search size={15} className="text-neutral-400" /><input value={q} onChange={(e) => setQ(e.target.value)} className="h-9 flex-1 text-[14px] outline-none" placeholder="Tìm theo tên" /></div>}
       {kits.isLoading && tab !== 'sources' && <div className="mt-6"><Spinner /></div>}
       {tab === 'kits' && <div className="mt-5 grid grid-cols-3 gap-5">{list.map((k) => (
         <button key={k.id} onClick={() => nav(k.stage === 'details' ? `/kit/${k.id}/details` : k.stage === 'outline' ? `/kit/${k.id}/outline` : `/kit/${k.id}`)} className="card overflow-hidden text-left transition hover:shadow-pop">
           <Thumb img={k.artifacts[0]?.img ?? k.img} className="h-36" />
-          <div className="p-4"><div className="flex items-center gap-1.5 text-[13px] font-medium"><Box size={14} className="text-emerald-600" />Bộ đào tạo · {k.stage === 'ready' ? `${k.artifacts.length} tài liệu` : 'đang soạn'}</div><div className="mt-1.5 text-[16px] font-semibold">{k.title}</div><div className="mt-1 text-[13px] text-neutral-500">Cập nhật {k.updated}</div></div>
+          <div className="p-4"><div className="flex items-center gap-1.5 text-[13px] font-medium"><Box size={14} className="text-emerald-600" />Khóa học · {k.stage === 'ready' ? `${k.artifacts.length} tài liệu` : 'đang soạn'}</div><div className="mt-1.5 text-[16px] font-semibold">{k.title}</div><div className="mt-1 text-[13px] text-neutral-500">Cập nhật {k.updated}</div></div>
         </button>))}</div>}
       {tab === 'arts' && <table className="mt-5 w-full text-[14px]"><thead><tr className="border-b border-line text-left text-[13px] text-neutral-500"><th className="py-2 font-medium">Tài liệu</th><th className="font-medium">Bộ</th><th className="font-medium">Trạng thái</th><th className="font-medium">Cập nhật</th></tr></thead>
         <tbody>{arts.map((a) => <tr key={a.id} onClick={() => nav(`/edit/${a.id}`)} className="cursor-pointer border-b border-line hover:bg-neutral-50"><td className="py-3"><span className="flex items-center gap-2 font-medium"><FormatGlyph type={a.type} size={15} />{a.title}</span></td><td className="text-neutral-600">{a.kit.title}</td><td><Status s={a.status} /></td><td className="text-neutral-500">{a.updated}</td></tr>)}</tbody></table>}
@@ -81,12 +81,20 @@ export function Library() {
 }
 
 /* ---------- Phân tích ---------- */
+/** Gom số liệu tài liệu theo khóa (khóa học), mục con theo thứ tự học */
+function byKit(rows, kits) {
+  const m = new Map()
+  for (const r of rows) m.set(r.kitId, [...(m.get(r.kitId) ?? []), r])
+  return [...m.entries()].map(([id, list]) => [{ id, title: kits.find((k) => k.id === id)?.title ?? 'Khóa học' }, list.sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type))])
+}
+
 export function Analytics() {
   const nav = useNavigate()
   const qc = useQueryClient()
   const [params] = useSearchParams()
   const focus = params.get('artifact')
   const q = useQuery({ queryKey: ['analytics'], queryFn: () => get('/analytics') })
+  const kits = useQuery({ queryKey: ['kits'], queryFn: () => get('/kits') })
   const [tab, setTab] = useState('arts')
   if (q.isLoading) return <Page title="Phân tích"><div className="mt-6"><Spinner /></div></Page>
   const rows = (q.data.rows ?? []).filter((r) => r.status === 'published' || r.id === focus).sort((a, b) => (b.id === focus) - (a.id === focus) || b.assigned - a.assigned)
@@ -101,9 +109,12 @@ export function Analytics() {
         {stat('Học xong', tot.completed, tot.started ? `${Math.round((100 * tot.completed) / tot.started)}% người đã bắt đầu` : null)}
         {stat('Lượt thi đạt', `${tot.passed}/${tot.attempts}`)}
       </div>
-      <Tabs value={tab} onChange={setTab} items={[['arts', 'Theo tài liệu'], ['tutor', 'Câu Tutor chưa trả lời được', q.data.unanswered.length], ['hard', 'Câu hỏi bị sai nhiều', q.data.hardQuestions.length]]} />
-      {tab === 'arts' && <table className="mt-4 w-full text-[14px]"><thead><tr className="border-b border-line text-left text-[13px] text-neutral-500"><th className="py-2 font-medium">Tài liệu</th><th className="font-medium">Được giao</th><th className="font-medium">Bắt đầu</th><th className="font-medium">Học xong</th><th className="font-medium">Lượt thi · đạt</th><th className="font-medium">Điểm TB</th><th className="font-medium">Hỏi Tutor · chưa trả lời</th></tr></thead>
-        <tbody>{rows.map((r) => <tr key={r.id} className={`border-b border-line ${r.id === focus ? 'bg-sky-50' : ''}`}><td className="py-3"><button onClick={() => nav(`/edit/${r.id}`)} className="flex items-center gap-2 font-medium hover:underline"><FormatGlyph type={r.type} size={15} />{r.title}</button></td><td>{r.assigned}</td><td>{r.started}</td><td>{r.completed}</td><td>{r.attempts} · {r.passed}</td><td>{r.avgScore == null ? '—' : `${r.avgScore}%`}</td><td>{r.tutorAsked} · <span className={r.tutorMissed ? 'font-semibold text-amber-700' : ''}>{r.tutorMissed}</span></td></tr>)}</tbody></table>}
+      <Tabs value={tab} onChange={setTab} items={[['arts', 'Theo khóa'], ['tutor', 'Câu Tutor chưa trả lời được', q.data.unanswered.length], ['hard', 'Câu hỏi bị sai nhiều', q.data.hardQuestions.length]]} />
+      {tab === 'arts' && <table className="mt-4 w-full text-[14px]"><thead><tr className="border-b border-line text-left text-[13px] text-neutral-500"><th className="py-2 font-medium">Khóa · tài liệu</th><th className="font-medium">Được giao</th><th className="font-medium">Bắt đầu</th><th className="font-medium">Học xong</th><th className="font-medium">Lượt thi · đạt</th><th className="font-medium">Điểm TB</th><th className="font-medium">Hỏi Tutor · chưa trả lời</th></tr></thead>
+        <tbody>{byKit(rows, kits.data ?? []).map(([k, list]) => <Fragment key={k.id}>
+          <tr className="border-b border-line bg-neutral-50"><td className="py-2.5 pl-2"><button onClick={() => nav(`/kit/${k.id}`)} className="font-semibold hover:underline">{k.title}</button><span className="ml-2 text-[12px] text-neutral-500">{list.length} tài liệu</span></td><td className="font-semibold">{Math.max(...list.map((r) => r.assigned))} người</td><td /><td /><td>{list.reduce((n, r) => n + r.attempts, 0)} · {list.reduce((n, r) => n + r.passed, 0)}</td><td /><td>{list.reduce((n, r) => n + r.tutorAsked, 0)} · {list.reduce((n, r) => n + r.tutorMissed, 0)}</td></tr>
+          {list.map((r) => <tr key={r.id} className={`border-b border-line ${r.id === focus ? 'bg-sky-50' : ''}`}><td className="py-3 pl-6"><button onClick={() => nav(`/edit/${r.id}`)} className="flex items-center gap-2 font-medium hover:underline"><FormatGlyph type={r.type} size={15} />{r.title}</button></td><td>{r.assigned}</td><td>{r.started}</td><td>{r.completed}</td><td>{r.attempts} · {r.passed}</td><td>{r.avgScore == null ? '—' : `${r.avgScore}%`}</td><td>{r.tutorAsked} · <span className={r.tutorMissed ? 'font-semibold text-amber-700' : ''}>{r.tutorMissed}</span></td></tr>)}
+        </Fragment>)}</tbody></table>}
       {tab === 'tutor' && <div className="mt-4">{q.data.unanswered.length === 0 ? <p className="text-[14px] text-neutral-500">Chưa có câu nào.</p> : <>
         <p className="text-[14px] text-neutral-600">Câu người học hỏi mà khóa chưa có nội dung. Đây là dấu hiệu khóa đang thiếu; bổ sung nội dung rồi đánh dấu đã xử lý.</p>
         {q.data.unanswered.map((x) => <div key={x.id} className="mt-2 flex items-center gap-3 rounded-xl border border-line px-4 py-3 text-[14px]"><MessageSquareWarning size={16} className="shrink-0 text-amber-600" /><div className="flex-1"><div className="font-medium">"{x.question}"</div><div className="text-[12px] text-neutral-500">{x.title} · {x.by} · {fmtDate(x.at)}</div></div><button onClick={() => nav(`/edit/${x.artifactId}`)} className="btn-line btn-sm">Bổ sung nội dung</button><button onClick={() => resolve(x.id)} className="btn-ghost h-8 text-[13px]"><Check size={14} />Đã xử lý</button></div>)}
@@ -216,7 +227,7 @@ export function Grading() {
 }
 
 /* ---------- Cài đặt ---------- */
-const FEATURE = { kit_details: 'Soạn chi tiết bộ', outline_qr: 'Dàn ý tài liệu nhanh', outline_deck: 'Dàn ý slide', outline_video: 'Dàn ý video', outline_scenario: 'Dàn ý tình huống', gen_qr: 'Soạn tài liệu nhanh', gen_deck: 'Soạn slide', gen_video: 'Kịch bản video', gen_scenario: 'Soạn tình huống', tutor: 'AI Tutor', embed: 'Lập chỉ mục tìm kiếm', grade_essay: 'Chấm nháp tự luận', review_code: 'Nhận xét code', gen_questions: 'Sinh câu hỏi', ai_edit: 'Sửa bằng AI', ai_block: 'Tạo khối bằng AI', tts: 'Giọng đọc AI', advisor: 'Trợ lý giám đốc', plan_item: 'Thêm tài liệu', kpi_skills: 'Gợi ý kỹ năng cho KPI', assess: 'Đánh giá năng lực' }
+const FEATURE = { kit_details: 'Soạn chi tiết khóa học', outline_qr: 'Dàn ý tài liệu nhanh', outline_deck: 'Dàn ý slide', outline_video: 'Dàn ý video', outline_scenario: 'Dàn ý tình huống', gen_qr: 'Soạn tài liệu nhanh', gen_deck: 'Soạn slide', gen_video: 'Kịch bản video', gen_scenario: 'Soạn tình huống', tutor: 'AI Tutor', embed: 'Lập chỉ mục tìm kiếm', grade_essay: 'Chấm nháp tự luận', review_code: 'Nhận xét code', gen_questions: 'Sinh câu hỏi', ai_edit: 'Sửa bằng AI', ai_block: 'Tạo khối bằng AI', tts: 'Giọng đọc AI', advisor: 'Trợ lý giám đốc', plan_item: 'Thêm tài liệu', kpi_skills: 'Gợi ý kỹ năng cho KPI', assess: 'Đánh giá năng lực' }
 
 export function SettingsPage() {
   const { me } = useMe()

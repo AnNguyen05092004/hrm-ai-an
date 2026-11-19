@@ -14,6 +14,7 @@ import { Library, Analytics, Grading, SettingsPage } from './pages/Lists'
 import { MyLearning } from './pages/Roles'
 import Workforce from './pages/Workforce'
 import { ExamPage } from './pages/Exam'
+import { CoursePage } from './pages/Course'
 
 function Full({ children }) { return <div className="grid h-full place-items-center">{children}</div> }
 
@@ -80,6 +81,8 @@ export default function App() {
               <Route path="/preview/:aid" element={<Gate allow={A}><Keyed C={AuthorPreview} /></Gate>} />
               <Route path="/learn/:aid" element={<Gate><Keyed C={LearnerPlayer} /></Gate>} />
               <Route path="/s/:slug" element={<Gate><Keyed C={LearnerPlayer} /></Gate>} />
+              <Route path="/course/:id" element={<Gate><Keyed C={CoursePage} /></Gate>} />
+              <Route path="/k/:slug" element={<Gate><Keyed C={CoursePage} /></Gate>} />
               <Route path="/exam/:aid" element={<Gate><Keyed C={ExamPage} /></Gate>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

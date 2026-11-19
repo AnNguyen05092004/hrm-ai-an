@@ -150,7 +150,7 @@ function GenQuestions({ open, onClose, art, onAdd }) {
     try { const r = await post(`/artifacts/${art.id}/questions/generate`, o); onAdd(r.questions); say(`Đã thêm ${r.questions.length} câu nháp, chưa vào ngân hàng đề`); onClose() } catch (e) { say(e.message) } finally { setBusy(false) }
   }
   return (
-    <Modal open={open} onClose={onClose} title="Sinh thêm câu bằng AI" sub="AI soạn nháp câu hỏi, đáp án, giải thích từ tài liệu nguồn của bộ. Mỗi câu gắn nguồn; bạn duyệt từng câu vào ngân hàng đề." w={540}
+    <Modal open={open} onClose={onClose} title="Sinh thêm câu bằng AI" sub="AI soạn nháp câu hỏi, đáp án, giải thích từ tài liệu nguồn của khóa. Mỗi câu gắn nguồn; bạn duyệt từng câu vào ngân hàng đề." w={540}
       footer={<button className="btn-dark h-10" disabled={busy} onClick={run}>{busy ? <Spinner size={18} w={2} /> : <><Sparkles size={16} />Sinh {o.count} câu</>}</button>}>
       <div className="grid grid-cols-2 gap-3 text-[14px]">
         <label><div className="mb-1 font-medium">Mức</div><select className="field py-2" value={o.level} onChange={(e) => setO({ ...o, level: +e.target.value })}>{LEVELS.map((l) => <option key={l.v} value={l.v}>Mức {l.v} · {l.kinds}</option>)}</select></label>
@@ -161,7 +161,7 @@ function GenQuestions({ open, onClose, art, onAdd }) {
   )
 }
 
-function QuizEditor({ art, up, onBack }) {
+function QuizEditor({ art, up, onBack, exam = false }) {
   const nav = useNavigate()
   const skills = useSkills()
   const [sel, setSel] = useState('settings')
@@ -177,12 +177,13 @@ function QuizEditor({ art, up, onBack }) {
   return (
     <div className="flex h-full flex-col">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
-        <button className="icon-btn" onClick={onBack} aria-label="Về danh sách bài"><ChevronLeft size={20} /></button><span className="h-7 w-px bg-line" />
-        <span className="rounded-lg bg-neutral-100 px-3 py-1.5 text-[14px] font-semibold">Bài kiểm tra</span>
+        {onBack && <><button className="icon-btn" onClick={onBack} aria-label="Về danh sách bài"><ChevronLeft size={20} /></button><span className="h-7 w-px bg-line" /></>}
+        <span className="rounded-lg bg-neutral-100 px-3 py-1.5 text-[14px] font-semibold">{exam ? 'Đề kiểm tra' : 'Bài kiểm tra'}</span>
         <span className="chip bg-violet-50 text-violet-700">{skillName} · Mức {qz.level}</span>
         <span className="text-[13px] text-neutral-500">{approved}/{qz.questions.length} câu trong ngân hàng đề</span>
         <div className="flex-1" />
-        <Tip label="Xem trước" onClick={() => nav(`/preview/${art.id}?l=quiz`)}><Eye size={19} /></Tip>
+        {approved < qz.questions.length && <button onClick={() => upQ((z) => { z.questions.forEach((x) => { x.approved = true }) })} className="btn-line btn-sm h-8"><Check size={14} />Duyệt tất cả {qz.questions.length - approved} câu</button>}
+        {!exam && <Tip label="Xem trước" onClick={() => nav(`/preview/${art.id}?l=quiz`)}><Eye size={19} /></Tip>}
       </header>
       <div className="flex flex-1 overflow-hidden">
         <aside className="scroll-thin w-[340px] shrink-0 overflow-y-auto bg-neutral-100">
@@ -203,9 +204,10 @@ function QuizEditor({ art, up, onBack }) {
         <main className="scroll-thin flex-1 overflow-y-auto">
           {sel === 'settings' ? (
             <div className="mx-auto max-w-[720px] px-8 py-12">
-              <h1 className="font-lato text-[44px] font-black">Bài kiểm tra</h1>
+              <h1 className="font-lato text-[44px] font-black leading-tight">{exam ? <Editable value={art.title} className="block" placeholder="Tên đề kiểm tra" onChange={(v) => up((a) => { a.title = v })} /> : 'Bài kiểm tra'}</h1>
               <div className="mt-8 h-1 w-28 bg-brand" />
-              <p className="mt-8 font-serif text-[17px] text-neutral-500">Bài kiểm tra cho kỹ năng {skillName}, mức {qz.level}. Mỗi người nhận một đề riêng rút ngẫu nhiên từ các câu đã duyệt, thứ tự câu và lựa chọn được xáo.</p>
+              {exam && <p className="mt-8 font-serif text-[17px] text-neutral-800"><Editable value={art.summary} multiline className="block" placeholder="Mô tả cho người thi (hiện ở màn mở đầu)" onChange={(v) => up((a) => { a.summary = v })} /></p>}
+              <p className="mt-6 font-serif text-[17px] text-neutral-500">{exam ? 'Đề' : 'Bài kiểm tra'} cho kỹ năng {skillName}, mức {qz.level}. Mỗi người nhận một đề riêng rút ngẫu nhiên từ các câu đã duyệt, thứ tự câu và lựa chọn được xáo.</p>
               <div className="card mt-10 divide-y divide-line">
                 <div className="flex items-center gap-4 px-5 py-4"><div className="flex-1"><div className="font-semibold">Loại bài</div><div className="text-[13px] text-neutral-600">Chỉ bài thi chính thức đạt mới cập nhật mức kỹ năng</div></div>
                   <div className="flex rounded-lg bg-neutral-100 p-1 text-[14px]">{[['practice', 'Luyện tập'], ['official', 'Thi chính thức']].map(([k, l]) => <button key={k} onClick={() => upQ((z) => { z.mode = k; if (k === 'practice') z.proctor = false })} className={`rounded-md px-3 py-1.5 ${qz.mode === k ? 'bg-white font-semibold shadow-card' : 'text-neutral-600'}`}>{l}</button>)}</div></div>
@@ -258,6 +260,20 @@ function QuizEditor({ art, up, onBack }) {
         </main>
       </div>
       <GenQuestions open={gen} onClose={() => setGen(false)} art={art} onAdd={(qs) => upQ((z) => { z.questions.push(...qs) })} />
+    </div>
+  )
+}
+
+/** Đề kiểm tra riêng của bộ: chỉ có ngân hàng câu và cài đặt thi */
+export function ExamEditor({ art, kit, up, saveText, onRestored }) {
+  const nav = useNavigate()
+  const [share, setShare] = useState(false)
+  return (
+    <div className="flex h-full flex-col">
+      <ArtifactTop art={art} kit={kit} saveText={saveText} onRestored={onRestored} onShare={() => setShare(true)} onPreview={() => nav(`/exam/${art.id}?preview=1`)} />
+      <DraftBar art={art} />
+      <div className="min-h-0 flex-1"><QuizEditor art={art} up={up} exam /></div>
+      <ShareModal open={share} art={art} onClose={() => setShare(false)} onChanged={onRestored} />
     </div>
   )
 }

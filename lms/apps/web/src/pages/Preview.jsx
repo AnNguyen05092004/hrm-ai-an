@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, Search, AlignLeft, HelpCircle, Sparkles, X, Lightbulb, ArrowUp, ShieldCheck, PlayCircle, BookOpen, Menu, Flag, Video as VideoIcon, Clock, CheckCircle2 } from 'lucide-react'
 import { useMe } from '../store'
@@ -241,9 +241,10 @@ export function LearnerPlayer() {
   if (resolved.error) return <Err e={resolved.error} />
   if (q.error) return <Err e={q.error} />
   if (!q.data) return <Loading />
+  if (q.data.type === 'exam') return <Navigate to={`/exam/${q.data.id}`} replace />
   return (
     <div className="flex h-full flex-col">
-      <DeviceBar devices={false} left={<><button className="icon-btn" onClick={() => nav(me.role === 'learner' ? '/learn' : -1)} aria-label="Quay lại"><ChevronLeft size={20} /></button><span className="h-7 w-px bg-line" /><span className="text-[15px] font-medium">{me.role === 'learner' ? 'Khóa học của tôi' : 'Bản người học thấy'}</span><span className="ml-2 flex items-center gap-1 text-[13px] text-neutral-500"><Clock size={13} />Phiên bản {q.data.version}</span></>} />
+      <DeviceBar devices={false} left={<><button className="icon-btn" onClick={() => nav(me.role === 'learner' ? `/course/${q.data.kitId}` : -1)} aria-label="Quay lại"><ChevronLeft size={20} /></button><span className="h-7 w-px bg-line" /><span className="text-[15px] font-medium">{me.role === 'learner' ? q.data.kitTitle ?? 'Khóa học của tôi' : 'Bản người học thấy'}</span><span className="ml-2 flex items-center gap-1 text-[13px] text-neutral-500"><Clock size={13} />Phiên bản {q.data.version}</span></>} />
       <div className="scroll-thin flex-1 overflow-y-auto bg-white"><Player art={q.data} start={params.get('l')} /></div>
     </div>
   )
@@ -258,6 +259,7 @@ export function AuthorPreview() {
   const q = useQuery({ queryKey: ['preview', aid], queryFn: () => get(`/learn/a/${aid}?draft=1`), staleTime: 0 })
   if (q.error) return <Err e={q.error} />
   if (!q.data) return <Loading />
+  if (q.data.type === 'exam') return <Navigate to={`/exam/${aid}?preview=1`} replace />
   const w = DEVICES.find((d) => d[0] === device)[3]
   return (
     <div className="flex h-full flex-col">

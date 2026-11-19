@@ -100,7 +100,7 @@ export const examRoutes: FastifyPluginAsyncZod = async (app) => {
     const used = mine.filter((x) => x.status !== 'in_progress' || expired(x)).length
     const bank = (quiz.questions ?? []).filter((q: Json) => q.approved).length
     return {
-      title, version, mode: quiz.mode, level: quiz.level ?? 1, passScore: quiz.passScore ?? 80, minutes: quiz.minutes ?? 30, attempts: quiz.attempts ?? 1, proctor: !!quiz.proctor && quiz.mode === 'official',
+      title, version, kitId: art.kitId, type: art.type, mode: quiz.mode, level: quiz.level ?? 1, passScore: quiz.passScore ?? 80, minutes: quiz.minutes ?? 30, attempts: quiz.attempts ?? 1, proctor: !!quiz.proctor && quiz.mode === 'official',
       count: Math.min(Number(quiz.pick ?? bank) || bank, bank), bank, used, openAttempt: open?.id ?? null,
       passed: mine.some((x) => x.status === 'passed'),
       history: mine.map((x) => ({ id: x.id, status: x.status, score: x.status === 'grading' ? null : x.score, submittedAt: x.submittedAt })),

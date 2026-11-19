@@ -1,6 +1,6 @@
 # LMS: soạn khóa bằng AI, AI Tutor, thi và năng lực đội ngũ
 
-Bản chạy thật của [prototype LMS](../prototype/lms): có backend, cơ sở dữ liệu, đăng nhập và AI thật (OpenAI). Phân tích và quyết định kiến trúc ở [docs/PLAN.md](docs/PLAN.md), đặc tả ở [lms-specs.md](../docs/modules/lms/lms-specs.md).
+Bản chạy thật của [prototype LMS](../prototype/lms): có backend, cơ sở dữ liệu, đăng nhập và AI thật (OpenAI). Phân tích và quyết định kiến trúc ở [docs/PLAN.md](docs/PLAN.md), rà soát UX và so sánh với Articulate ở [docs/REVIEW-UX.md](docs/REVIEW-UX.md), đặc tả ở [lms-specs.md](../docs/modules/lms/lms-specs.md).
 
 ## Chạy (một lệnh)
 
@@ -25,7 +25,7 @@ Mở http://localhost:5190. Dừng bằng Ctrl+C.
 |---|---|
 | `npm start` | Chạy hằng ngày |
 | `npm run reset` | Xóa hết dữ liệu, tạo lại dữ liệu mẫu rồi chạy |
-| `npm test` | Chạy 39 test API (AI giả lập, DB `lms_test` riêng) |
+| `npm test` | Chạy 49 test API (AI giả lập, DB `lms_test` riêng) |
 | `npm run typecheck` · `npm run build` | Kiểm tra kiểu · build bản production |
 
 Muốn chạy không cần key: đặt `AI_PROVIDER=mock` trong `.env`.
@@ -61,8 +61,10 @@ Muốn chạy không cần key: đặt `AI_PROVIDER=mock` trong `.env`.
 | Soạn tại chỗ | Bấm vào chữ là sửa, tự lưu. Sửa từng khối bằng AI, sinh câu hỏi theo mức. Xuất bản có phiên bản, khôi phục được bản cũ |
 | Slide | 8 bố cục, sửa chữ tại chỗ; định dạng như phần mềm trình chiếu: kéo di chuyển, cỡ chữ, màu, đậm/nghiêng, căn lề, hộp chữ tự do, màu nền; sửa slide bằng AI; nghe thử lời đọc bằng giọng AI |
 | Video AI | Slide + lời đọc → giọng AI → MP4 có phụ đề, chương theo thời lượng thật (giữ đúng định dạng slide). Sửa slide ngay trong trang video; sửa slide nào chỉ dựng lại đoạn đó |
-| Học | Giao khóa theo người hoặc bộ phận, có hạn. Theo dõi tiến độ. Có đường dẫn chia sẻ trong công ty |
+| Khóa học | Một khóa gồm Tài liệu nhanh, Slide, Tình huống, Video, Đề kiểm tra. Chia sẻ cả khóa: xuất bản hàng loạt (bỏ qua tài liệu không đổi, nêu lý do tài liệu bị chặn), giao cả khóa, một đường dẫn cho cả khóa |
+| Học | Khóa học của tôi gom theo khóa; mở khóa thấy các phần theo thứ tự học, tiến độ từng phần và nút học tiếp. Có hạn, theo dõi tiến độ |
 | AI Tutor | Chỉ trả lời từ nội dung đã xuất bản, kèm nguồn và nút nhảy tới bài hoặc phút video. Tìm sang khóa khác. Không có câu trả lời thì nói rõ và gom câu hỏi cho người soạn. Tự tắt khi người học đang thi |
+| Đề kiểm tra | Tạo đề riêng cho khóa: chọn mức, số câu mỗi mức, số câu mỗi đề, giờ, điểm đạt, lượt, giám sát; AI soạn ngân hàng câu có nguồn, người soạn duyệt (có duyệt tất cả) |
 | Thi và chấm | Mỗi người một đề riêng, rút từ ngân hàng câu đã duyệt. Có giờ thi, số lượt, lưu liên tục, làm tiếp được khi mất mạng. Trắc nghiệm và bài code JavaScript chấm tự động. AI chấm nháp tự luận theo rubric, người chấm xác nhận |
 | Giám sát | Bật theo bài, người thi phải đồng ý. Gắn cờ khi chuyển tab, rời cửa sổ, dán từ ngoài. Người chấm quyết định. Tự xóa sau 30 ngày |
 | Năng lực đội ngũ | Từ KPI ra kỹ năng cần và khoảng cách của từng người. Gợi ý khóa có sẵn, hoặc tạo khóa bằng AI cho kỹ năng chưa có. Có sơ đồ đội ngũ và đánh giá mức từ bằng chứng. Thi chính thức đạt thì nâng mức (tối đa 3). Trợ lý AI trả lời trên dữ liệu đội |

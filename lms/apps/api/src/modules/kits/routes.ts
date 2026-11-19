@@ -8,6 +8,7 @@ import { enqueue } from '../../lib/jobs.js'
 import { audit } from '../../lib/audit.js'
 import { GEN_TYPES, suggestPlanItem } from './ai.js'
 import { sourceChanges } from './source-changes.js'
+import { kitShareRoutes } from './share.js'
 import { briefOf, createArtifact, getKit, kitDto, listKits, patchKit, type PlanItem } from './service.js'
 
 const P = z.object({ id: z.string() })
@@ -20,6 +21,7 @@ const planItem = z.object({ type: z.enum(GEN_TYPES), title: z.string().max(200),
 
 export const kitRoutes: FastifyPluginAsyncZod = async (app) => {
   app.addHook('preHandler', requireAuthor)
+  await app.register(kitShareRoutes)
 
   app.get('/', async (req) => listKits(me(req).orgId))
   app.get('/:id', { schema: { params: P } }, async (req) => kitDto(await getKit(me(req).orgId, req.params.id)))
@@ -106,7 +108,7 @@ export const kitRoutes: FastifyPluginAsyncZod = async (app) => {
     // khóa nguyên tử: hai lần bấm cùng lúc chỉ một lần được tạo
     const [locked] = await db.update(schema.kits).set({ stage: 'generating', updatedAt: new Date() })
       .where(and(eq(schema.kits.id, k.id), inArray(schema.kits.stage, ['details', 'outline']))).returning({ id: schema.kits.id })
-    if (!locked) throw conflict('Bộ này đã được tạo nội dung')
+    if (!locked) throw conflict('Khóa này đã được tạo nội dung')
     const plan = ((k.details as { plan?: PlanItem[] }).plan ?? [])
     if (!plan.length) { await patchKit(k.id, { stage: k.stage }); throw badRequest('Kế hoạch chưa có tài liệu nào') }
     const ids: string[] = []
@@ -120,7 +122,7 @@ export const kitRoutes: FastifyPluginAsyncZod = async (app) => {
     return { artifactIds: ids }
   })
 
-  // Thêm tài liệu vào bộ đã tạo: AI soạn ngay theo tên và mục đích
+  // Thêm tài liệu vào khóa đã tạo: AI soạn ngay theo tên và mục đích
   app.post('/:id/artifacts', { schema: { params: P, body: planItem } }, async (req) => {
     const u = me(req)
     const k = await getKit(u.orgId, req.params.id)

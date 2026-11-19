@@ -7,7 +7,7 @@ import { FORMATS } from '../data'
 import { Logo, Modal, Tip, Status, FormatGlyph, Avatar, Spinner } from '../ui'
 import { get, post } from '../api'
 
-const shareUrl = (slug) => `${location.origin}/s/${slug}`
+export const shareUrl = (slug, kind = 's') => `${location.origin}/${kind}/${slug}`
 
 /** Chia sẻ: xuất bản phiên bản mới, tạo đường dẫn trong công ty, giao cho người hoặc phòng ban */
 export function ShareModal({ open, onClose, art, onChanged }) {
@@ -59,24 +59,33 @@ export function ShareModal({ open, onClose, art, onChanged }) {
               {!slug && <button className="btn-dark" disabled={busy || !published} onClick={() => act(() => post(`/artifacts/${art.id}/share`, { on: true }), 'Đã tạo đường dẫn chia sẻ')}><Link2 size={16} />Tạo đường dẫn</button>}
             </div>
           </>)}
-          {tab === 'assign' && <AssignForm art={art} published={published} onDone={onClose} />}
+          {tab === 'assign' && <ArtifactAssign art={art} published={published} onDone={onClose} />}
         </div>
       </div>
     </Modal>
   )
 }
 
-function AssignForm({ art, published, onDone }) {
-  const { say } = useStore()
+function ArtifactAssign({ art, published, onDone }) {
   const qc = useQueryClient()
-  const people = useQuery({ queryKey: ['people'], queryFn: () => get('/people') })
   const current = useQuery({ queryKey: ['assignees', art.id], queryFn: () => get(`/assignments?artifactId=${art.id}`) })
+  if (!published) return <p className="text-[14px] text-neutral-600">Xuất bản tài liệu trước khi giao cho người học.</p>
+  return <AssignForm assigned={new Set((current.data ?? []).map((x) => x.userId))} onDone={onDone} onSubmit={async (b) => {
+    const r = await post('/assignments', { artifactId: art.id, ...b })
+    qc.invalidateQueries({ queryKey: ['assignees', art.id] })
+    return `Đã giao cho ${r.created} người${r.skipped ? `, ${r.skipped} người đã được giao trước đó` : ''}`
+  }} />
+}
+
+/** Chọn người học theo phòng ban, hạn và lý do; dùng cho một tài liệu hoặc cả bộ */
+export function AssignForm({ assigned, onSubmit, onDone, intro = 'Chọn người học và hạn hoàn thành. Người được giao thấy khóa trong "Khóa học của tôi".' }) {
+  const { say } = useStore()
+  const people = useQuery({ queryKey: ['people'], queryFn: () => get('/people') })
   const [pick, setPick] = useState(new Set())
   const [due, setDue] = useState(() => new Date(Date.now() + 14 * 86400_000).toISOString().slice(0, 10))
   const [reason, setReason] = useState('')
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
-  const assigned = new Set((current.data ?? []).map((x) => x.userId))
   const depts = useMemo(() => {
     const m = new Map()
     for (const p of people.data?.people ?? []) if (p.role === 'learner') m.set(p.deptName ?? 'Khác', [...(m.get(p.deptName ?? 'Khác') ?? []), p])
@@ -86,17 +95,14 @@ function AssignForm({ art, published, onDone }) {
   const submit = async () => {
     setBusy(true)
     try {
-      const r = await post('/assignments', { artifactId: art.id, userIds: [...pick], due, reason })
-      qc.invalidateQueries({ queryKey: ['assignees', art.id] })
-      say(`Đã giao cho ${r.created} người${r.skipped ? `, ${r.skipped} người đã được giao trước đó` : ''}`)
+      say(await onSubmit({ userIds: [...pick], due, reason }))
       onDone()
     } catch (e) { say(e.message) } finally { setBusy(false) }
   }
-  if (!published) return <p className="text-[14px] text-neutral-600">Xuất bản tài liệu trước khi giao cho người học.</p>
   const match = (p) => !q || p.name.toLowerCase().includes(q.toLowerCase())
   return (
     <div>
-      <p className="text-[14px]">Chọn người học và hạn hoàn thành. Người được giao thấy khóa trong "Khóa học của tôi".</p>
+      <p className="text-[14px]">{intro}</p>
       <div className="mt-3 flex items-center gap-2 rounded-lg border border-line px-3"><Search size={15} className="text-neutral-400" /><input className="h-9 flex-1 text-[14px] outline-none" placeholder="Tìm theo tên" value={q} onChange={(e) => setQ(e.target.value)} /></div>
       <div className="scroll-thin mt-2 max-h-[260px] overflow-y-auto rounded-xl border border-line">
         {people.isLoading && <div className="p-4"><Spinner size={20} w={2} /></div>}

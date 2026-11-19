@@ -21,7 +21,13 @@ export const FORMATS = {
     name: 'Video tương tác', en: 'Interactive Video', bg: '#fde3e3', fg: '#e32b22',
     desc: 'Video có chương và điểm kiểm tra', long: 'Chương và điểm kiểm tra gắn vào video', req: 'Tải video lên, hoặc để AI tạo video từ slide và giọng đọc AI.',
   },
+  exam: {
+    name: 'Đề kiểm tra', en: 'Assessment', bg: '#e0f5ee', fg: '#0f9f6e',
+    desc: 'Đề thi riêng, rút ngẫu nhiên từ ngân hàng câu', long: 'Ngân hàng câu theo mức, mỗi người một đề, có giờ, lượt và giám sát',
+  },
 }
+// thứ tự học trong một khóa
+export const TYPE_ORDER = ['qr', 'deck', 'scenario', 'video', 'guide', 'exam']
 
 export const LEVELS = [
   { v: 1, name: 'Mức 1 · Biết khái niệm', kinds: 'Trắc nghiệm' },

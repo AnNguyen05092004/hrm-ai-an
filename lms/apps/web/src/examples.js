@@ -12,7 +12,7 @@ export const EXAMPLES = [
     "tag": "AI / MLOps",
     "label": "Triển khai model AI tối ưu chi phí",
     "img": "ml",
-    "goal": "Chi phí GPU và API model tăng gấp ba trong quý 3. Tạo bộ đào tạo cho kỹ sư ML và backend về triển khai model tối ưu chi phí: chọn model vừa đủ, cache, batching, lượng tử hóa, autoscale về 0, và đo chi phí mỗi request. Có tình huống trình bày với quản lý."
+    "goal": "Chi phí GPU và API model tăng gấp ba trong quý 3. Tạo khóa học cho kỹ sư ML và backend về triển khai model tối ưu chi phí: chọn model vừa đủ, cache, batching, lượng tử hóa, autoscale về 0, và đo chi phí mỗi request. Có tình huống trình bày với quản lý."
   },
   {
     "id": "cloud",
@@ -26,14 +26,14 @@ export const EXAMPLES = [
     "tag": "AI agent",
     "label": "Xây AI agent an toàn",
     "img": "nodes",
-    "goal": "Công ty bắt đầu đưa AI agent vào chăm sóc khách hàng và nhân sự. Tạo bộ đào tạo cho kỹ sư AI và PM: agent hoạt động thế nào, thiết kế công cụ, rào chắn bắt buộc (phân quyền, xác nhận trước khi gửi ra ngoài, nhật ký), prompt injection, và đánh giá trước khi lên production."
+    "goal": "Công ty bắt đầu đưa AI agent vào chăm sóc khách hàng và nhân sự. Tạo khóa học cho kỹ sư AI và PM: agent hoạt động thế nào, thiết kế công cụ, rào chắn bắt buộc (phân quyền, xác nhận trước khi gửi ra ngoài, nhật ký), prompt injection, và đánh giá trước khi lên production."
   },
   {
     "id": "req",
     "tag": "BA / PM",
     "label": "Viết yêu cầu nghiệp vụ rõ ràng",
     "img": "sketch",
-    "goal": "Change request sau khi chốt phạm vi đang ở mức 38 mỗi quý, phần lớn do yêu cầu viết chưa rõ. Tạo bộ đào tạo cho BA, PM và QA: viết user story đủ ý, tiêu chí chấp nhận kiểm thử được, chốt phạm vi và xử lý yêu cầu thay đổi. Cần bài thi mức 2 và tình huống luyện giữ phạm vi với khách hàng."
+    "goal": "Change request sau khi chốt phạm vi đang ở mức 38 mỗi quý, phần lớn do yêu cầu viết chưa rõ. Tạo khóa học cho BA, PM và QA: viết user story đủ ý, tiêu chí chấp nhận kiểm thử được, chốt phạm vi và xử lý yêu cầu thay đổi. Cần bài thi mức 2 và tình huống luyện giữ phạm vi với khách hàng."
   },
   {
     "id": "docker",
@@ -47,7 +47,7 @@ export const EXAMPLES = [
     "tag": "Bán hàng",
     "label": "Tư vấn bán hàng khi khách chê giá",
     "img": "store",
-    "goal": "Đội tư vấn bán hàng mới hay giảm giá ngay khi khách nói \"bên kia rẻ hơn\", làm tỷ lệ hủy tăng. Tạo bộ đào tạo giúp họ xử lý khi khách chê giá: ghi nhận, hỏi nhu cầu, nói về giá trị và đề xuất dùng thử. Cần có phần luyện hội thoại và slide cho họp sáng."
+    "goal": "Đội tư vấn bán hàng mới hay giảm giá ngay khi khách nói \"bên kia rẻ hơn\", làm tỷ lệ hủy tăng. Tạo khóa học giúp họ xử lý khi khách chê giá: ghi nhận, hỏi nhu cầu, nói về giá trị và đề xuất dùng thử. Cần có phần luyện hội thoại và slide cho họp sáng."
   },
   {
     "id": "expense",

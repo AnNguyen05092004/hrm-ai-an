@@ -142,12 +142,14 @@ export const kits = pgTable('kits', {
   stage: text('stage', { enum: ['details', 'outline', 'generating', 'ready'] }).notNull().default('details'),
   fromPlan: jsonb('from_plan').$type<{ kpiId?: string; skillId?: string; people?: string[] } | null>(),
   img: text('img').notNull().default('server'),
+  // đường dẫn chia sẻ cả bộ trong công ty (người có link học mọi tài liệu đã xuất bản của bộ)
+  shareSlug: text('share_slug'),
   createdBy: text('created_by').references(() => users.id),
   createdAt: created(),
   updatedAt: updated(),
 })
 
-export const ARTIFACT_TYPES = ['qr', 'deck', 'scenario', 'video', 'guide'] as const
+export const ARTIFACT_TYPES = ['qr', 'deck', 'scenario', 'video', 'guide', 'exam'] as const
 export type ArtifactType = typeof ARTIFACT_TYPES[number]
 export const artifacts = pgTable('artifacts', {
   id: id(),

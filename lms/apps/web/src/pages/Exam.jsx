@@ -169,7 +169,8 @@ export function ExamPage() {
     try { const r = await post(`/exams/a/${aid}/start`, { consent, resume }); setAttemptId(r.id); if (r.resumed) say('Tiếp tục bài đang làm dở') } catch (e) { say(e.message); qc.invalidateQueries({ queryKey: ['exam-info', aid] }) } finally { setBusy(false) }
   }
   const finish = () => { qc.invalidateQueries({ queryKey: ['attempt', shown] }); qc.invalidateQueries({ queryKey: ['exam-info', aid] }); qc.invalidateQueries({ queryKey: ['my-exams'] }); qc.invalidateQueries({ queryKey: ['my-learning'] }) }
-  const back = () => nav(me.role === 'learner' ? `/learn/${aid}` : -1)
+  // người học: đề riêng về trang khóa, bài kiểm tra trong Tài liệu nhanh về tài liệu đó
+  const back = () => nav(me.role !== 'learner' ? -1 : info.data?.type === 'exam' ? `/course/${info.data.kitId}` : `/learn/${aid}`)
   const a = attempt.data
   let body
   if (preview) body = <div className={box}><h1 className="font-lato text-[32px] font-black">Bài kiểm tra</h1><p className="mt-3 rounded-xl bg-amber-50 p-4 text-[14px] text-amber-800">Đang xem trước bản nháp. Người học nhận đề riêng rút từ các câu đã duyệt sau khi bạn xuất bản. Mở "Bài kiểm tra" trong màn soạn để xem và duyệt câu hỏi.</p></div>

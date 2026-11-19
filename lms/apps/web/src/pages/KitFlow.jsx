@@ -88,7 +88,7 @@ export function KitLoading() {
           </div>
         ) : <>
           <div className="text-center"><Spinner size={56} w={3} /></div>
-          <h2 className="mt-6 text-center text-[22px] font-semibold">{next === 'outline' ? 'Đang lập dàn ý…' : 'Đang soạn chi tiết bộ đào tạo…'}</h2>
+          <h2 className="mt-6 text-center text-[22px] font-semibold">{next === 'outline' ? 'Đang lập dàn ý…' : 'Đang soạn chi tiết khóa học…'}</h2>
           <p className="mt-2 text-center text-[15px] text-neutral-600">{job?.message || kit.data?.title}</p>
           <div className="mt-6 h-1.5 rounded-full bg-neutral-100"><div className="h-1.5 rounded-full bg-ink transition-all duration-500" style={{ width: `${Math.max(p, 6)}%` }} /></div>
           <div className="mt-6 space-y-2.5">
@@ -169,7 +169,7 @@ export function KitDetails() {
           <h2 className="mt-4 text-[28px] font-semibold">Xác nhận chi tiết</h2>
           <p className="mt-2 text-[15px]">AI đã soạn từ mô tả và tài liệu của bạn. Bấm vào chữ để sửa.</p>
           {kit.warnings?.length > 0 && <div className="mt-4 space-y-2">{kit.warnings.map((w) => <div key={w} className="flex gap-2 rounded-lg bg-amber-50 px-3 py-2 text-[14px] text-amber-900"><AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-600" />{w}</div>)}</div>}
-          <div className="mt-6"><label className="label">Tên bộ đào tạo</label><div className="field"><Editable value={kit.title} className="block" placeholder="Tên bộ" onChange={(v) => up((x) => { x.title = v })} /></div></div>
+          <div className="mt-6"><label className="label">Tên khóa học</label><div className="field"><Editable value={kit.title} className="block" placeholder="Tên khóa học" onChange={(v) => up((x) => { x.title = v })} /></div></div>
           <div className="mt-6"><label className="label">Đối tượng học</label><div className="field min-h-[80px]"><Editable value={kit.audience} multiline className="block" placeholder="Ai học, họ đã biết gì" onChange={(v) => up((x) => { x.audience = v })} /></div></div>
           {[['Mục tiêu', 'goals'], ['Điều cần nhớ', 'takeaways'], ['Chỉ số thành công', 'metrics']].map(([l, k]) => (
             <div key={k} className="mt-6">

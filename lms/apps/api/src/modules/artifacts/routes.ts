@@ -11,6 +11,7 @@ import { artifactDto, artifactMeta, getKit } from '../kits/service.js'
 import { indexArtifact } from '../tutor/index-content.js'
 import { aiBlock, aiEditBlock, generateQuestions } from './ai-edit.js'
 import { publishIssues } from './validate.js'
+import { publishArtifact } from './publish.js'
 
 const P = z.object({ id: z.string() })
 const MAX_CONTENT = 2_000_000
@@ -60,18 +61,7 @@ export const artifactRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post('/:id/publish', { schema: { params: P, body: z.object({ note: z.string().max(500).default('') }) } }, async (req) => {
     const u = me(req)
     const a = await getArtifact(u.orgId, req.params.id)
-    const issues = publishIssues(a)
-    if (issues.blocking.length) throw badRequest(issues.blocking.join(' '), 'not_ready')
-    const k = await getKit(u.orgId, a.kitId)
-    const srcs = k.sourceIds.length ? await db.select({ id: schema.sources.id, version: schema.sources.version }).from(schema.sources).where(inArray(schema.sources.id, k.sourceIds)) : []
-    const version = (a.publishedVersion ?? 0) + 1
-    await db.insert(schema.artifactVersions).values({
-      artifactId: a.id, version, title: a.title, summary: a.summary, content: a.content, publishedBy: u.id, note: req.body.note,
-      sourceVersions: Object.fromEntries(srcs.map((s) => [s.id, s.version])),
-    })
-    const [r] = await db.update(schema.artifacts).set({ status: 'published', publishedVersion: version, updatedAt: new Date() }).where(eq(schema.artifacts.id, a.id)).returning()
-    await indexArtifact(a.id)
-    await audit(u, 'artifact.publish', a.id, { version })
+    const r = await publishArtifact(u, a, req.body.note)
     return artifactMeta(r)
   })
 
@@ -142,7 +132,7 @@ export const artifactRoutes: FastifyPluginAsyncZod = async (app) => {
     if (a.status === 'generating') throw conflict('AI đang soạn tài liệu này')
     if (a.publishedVersion) throw badRequest('Tài liệu đã xuất bản. Sửa trực tiếp hoặc dùng "Sửa bằng AI" cho từng phần.')
     await db.update(schema.artifacts).set({ status: 'generating', updatedAt: new Date() }).where(eq(schema.artifacts.id, a.id))
-    const job = await enqueue(u.orgId, 'artifact.generate', { artifactId: a.id }, u.id)
+    const job = await enqueue(u.orgId, a.type === 'exam' ? 'exam.generate' : 'artifact.generate', { artifactId: a.id }, u.id)
     return { jobId: job.id }
   })
 }

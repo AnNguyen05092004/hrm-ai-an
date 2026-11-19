@@ -1,4 +1,4 @@
-// AI soạn bộ đào tạo: chi tiết → dàn ý → nội dung. Mọi đoạn nội dung phải trích một đoạn nguồn có mã [S#].
+// AI soạn khóa học: chi tiết → dàn ý → nội dung. Mọi đoạn nội dung phải trích một đoạn nguồn có mã [S#].
 import { z } from 'zod'
 import { aiJson } from '../../lib/ai/index.js'
 import type { Hit } from '../sources/service.js'
@@ -19,7 +19,7 @@ export interface KitBrief {
   title: string; goal: string; audience: string; goals: string[]; takeaways: string[]; metrics: string[]
   skillName: string; level: number; practice: string
 }
-const brief = (k: KitBrief): string => `Bộ đào tạo: ${k.title}
+const brief = (k: KitBrief): string => `Khóa học: ${k.title}
 Mô tả: ${k.goal}
 Đối tượng: ${k.audience}
 Mục tiêu: ${k.goals.join('; ')}
@@ -29,7 +29,7 @@ Lượng luyện tập: ${k.practice === 'more' ? 'nhiều' : k.practice === 'le
 
 export const hitsText = (hits: Hit[]): string => hits.map((h, i) => `[S${i + 1}] (${h.sourceName} · ${h.section})\n${h.text}`).join('\n\n')
 
-// ---------- 1. Chi tiết bộ đào tạo ----------
+// ---------- 1. Chi tiết khóa học ----------
 export const DetailsSchema = z.object({
   title: z.string(),
   desc: z.string(),
@@ -49,7 +49,7 @@ export function draftDetails(orgId: string, goal: string, skills: { id: string; 
   return aiJson({
     orgId, feature: 'kit_details', schema: DetailsSchema,
     system: `${RULES}
-Nhiệm vụ: từ mô tả mục tiêu và tài liệu nguồn, đề xuất chi tiết một bộ đào tạo.
+Nhiệm vụ: từ mô tả mục tiêu và tài liệu nguồn, đề xuất chi tiết một khóa học.
 - title ngắn (≤ 60 ký tự), desc 1–2 câu.
 - 3–4 mục tiêu, 3–5 điều cần nhớ, 2–3 chỉ số thành công đo được.
 - Chọn skillId từ danh sách kỹ năng; level 1–3.
@@ -61,7 +61,7 @@ Nhiệm vụ: từ mô tả mục tiêu và tài liệu nguồn, đề xuất ch
 }
 
 function mockDetails(goal: string, skills: { id: string; name: string }[], sourceNames: string[], sensitive: string[]): Details {
-  const t = goal.replace(/^tạo (khóa|bài|bộ)( đào tạo)? ?(cho|về)? ?/i, '').split(/[.,\n]/)[0].trim().slice(0, 60) || 'Bộ đào tạo mới'
+  const t = goal.replace(/^tạo (khóa|bài|bộ)( đào tạo)? ?(cho|về)? ?/i, '').split(/[.,\n]/)[0].trim().slice(0, 60) || 'Khóa học mới'
   const title = t.charAt(0).toUpperCase() + t.slice(1)
   const sk = skills.find((s) => goal.toLowerCase().includes(s.id) || goal.toLowerCase().includes(s.name.toLowerCase().split(' (')[0])) ?? skills[0]
   return {
@@ -97,7 +97,7 @@ export function draftOutline(orgId: string, type: GenType, kit: KitBrief, item: 
   const schema = OutlineSchemas[type]
   return aiJson({
     orgId, feature: `outline_${type}`, schema: schema as z.ZodType<Record<string, unknown>>,
-    system: `${RULES}\nNhiệm vụ: lập dàn ý cho một tài liệu trong bộ đào tạo. ${OUTLINE_HINT[type]} Chỉ đưa các ý có căn cứ trong nguồn; nếu nguồn ít thì dàn ý ngắn lại.`,
+    system: `${RULES}\nNhiệm vụ: lập dàn ý cho một tài liệu trong khóa học. ${OUTLINE_HINT[type]} Chỉ đưa các ý có căn cứ trong nguồn; nếu nguồn ít thì dàn ý ngắn lại.`,
     input: `${brief(kit)}\n\nTài liệu cần lập dàn ý: ${item.title}\nMục đích: ${item.summary}\n\nTrích đoạn nguồn:\n${hitsText(hits) || '(không có nguồn)'}`,
     mock: () => mockOutline(type, kit),
   })
@@ -249,7 +249,7 @@ export const PlanItemSchema = z.object({ title: z.string(), summary: z.string() 
 export function suggestPlanItem(orgId: string, kit: KitBrief, type: GenType, instruction: string): Promise<z.infer<typeof PlanItemSchema>> {
   return aiJson({
     orgId, feature: 'plan_item', schema: PlanItemSchema,
-    system: 'Đặt tên ngắn (≤ 60 ký tự) và mục đích 1–2 câu cho một tài liệu mới trong bộ đào tạo, theo hướng dẫn của người soạn. Tiếng Việt.',
+    system: 'Đặt tên ngắn (≤ 60 ký tự) và mục đích 1–2 câu cho một tài liệu mới trong khóa học, theo hướng dẫn của người soạn. Tiếng Việt.',
     input: `${brief(kit)}\nDạng: ${type}\nHướng dẫn: ${instruction}`,
     mock: () => ({ title: instruction.slice(0, 60), summary: instruction }),
   })
