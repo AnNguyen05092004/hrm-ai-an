@@ -11,7 +11,7 @@ export type Client = (method: InjectOptions['method'], url: string, body?: unkno
 export function client(app: FastifyInstance, cookie = ''): Client {
   return async (method, url, body) => {
     const r = await app.inject({ method, url, headers: { cookie, 'x-lms': '1' }, ...(body !== undefined ? { payload: body as InjectOptions['payload'] } : {}) })
-    return { status: r.statusCode, body: r.body ? JSON.parse(r.body) : null }
+    return { status: r.statusCode, body: r.body && String(r.headers['content-type'] ?? '').includes('json') ? JSON.parse(r.body) : r.body ? r.body : null }
   }
 }
 
@@ -41,9 +41,12 @@ export function setupApp(): Ctx {
 }
 
 /** Gửi tệp dạng multipart */
-export async function upload(app: FastifyInstance, cookie: string, url: string, filename: string, content: string, mime = 'text/plain'): Promise<{ status: number; body: any }> { // eslint-disable-line @typescript-eslint/no-explicit-any
+export async function upload(app: FastifyInstance, cookie: string, url: string, filename: string, content: string | Buffer, mime = 'text/plain'): Promise<{ status: number; body: any }> { // eslint-disable-line @typescript-eslint/no-explicit-any
   const boundary = '----lmstest'
-  const payload = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${mime}\r\n\r\n${content}\r\n--${boundary}--\r\n`
+  const payload = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${mime}\r\n\r\n`),
+    Buffer.isBuffer(content) ? content : Buffer.from(content), Buffer.from(`\r\n--${boundary}--\r\n`),
+  ])
   const r = await app.inject({ method: 'POST', url, payload, headers: { cookie, 'x-lms': '1', 'content-type': `multipart/form-data; boundary=${boundary}` } })
   return { status: r.statusCode, body: JSON.parse(r.body) }
 }

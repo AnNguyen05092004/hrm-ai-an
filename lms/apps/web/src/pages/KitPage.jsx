@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { BarChart3, Target, TrendingUp, Plus, FileWarning, ArrowRight, Link2, AlertTriangle, RotateCw, Trash2, Share2 } from 'lucide-react'
+import { BarChart3, Target, TrendingUp, Plus, FileWarning, ArrowRight, Link2, AlertTriangle, RotateCw, Trash2, Share2, Palette } from 'lucide-react'
 import { useStore, useMe } from '../store'
 import { FORMATS, TYPE_ORDER } from '../data'
 import { FormatIcon, FormatGlyph, Spinner, Thumb, Avatar, Status, Modal, Tip } from '../ui'
 import { KitHeader, AddArtifact, GEN_FORMATS, useKit, useSkills } from './KitFlow'
 import { ShareModal } from './Common'
 import { KitShareModal, ExamCreateModal } from './KitShare'
+import { KitThemeModal } from './KitTheme'
+import { ChangeImage } from '../blocks'
 import { Editable, EditableList } from '../edit'
 import { saveLabel } from '../hooks'
-import { get, post, del } from '../api'
+import { get, post, patch, del } from '../api'
 
 const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
@@ -42,6 +44,7 @@ export default function KitPage() {
   const [src, setSrc] = useState(false)
   const [kitShare, setKitShare] = useState(false)
   const [exam, setExam] = useState(false)
+  const [theme, setTheme] = useState(false)
   if (!kit) return <div className="grid h-full place-items-center"><Spinner /></div>
   // cùng thứ tự với trang khóa của người học
   const arts = [...(live.data ?? kit.artifacts)].sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type))
@@ -65,6 +68,7 @@ export default function KitPage() {
     <div className="min-h-full pb-24">
       <KitHeader kit={kit} saveText={saveLabel(saveState)} />
       <div className="fixed right-5 top-2.5 z-40 flex items-center gap-1">
+        <button onClick={() => setTheme(true)} className="btn-line btn-sm mr-1 h-9"><Palette size={15} />Giao diện</button>
         <button onClick={() => setKitShare(true)} className="btn-dark btn-sm mr-1 h-9"><Share2 size={15} />Chia sẻ cả khóa</button>
         <Tip label="Phân tích" onClick={() => nav('/analytics')}><BarChart3 size={19} /></Tip>
         <Tip label="Xóa khóa học" onClick={delKit}><Trash2 size={19} /></Tip>
@@ -102,15 +106,16 @@ export default function KitPage() {
         <div className="mt-8 grid grid-cols-3 gap-4">
           {arts.map((a) => a.status === 'generating' ? <GenCard key={a.id} a={a} /> : (
             <div key={a.id} className="group card flex flex-col overflow-hidden transition hover:shadow-pop">
-              <button onClick={() => a.status !== 'failed' && nav(`/edit/${a.id}`)} className="text-left">
+              <div role="button" tabIndex={0} onClick={() => a.status !== 'failed' && nav(`/edit/${a.id}`)} onKeyDown={(e) => { if (e.key === 'Enter' && a.status !== 'failed') nav(`/edit/${a.id}`) }} className="cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-sky-400">
                 <Thumb img={a.img} className="h-40"><span className="absolute left-3 top-3"><Avatar text={me.initials} size={26} color={me.color} /></span>
+                  <span onClick={(e) => e.stopPropagation()} className="absolute bottom-2 right-2 opacity-0 transition group-hover:opacity-100"><ChangeImage value={a.img} className="relative" onPick={async (v) => { try { await patch(`/artifacts/${a.id}`, { img: v }); await live.refetch(); say('Đã đổi ảnh bìa') } catch (e) { say(e.message) } }} /></span>
                   {a.status === 'failed' && <span className="absolute inset-0 grid place-items-center bg-white/80 text-[14px] font-medium text-red-700"><span className="flex items-center gap-2"><AlertTriangle size={18} />AI soạn lỗi</span></span>}</Thumb>
                 <div className="px-4 pt-4">
                   <div className="flex items-center gap-1.5 text-[14px] font-medium"><FormatGlyph type={a.type} size={15} />{FORMATS[a.type].name}</div>
                   <div className="mt-1.5 text-[16px] font-semibold leading-snug">{a.title}</div>
                   <div className="mt-1.5 text-[13px] text-neutral-500">Cập nhật {a.updated}</div>
                 </div>
-              </button>
+              </div>
               <div className="flex-1" />
               <div className="mt-4 border-t border-line px-4 pb-4 pt-3">
                 <div className="flex items-center"><Status s={a.status} /><div className="flex-1" /><button onClick={() => remove(a)} className="icon-btn h-8 w-8 opacity-0 group-hover:opacity-100" aria-label="Xóa tài liệu"><Trash2 size={15} /></button></div>
@@ -135,6 +140,7 @@ export default function KitPage() {
       </div>
 
       <ShareModal open={!!share} art={share} onClose={() => setShare(null)} onChanged={() => { live.refetch(); reload() }} />
+      <KitThemeModal open={theme} kit={kit} onClose={() => setTheme(false)} onSave={(v) => { up((k) => { k.theme = v.theme; k.img = v.img }); say('Đã lưu giao diện khóa') }} />
       <KitShareModal open={kitShare} kit={kit} onClose={() => setKitShare(false)} onChanged={() => { live.refetch(); reload() }} />
       <ExamCreateModal open={exam} kit={kit} onClose={() => setExam(false)} onCreated={() => live.refetch()} />
       <AddArtifact kitId={id} open={!!add} initial={add || 'deck'} onClose={() => setAdd(null)} onAdd={addArtifact} />

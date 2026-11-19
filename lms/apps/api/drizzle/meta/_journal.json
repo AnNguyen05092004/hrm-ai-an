@@ -15,6 +15,13 @@
       "when": 1795075323934,
       "tag": "0001_kit_share",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795077315120,
+      "tag": "0002_images",
+      "breakpoints": true
     }
   ]
 }

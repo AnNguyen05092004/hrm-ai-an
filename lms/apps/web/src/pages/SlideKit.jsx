@@ -1,7 +1,8 @@
 // Slide: hiển thị theo bố cục + định dạng tự do (di chuyển, cỡ chữ, màu, đậm/nghiêng, căn lề, hộp chữ, màu nền).
 // Định dạng lưu trong slide: st[phần] = { x, y, size, color, b, i, align }, boxes[], bg. Video dựng (render.ts) đọc cùng dữ liệu này.
 import { Fragment, createContext, useContext, useEffect, useState } from 'react'
-import { Move, Plus, Type, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Minus, RotateCcw, Trash2, Copy, Sparkles, PaintBucket, X } from 'lucide-react'
+import { Move, Plus, Type, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Minus, RotateCcw, Trash2, Copy, Sparkles, PaintBucket, X, Image as ImageIcon } from 'lucide-react'
+import { ImagePicker } from '../ImagePicker'
 import { uid, useStore } from '../store'
 import { Thumb, Tip, Spinner } from '../ui'
 import { Editable, EditableList } from '../edit'
@@ -99,7 +100,7 @@ function SlideBody({ s, n, total, onEdit }) {
   if (s.layout === 'cover') {
     const inner = (
       <div className="absolute inset-y-0 left-0 flex max-w-[78%] flex-col justify-end text-white" style={{ padding: `${u(56)} ${u(60)}` }}>
-        {(s.kicker || onEdit) && P('kicker', { className: 'font-lato font-bold uppercase text-orange-300', style: { fontSize: u(13), letterSpacing: '0.14em' } }, T('kicker', 'Nhãn nhỏ (tùy chọn)'))}
+        {(s.kicker || onEdit) && P('kicker', { className: 'font-lato font-bold uppercase text-white/80', style: { fontSize: u(13), letterSpacing: '0.14em' } }, T('kicker', 'Nhãn nhỏ (tùy chọn)'))}
         {P('title', { className: 'font-lato font-black leading-[1.08]', style: { fontSize: u(46), marginTop: u(10) } }, T('title', 'Tiêu đề'))}
         {(s.sub || onEdit) && P('sub', { className: 'font-serif opacity-85', style: { fontSize: u(19), marginTop: u(14) } }, T('sub', 'Phụ đề (tùy chọn)'))}
         <div className="bg-brand" style={{ width: u(64), height: u(5), marginTop: u(26) }} />
@@ -114,9 +115,9 @@ function SlideBody({ s, n, total, onEdit }) {
       {(s.kicker || onEdit) && P('kicker', { className: 'font-lato font-bold uppercase text-brand', style: { fontSize: u(12), letterSpacing: '0.14em' } }, T('kicker', 'Nhãn nhỏ (tùy chọn)'))}
       {P('title', { className: 'font-lato font-bold leading-tight text-ink', style: { fontSize: u(32) } }, T('title', 'Tiêu đề slide'))}
       <div className="flex flex-1 flex-col justify-center" style={{ paddingBottom: u(10) }}>{P('body', {}, <>
-        {s.layout === 'bullets' && L('items', (x, i) => <div className="flex items-center font-serif text-neutral-800" style={{ fontSize: u(20), gap: u(16), marginBottom: u(16) }}><span className="grid shrink-0 place-items-center rounded-full bg-orange-50 font-lato font-bold text-brand" style={{ width: u(34), height: u(34), fontSize: u(15) }}>{i + 1}</span>{x}</div>)}
-        {s.layout === 'steps' && <div className="flex" style={{ gap: u(14) }}>{L('items', (x, i) => <div className="flex-1 rounded-lg border border-orange-200 bg-orange-50/70" style={{ padding: u(18) }}><div className="font-lato font-black text-brand" style={{ fontSize: u(34) }}>{String(i + 1).padStart(2, '0')}</div><div className="font-serif text-neutral-800" style={{ fontSize: u(16), marginTop: u(8) }}>{x}</div></div>, 'Bước')}</div>}
-        {s.layout === 'two' && <div className="grid grid-cols-2" style={{ gap: u(18) }}>{(s.cols || [[''], ['']]).map((c, ci) => <div key={ci} className={`rounded-lg ${ci ? 'bg-slate-50' : 'bg-orange-50/70'}`} style={{ padding: u(22) }}><div className={`font-lato font-bold ${ci ? 'text-slate-700' : 'text-brand'}`} style={{ fontSize: u(20) }}>{cell((v) => ({ cols: s.cols.map((cc, j) => (j === ci ? [v, ...cc.slice(1)] : cc)) }), c[0], 'Tiêu đề cột')}</div>
+        {s.layout === 'bullets' && L('items', (x, i) => <div className="flex items-center font-serif text-neutral-800" style={{ fontSize: u(20), gap: u(16), marginBottom: u(16) }}><span className="grid shrink-0 place-items-center rounded-full bg-brand/10 font-lato font-bold text-brand" style={{ width: u(34), height: u(34), fontSize: u(15) }}>{i + 1}</span>{x}</div>)}
+        {s.layout === 'steps' && <div className="flex" style={{ gap: u(14) }}>{L('items', (x, i) => <div className="flex-1 rounded-lg border border-brand/30 bg-brand/5" style={{ padding: u(18) }}><div className="font-lato font-black text-brand" style={{ fontSize: u(34) }}>{String(i + 1).padStart(2, '0')}</div><div className="font-serif text-neutral-800" style={{ fontSize: u(16), marginTop: u(8) }}>{x}</div></div>, 'Bước')}</div>}
+        {s.layout === 'two' && <div className="grid grid-cols-2" style={{ gap: u(18) }}>{(s.cols || [[''], ['']]).map((c, ci) => <div key={ci} className={`rounded-lg ${ci ? 'bg-slate-50' : 'bg-brand/5'}`} style={{ padding: u(22) }}><div className={`font-lato font-bold ${ci ? 'text-slate-700' : 'text-brand'}`} style={{ fontSize: u(20) }}>{cell((v) => ({ cols: s.cols.map((cc, j) => (j === ci ? [v, ...cc.slice(1)] : cc)) }), c[0], 'Tiêu đề cột')}</div>
           {onEdit ? <EditableList items={c.slice(1).length ? c.slice(1) : ['']} onChange={(v) => onEdit({ cols: s.cols.map((cc, j) => (j === ci ? [cc[0], ...v] : cc)) })} itemClass="block flex-1" render={(el) => <div className="flex font-serif text-neutral-800" style={{ fontSize: u(16), marginTop: u(10), gap: u(6) }}>·{el}</div>} /> : c.slice(1).map((x, i) => <div key={i} className="font-serif text-neutral-800" style={{ fontSize: u(16), marginTop: u(10) }}>· {x}</div>)}</div>)}</div>}
         {s.layout === 'table' && <table className="w-full overflow-hidden rounded-lg font-serif" style={{ fontSize: u(15) }}><thead className="bg-ink font-lato text-white"><tr>{s.head.map((h, j) => <th key={j} className="text-left font-semibold" style={{ padding: `${u(10)} ${u(14)}` }}>{cell((v) => ({ head: s.head.map((x, k) => (k === j ? v : x)) }), h, 'Cột')}</th>)}</tr></thead><tbody>{s.rows.map((r, i) => <tr key={i} className={i % 2 ? 'bg-neutral-50' : 'bg-white'}>{r.map((c, j) => <td key={j} className={j === 0 ? 'font-semibold' : ''} style={{ padding: `${u(10)} ${u(14)}` }}>{cell((v) => ({ rows: s.rows.map((x, k) => (k === i ? x.map((y, m) => (m === j ? v : y)) : x)) }), c, '…')}</td>)}</tr>)}</tbody></table>}
         {s.layout === 'stat' && <div className="grid" style={{ gridTemplateColumns: `repeat(${s.stats.length}, 1fr)`, gap: u(24), marginTop: u(20) }}>{s.stats.map(([v, l], i) => <div key={i} className="border-t-4 border-brand" style={{ paddingTop: u(16) }}><div className="font-lato font-black leading-none text-ink" style={{ fontSize: u(56) }}>{cell((nv) => ({ stats: s.stats.map((x, k) => (k === i ? [nv, x[1]] : x)) }), v, 'Số')}</div><div className="font-serif text-neutral-600" style={{ fontSize: u(15), marginTop: u(12) }}>{cell((nv) => ({ stats: s.stats.map((x, k) => (k === i ? [x[0], nv] : x)) }), l, 'Mô tả')}</div></div>)}</div>}
@@ -156,6 +157,7 @@ export function SlideCanvas({ artId, s, n, total, upS, onDuplicate, onDelete }) 
   const [sel, setSel] = useState(null)
   const [bgOpen, setBgOpen] = useState(false)
   const [ai, setAi] = useState(false)
+  const [pick, setPick] = useState(false)
   useEffect(() => { setSel(null); setBgOpen(false) }, [s.id])
   useEffect(() => { const h = (e) => { if (e.key === 'Escape') setSel(null) }; window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h) }, [])
   const st = stOf(s, sel)
@@ -181,6 +183,7 @@ export function SlideCanvas({ artId, s, n, total, upS, onDuplicate, onDelete }) 
             <button onClick={() => { upS((x) => { delete x.bg }); setBgOpen(false) }} className="text-[12px] text-sky-700 hover:underline">{s.layout === 'cover' ? 'Dùng ảnh nền' : 'Mặc định'}</button>
           </div>}
         </div>
+        {(s.layout === 'image' || (s.layout === 'cover' && !s.bg)) && <button onClick={() => setPick(true)} className="flex items-center gap-1 rounded-lg border border-line bg-white px-2 py-1 font-medium hover:bg-neutral-50"><ImageIcon size={14} />Ảnh</button>}
         <button onClick={() => setAi(true)} className="flex items-center gap-1 rounded-lg border border-line bg-white px-2 py-1 font-medium text-violet-700 hover:bg-violet-50"><Sparkles size={14} />Sửa bằng AI</button>
         <div className="flex-1" />
         {onDuplicate && <Tip label="Nhân đôi slide" className="h-8 w-8" onClick={onDuplicate}><Copy size={15} /></Tip>}
@@ -205,6 +208,7 @@ export function SlideCanvas({ artId, s, n, total, upS, onDuplicate, onDelete }) 
       <div className="relative aspect-video w-full overflow-hidden rounded-xl shadow-pop">
         <Slide s={s} n={n} total={total} sel={sel} onSel={setSel} setSt={setSt} onEdit={(patch) => upS((x) => { Object.assign(x, patch) })} />
       </div>
+      <ImagePicker open={pick} value={s.img} title="Ảnh cho slide" onClose={() => setPick(false)} onPick={(v) => upS((x) => { x.img = v })} />
       {ai && <SlideAi artId={artId} s={s} onClose={() => setAi(false)} onApply={(ns) => { upS((x) => { Object.assign(x, ns) }); say('AI đã sửa slide, bấm vào chữ để chỉnh tiếp') }} />}
     </div>
   )

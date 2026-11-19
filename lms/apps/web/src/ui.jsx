@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { X, BookOpen, Presentation, ListChecks, Network, Video, ClipboardCheck } from 'lucide-react'
 import { FORMATS, IMG } from './data'
 import { useStore } from './store'
@@ -22,7 +23,8 @@ export const Avatar = ({ text = 'AN', size = 32, color = '#8b88c9' }) => (
 )
 
 export function Thumb({ img = 'server', className = '', children, pos = 'center' }) {
-  const m = IMG[img] || IMG.server
+  // khóa ảnh có sẵn, hoặc ảnh tải lên / AI tạo (đường dẫn /api/images/...)
+  const m = IMG[img] || (typeof img === 'string' && img.startsWith('/api/images/') ? { src: img, grad: 'linear-gradient(135deg,#1f2a37,#8aa0b6)' } : IMG.server)
   return (
     <div className={`relative overflow-hidden ${className}`} style={{ background: m.grad }}>
       <img src={m.src} alt="" loading="lazy" draggable={false} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: pos }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
@@ -33,8 +35,9 @@ export function Thumb({ img = 'server', className = '', children, pos = 'center'
 
 export function Modal({ open, onClose, title, sub, children, footer, w = 560, pad = true }) {
   if (!open) return null
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/35 p-4" onMouseDown={onClose}>
+  // portal ra body: không bị cha có opacity/overflow/transform ẩn hoặc cắt; sự kiện không lan về thẻ cha
+  return createPortal(
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/35 p-4" onMouseDown={onClose} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
       <div className="fade relative max-h-[92vh] w-full overflow-hidden rounded-2xl bg-white shadow-pop flex flex-col" style={{ maxWidth: w }} onMouseDown={(e) => e.stopPropagation()}>
         {title !== undefined && (
           <div className="flex items-start justify-between px-6 pt-5 pb-1">
@@ -48,7 +51,8 @@ export function Modal({ open, onClose, title, sub, children, footer, w = 560, pa
         <div className={`scroll-thin overflow-y-auto ${pad ? 'px-6 py-4' : ''}`}>{children}</div>
         {footer && <div className="flex items-center justify-end gap-3 px-6 pb-5 pt-2">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

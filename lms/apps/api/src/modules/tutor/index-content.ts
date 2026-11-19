@@ -18,7 +18,11 @@ const flat = (x: unknown): string => {
 
 function blockText(b: Json): string {
   if (b.t === 'kc' || b.t === 'gap') return '' // câu kiểm tra và chỗ thiếu căn cứ không dùng làm câu trả lời
-  const parts = [b.h, b.p, b.intro, b.cap, b.code, ...(b.items ?? []), ...(b.steps ?? []), ...(b.rows ?? []), ...(b.cards ?? []).map((c: Json) => `${c.f}: ${c.b}`)]
+  const parts = [b.h, b.p, b.intro, b.cap, b.code,
+    // mục của accordion/tabs/timeline có tiêu đề và nội dung; lấy cả hai để Tutor tìm được
+    ...(b.items ?? []).map((x: unknown) => (x && typeof x === 'object' ? [(x as Json).d, (x as Json).t, (x as Json).b].filter(Boolean).join(': ') : x)),
+    ...(b.steps ?? []), ...(b.rows ?? []), ...(b.cards ?? []).map((c: Json) => `${c.f}: ${c.b}`),
+    ...(b.groups ?? []).map((g: Json) => `${g.name}: ${(g.items ?? []).join(', ')}`), ...(b.spots ?? []).map((sp: Json) => `${sp.t}: ${sp.b}`)]
   return parts.map(flat).filter(Boolean).join('\n')
 }
 

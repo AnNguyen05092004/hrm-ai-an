@@ -14,7 +14,6 @@ const ST = {
   learning: ['bg-sky-50 text-sky-700 border-sky-200', 'Đang học'],
   done: ['bg-emerald-50 text-emerald-700 border-emerald-200', 'Học xong, chờ thi đạt'],
 }
-const LEVEL_TXT = ['Chưa có', 'Mức 1', 'Mức 2', 'Mức 3']
 const defaultDue = () => new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10)
 
 function Bar({ now, next }) {

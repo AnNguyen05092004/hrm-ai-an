@@ -113,23 +113,28 @@ function mockOutline(type: GenType, kit: KitBrief): Record<string, unknown> {
 // ---------- 3. Nội dung ----------
 const N = <T extends z.ZodType>(t: T) => t.nullable()
 export const BlockSchema = z.object({
-  t: z.enum(['heading', 'para', 'list', 'flash', 'accordion', 'table', 'code', 'process', 'kc', 'image', 'gap']),
+  t: z.enum(['heading', 'para', 'list', 'flash', 'accordion', 'tabs', 'timeline', 'sorting', 'table', 'code', 'process', 'kc', 'image', 'gap']),
   h: N(z.string()), p: N(z.string()), intro: N(z.string()),
   items: N(z.array(z.string())), steps: N(z.array(z.string())),
   cards: N(z.array(z.object({ f: z.string(), b: z.string() }))),
-  accordion: N(z.array(z.object({ t: z.string(), b: z.string() }))),
+  accordion: N(z.array(z.object({ t: z.string(), b: z.string() }))).describe('các mục t/b của accordion hoặc tabs'),
+  timeline: N(z.array(z.object({ d: z.string().describe('mốc: năm, ngày, giai đoạn hoặc bước'), t: z.string(), b: z.string() }))),
+  groups: N(z.array(z.object({ name: z.string(), items: z.array(z.string()) }))).describe('sorting: các nhóm và mục thuộc nhóm, người học kéo mục vào đúng nhóm'),
   head: N(z.array(z.string())), rows: N(z.array(z.array(z.string()))),
   code: N(z.string()), q: N(z.string()), choices: N(z.array(z.string())), correct: N(z.number().int()),
   img: N(z.enum(IMAGES)), cap: N(z.string()),
   src: N(z.string()).describe('mã đoạn nguồn, ví dụ "S2"; null với kc, image, gap'),
 })
 export const QuestionSchema = z.object({
-  type: z.enum(['mc', 'fill', 'essay', 'code']),
+  type: z.enum(['mc', 'fill', 'essay', 'code', 'match', 'order', 'cat']),
   level: z.number().int(),
   q: z.string(),
   choices: N(z.array(z.object({ t: z.string(), ok: z.boolean(), fb: z.string() }))),
   answer: N(z.string()).describe('đáp án câu điền'),
   rubric: N(z.array(z.string())),
+  pairs: N(z.array(z.object({ l: z.string(), r: z.string() }))).describe('match: 3–5 cặp vế trái / vế phải ghép đúng'),
+  order: N(z.array(z.string())).describe('order: 3–6 mục theo đúng thứ tự'),
+  groups: N(z.array(z.object({ name: z.string(), items: z.array(z.string()) }))).describe('cat: 2–3 nhóm, mỗi nhóm 2–4 mục, người thi kéo mục vào đúng nhóm'),
   starter: N(z.string()).describe('mã khởi đầu JavaScript cho câu code, khai báo function solve(...)'),
   tests: N(z.array(z.object({ name: z.string(), args: z.string().describe('mảng JSON các tham số'), expected: z.string().describe('giá trị JSON mong đợi') }))),
   src: N(z.string()),
@@ -141,8 +146,8 @@ export const QrSchema = z.object({
 export type QrDraft = z.infer<typeof QrSchema>
 
 const LEVEL_KINDS: Record<number, string> = {
-  1: 'mức 1: 5–6 câu trắc nghiệm (mc) và 1–2 câu điền (fill)',
-  2: 'mức 2: 4 câu trắc nghiệm tình huống (mc), 1 câu điền, 1–2 câu tự luận ngắn (essay) có rubric 3 tiêu chí',
+  1: 'mức 1: 4–5 câu trắc nghiệm (mc), 1 câu điền (fill), 1 câu ghép cặp (match) hoặc sắp thứ tự (order)',
+  2: 'mức 2: 3–4 câu trắc nghiệm tình huống (mc), 1 câu điền, 1 câu phân loại kéo thả (cat) hoặc sắp thứ tự (order), 1–2 câu tự luận ngắn (essay) có rubric 3 tiêu chí',
   3: 'mức 3: 3 câu trắc nghiệm, 1 câu tự luận tình huống có rubric, 1 bài code JavaScript (code) có hàm solve và 3–4 test',
 }
 
@@ -151,8 +156,8 @@ export function draftQr(orgId: string, kit: KitBrief, item: { title: string; sum
     orgId, feature: 'gen_qr', schema: QrSchema, strong: true,
     system: `${RULES}
 Nhiệm vụ: viết Tài liệu nhanh theo dàn ý, mỗi bài (lesson) ứng với một mục dàn ý, và bộ câu hỏi kiểm tra.
-Khối (block) dùng được: heading (h + p), para (p), list (intro + items), flash (h, p, cards mặt trước f / mặt sau b), accordion (h, p, accordion các mục t/b), table (head, rows), code (h, code), process (h, steps), kc (câu hỏi nhanh: q, choices, correct là chỉ số), image (img, cap), gap (p: mô tả phần thiếu căn cứ).
-- Mỗi bài 4–7 khối, mở đầu bằng heading, có ít nhất một khối tương tác (flash/accordion/process/table) và kết thúc bằng một kc.
+Khối (block) dùng được: heading (h + p), para (p), list (intro + items), flash (h, p, cards mặt trước f / mặt sau b), accordion (h, p, accordion các mục t/b), tabs (h, p, accordion: mỗi mục là một tab t/b, hợp khi so sánh các lựa chọn), timeline (h, timeline: mốc d, tiêu đề t, mô tả b; hợp với quy trình theo thời gian hoặc lịch sử), sorting (h, p, groups: hoạt động kéo thả mục vào đúng nhóm), table (head, rows), code (h, code), process (h, steps), kc (câu hỏi nhanh: q, choices, correct là chỉ số), image (img, cap), gap (p: mô tả phần thiếu căn cứ).
+- Mỗi bài 4–7 khối, mở đầu bằng heading, có ít nhất một khối tương tác (flash/accordion/tabs/timeline/sorting/process/table) và kết thúc bằng một kc.
 - Mọi khối nội dung (trừ kc, image, gap) phải có src là mã đoạn nguồn dùng làm căn cứ.
 - Ý trong dàn ý không tìm thấy trong nguồn: viết khối gap nêu rõ thiếu gì.
 - Câu hỏi kiểm tra: ${LEVEL_KINDS[kit.level] ?? LEVEL_KINDS[2]}. Mỗi câu có src. Câu mc có 3–4 lựa chọn, đúng một đáp án, mỗi lựa chọn có giải thích fb. Câu code: tests là mảng, args là chuỗi JSON của mảng tham số, expected là chuỗi JSON.`,
@@ -162,7 +167,7 @@ Khối (block) dùng được: heading (h + p), para (p), list (intro + items), 
 }
 
 function mockQr(outline: { sections: { t: string; items: string[] }[] }, kit: KitBrief, hits: Hit[]): QrDraft {
-  const nul = { h: null, p: null, intro: null, items: null, steps: null, cards: null, accordion: null, head: null, rows: null, code: null, q: null, choices: null, correct: null, img: null, cap: null, src: null }
+  const nul = { h: null, p: null, intro: null, items: null, steps: null, cards: null, accordion: null, timeline: null, groups: null, head: null, rows: null, code: null, q: null, choices: null, correct: null, img: null, cap: null, src: null }
   const src = hits.length ? 'S1' : null
   return {
     lessons: outline.sections.map((s) => ({
@@ -175,9 +180,12 @@ function mockQr(outline: { sections: { t: string; items: string[] }[] }, kit: Ki
       ],
     })),
     questions: [
-      { type: 'mc', level: 1, q: `Mục tiêu chính của khóa "${kit.title}" là gì?`, choices: [{ t: kit.goals[0] ?? 'Nắm nội dung chính', ok: true, fb: 'Đúng.' }, { t: 'Không có mục tiêu', ok: false, fb: 'Xem lại phần mục tiêu.' }], answer: null, rubric: null, starter: null, tests: null, src },
-      { type: 'essay', level: 2, q: 'Trình bày cách bạn áp dụng nội dung khóa vào công việc.', choices: null, answer: null, rubric: ['Nêu đúng khái niệm chính', 'Có ví dụ cụ thể', 'Nêu được lỗi cần tránh'], starter: null, tests: null, src },
-      { type: 'code', level: 3, q: 'Viết hàm solve(a, b) trả về tổng hai số.', choices: null, answer: null, rubric: null, starter: 'function solve(a, b) {\n  \n}', tests: [{ name: 'Cộng hai số dương', args: '[1, 2]', expected: '3' }, { name: 'Có số âm', args: '[-1, 5]', expected: '4' }], src: null },
+      { type: 'match', level: 1, q: 'Ghép mỗi khái niệm với mô tả đúng.', choices: null, answer: null, rubric: null, starter: null, tests: null, src, pairs: [{ l: 'Mục tiêu', r: 'Điều người học làm được sau khóa' }, { l: 'Chỉ số', r: 'Cách đo kết quả' }, { l: 'Nguồn', r: 'Tài liệu làm căn cứ' }], order: null, groups: null },
+      { type: 'order', level: 1, q: 'Sắp xếp các bước học theo đúng thứ tự.', choices: null, answer: null, rubric: null, starter: null, tests: null, src, pairs: null, order: ['Đọc tài liệu nhanh', 'Xem slide', 'Luyện tình huống', 'Làm bài kiểm tra'], groups: null },
+      { type: 'cat', level: 2, q: 'Kéo mỗi việc vào đúng nhóm.', choices: null, answer: null, rubric: null, starter: null, tests: null, src, pairs: null, order: null, groups: [{ name: 'Nên làm', items: ['Kiểm tra nguồn', 'Hỏi khi chưa rõ'] }, { name: 'Không nên', items: ['Đoán khi chưa có căn cứ'] }] },
+      { type: 'mc', level: 1, q: `Mục tiêu chính của khóa "${kit.title}" là gì?`, choices: [{ t: kit.goals[0] ?? 'Nắm nội dung chính', ok: true, fb: 'Đúng.' }, { t: 'Không có mục tiêu', ok: false, fb: 'Xem lại phần mục tiêu.' }], answer: null, rubric: null, starter: null, tests: null, src, pairs: null, order: null, groups: null },
+      { type: 'essay', level: 2, q: 'Trình bày cách bạn áp dụng nội dung khóa vào công việc.', choices: null, answer: null, rubric: ['Nêu đúng khái niệm chính', 'Có ví dụ cụ thể', 'Nêu được lỗi cần tránh'], starter: null, tests: null, src, pairs: null, order: null, groups: null },
+      { type: 'code', level: 3, q: 'Viết hàm solve(a, b) trả về tổng hai số.', choices: null, answer: null, rubric: null, starter: 'function solve(a, b) {\n  \n}', tests: [{ name: 'Cộng hai số dương', args: '[1, 2]', expected: '3' }, { name: 'Có số âm', args: '[-1, 5]', expected: '4' }], src: null, pairs: null, order: null, groups: null },
     ],
   }
 }

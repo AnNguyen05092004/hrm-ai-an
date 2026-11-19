@@ -44,6 +44,30 @@ async function gradeCode(orgId: string, q: Json, code: string): Promise<Grade> {
   return { score: tests.length ? pass / tests.length : 0, max: 1, auto: true, correct: tests.length > 0 && pass === tests.length, tests: results, ai: review }
 }
 
+/** Ghép cặp, sắp thứ tự, phân loại: chấm từng phần (mỗi vị trí/mục đúng được một phần điểm) */
+export function gradeArrange(q: Json, answer: unknown): Grade {
+  const a = (answer ?? {}) as Json
+  let right = 0, total = 0
+  if (q.type === 'match') {
+    const pairs: Json[] = q.pairs ?? []
+    total = pairs.length
+    right = pairs.filter((p, i) => a[i] === p.r).length
+  } else if (q.type === 'order') {
+    const items: string[] = q.items ?? []
+    // chưa kéo lần nào thì thứ tự đang hiển thị (đã xáo) chính là câu trả lời
+    const got: unknown[] = Array.isArray(answer) ? answer : (q.opts ?? [])
+    total = items.length
+    right = items.filter((x, i) => got[i] === x).length
+  } else {
+    const groups: Json[] = q.groups ?? []
+    const owner = new Map<string, string>(groups.flatMap((g) => (g.items ?? []).map((x: string) => [x, g.name] as [string, string])))
+    total = owner.size
+    right = [...owner].filter(([x, g]) => a[x] === g).length
+  }
+  const score = total ? Math.round((right / total) * 100) / 100 : 0
+  return { score, max: 1, auto: true, correct: total > 0 && right === total }
+}
+
 export async function gradeQuestion(orgId: string, q: Json, answer: unknown): Promise<Grade> {
   if (q.type === 'mc' || q.type === 'mr') {
     const picked = new Set(Array.isArray(answer) ? answer.map(Number) : answer == null ? [] : [Number(answer)])
@@ -56,6 +80,7 @@ export async function gradeQuestion(orgId: string, q: Json, answer: unknown): Pr
     const correct = accepted.includes(fold(String(answer ?? '')).trim())
     return { score: correct ? 1 : 0, max: 1, auto: true, correct }
   }
+  if (q.type === 'match' || q.type === 'order' || q.type === 'cat') return gradeArrange(q, answer)
   if (q.type === 'code') return gradeCode(orgId, q, String(answer ?? ''))
   return gradeEssay(orgId, q, String(answer ?? ''))
 }
@@ -66,17 +91,30 @@ export const scoreOf = (grades: Record<string, Grade>): number => {
   return max ? (100 * g.reduce((s, x) => s + (x.final ?? x.score), 0)) / max : 0
 }
 
-/** Chỉ ra phần cần học lại cho câu sai: bài có khối trích cùng nguồn (F11) */
-export function remediation(content: Json, questions: Json[], grades: Record<string, Grade>): { q: string; where: string; lessonId?: string }[] {
-  const lessons: Json[] = (content.lessons ?? []).filter((l: Json) => l.kind === 'lesson')
+/** Chỉ ra phần cần học lại cho câu sai: bài có khối trích cùng nguồn (F11).
+ *  lessonSets: bài học của chính tài liệu, hoặc (với đề kiểm tra riêng) của các Tài liệu nhanh đã xuất bản trong khóa. */
+export function remediation(lessonSets: { artifactId: string; lessons: Json[] }[], questions: Json[], grades: Record<string, Grade>): { q: string; where: string; artifactId?: string; lessonId?: string }[] {
   return questions.filter((q) => (grades[q.id]?.final ?? grades[q.id]?.score ?? 0) < 1).map((q) => {
     const key = q.srcRef?.chunkId
-    const li = lessons.findIndex((l) => (l.blocks ?? []).some((b: Json) => (key && b.srcRef?.chunkId === key) || (q.src && b.src === q.src)))
-    return li >= 0 ? { q: q.q, where: `Bài ${li + 1} · ${lessons[li].title}`, lessonId: lessons[li].id } : { q: q.q, where: q.src ? `Nguồn: ${q.src}` : 'Xem lại nội dung khóa' }
+    for (const set of lessonSets) {
+      const lessons = set.lessons.filter((l) => l.kind === 'lesson')
+      const li = lessons.findIndex((l) => (l.blocks ?? []).some((b: Json) => (key && b.srcRef?.chunkId === key) || (q.src && b.src === q.src)))
+      if (li >= 0) return { q: q.q, where: `Bài ${li + 1} · ${lessons[li].title}`, artifactId: set.artifactId, lessonId: lessons[li].id }
+    }
+    return { q: q.q, where: q.src ? `Nguồn: ${q.src}` : 'Xem lại nội dung khóa' }
   })
 }
 
-/** Nội dung đúng phiên bản người thi đã làm */
+/** Bài học dùng để chỉ phần cần xem lại cho một lượt thi */
+export async function lessonSetsFor(a: { artifactId: string }, content: Json): Promise<{ artifactId: string; lessons: Json[] }[]> {
+  if (content.lessons?.length) return [{ artifactId: a.artifactId, lessons: content.lessons }]
+  const [art] = await db.select({ kitId: schema.artifacts.kitId }).from(schema.artifacts).where(eq(schema.artifacts.id, a.artifactId))
+  if (!art) return []
+  const qrs = await db.select({ id: schema.artifacts.id, v: schema.artifacts.publishedVersion }).from(schema.artifacts).where(and(eq(schema.artifacts.kitId, art.kitId), eq(schema.artifacts.type, 'qr')))
+  const sets = await Promise.all(qrs.filter((x) => x.v).map(async (x) => ({ artifactId: x.id, lessons: ((await versionContent({ artifactId: x.id, version: x.v as number })).lessons ?? []) as Json[] })))
+  return sets.filter((x) => x.lessons.length)
+}
+
 export async function versionContent(a: { artifactId: string; version: number }): Promise<Json> {
   const [v] = await db.select({ content: schema.artifactVersions.content }).from(schema.artifactVersions).where(and(eq(schema.artifactVersions.artifactId, a.artifactId), eq(schema.artifactVersions.version, a.version)))
   return (v?.content ?? {}) as Json

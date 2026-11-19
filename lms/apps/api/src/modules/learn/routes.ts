@@ -4,7 +4,7 @@ import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { db, schema } from '../../db/client.js'
 import { me, requireUser } from '../../lib/auth.js'
 import { forbidden, must } from '../../lib/errors.js'
-import { artifactMeta } from '../kits/service.js'
+import { artifactMeta, themeOf } from '../kits/service.js'
 import { learnerView, publishedContent, unitsOf, viewable } from './access.js'
 
 type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -69,7 +69,7 @@ export const learnRoutes: FastifyPluginAsyncZod = async (app) => {
     })
     const dues = items.map((x) => x.due).filter(Boolean) as Date[]
     return {
-      id: k.id, title: k.title, desc: k.goal, img: k.img, skillId: k.skillId, level: k.level, items,
+      id: k.id, title: k.title, desc: k.goal, img: k.img, theme: themeOf(k), skillId: k.skillId, level: k.level, items,
       percent: Math.round(items.reduce((n, x) => n + x.percent, 0) / items.length), due: dues.length ? new Date(Math.min(...dues.map((d) => d.getTime()))) : null,
     }
   })
@@ -93,11 +93,11 @@ export const learnRoutes: FastifyPluginAsyncZod = async (app) => {
     const draft = u.role === 'author' && (req.query.draft === '1' || !a.publishedVersion)
     const src = draft ? { title: a.title, summary: a.summary, version: 0, content: a.content as Json } : await publishedContent(a)
     const [p] = await db.select().from(schema.progress).where(and(eq(schema.progress.userId, u.id), eq(schema.progress.artifactId, a.id)))
-    const [k] = await db.select({ title: schema.kits.title }).from(schema.kits).where(eq(schema.kits.id, a.kitId))
+    const [k] = await db.select({ title: schema.kits.title, details: schema.kits.details }).from(schema.kits).where(eq(schema.kits.id, a.kitId))
     if (u.role === 'learner') {
       await db.insert(schema.progress).values({ userId: u.id, artifactId: a.id }).onConflictDoUpdate({ target: [schema.progress.userId, schema.progress.artifactId], set: { sessions: (p?.sessions ?? 0) + 1, lastAt: new Date() } })
     }
-    return { id: a.id, type: a.type, img: a.img, kitId: a.kitId, kitTitle: k?.title, title: src.title, summary: src.summary, version: src.version, draft, ...learnerView(src.content), progress: { done: p?.done ?? [], percent: p?.percent ?? 0 } }
+    return { id: a.id, type: a.type, img: a.img, kitId: a.kitId, kitTitle: k?.title, theme: k ? themeOf(k) : null, title: src.title, summary: src.summary, version: src.version, draft, ...learnerView(src.content), progress: { done: p?.done ?? [], percent: p?.percent ?? 0 } }
   })
 
   // Đánh dấu đã học xong một phần (bài, chương, slide)

@@ -13,6 +13,7 @@ const schema = z.object({
   AI_MODEL_STRONG: z.string().default('gpt-5.4'),
   AI_EMBED_MODEL: z.string().default('text-embedding-3-small'),
   AI_TTS_MODEL: z.string().default('gpt-4o-mini-tts'),
+  AI_IMAGE_MODEL: z.string().default('gpt-image-1'),
 })
 
 export type Env = z.infer<typeof schema>

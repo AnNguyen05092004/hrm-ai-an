@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronLeft, CheckCircle2, Hourglass, ArrowRight, Clock, Lock } from 'lucide-react'
 import { useMe } from '../store'
 import { FORMATS } from '../data'
-import { Thumb, FormatIcon, Spinner } from '../ui'
+import { Thumb, FormatGlyph, Spinner } from '../ui'
+import { themeStyle } from '../theme'
 import { DeviceBar } from './Common'
 import { get } from '../api'
 
@@ -24,7 +25,8 @@ function itemState(x) {
     return ['Chưa thi', 'text-neutral-500', 'Vào thi', false]
   }
   if (x.percent >= 100) return ['Đã xong', 'text-emerald-700', 'Xem lại', true]
-  if (x.started || x.percent > 0) return [`Đã học ${x.percent}%`, 'text-sky-700', 'Học tiếp', false]
+  if (x.percent > 0) return [`Đã học ${x.percent}%`, 'text-sky-700', 'Học tiếp', false]
+  if (x.started) return ['Đang học', 'text-sky-700', 'Học tiếp', false]
   return ['Chưa học', 'text-neutral-500', 'Bắt đầu', false]
 }
 
@@ -42,14 +44,14 @@ export function CoursePage() {
   const open = (x) => nav(x.type === 'exam' ? `/exam/${x.id}` : `/learn/${x.id}`)
   const [dl, dc] = c ? (done === c.items.length ? ['Đã hoàn thành', 'text-emerald-700'] : dueState(c.due)) : []
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" style={themeStyle(c?.theme)}>
       <DeviceBar devices={false} left={<><button className="icon-btn" onClick={() => nav(me.role === 'learner' ? '/learn' : -1)} aria-label="Quay lại"><ChevronLeft size={20} /></button><span className="h-7 w-px bg-line" /><span className="text-[15px] font-medium">{me.role === 'learner' ? 'Khóa học của tôi' : 'Bản người học thấy'}</span></>} />
       <div className="scroll-thin flex-1 overflow-y-auto">
         {err ? <div className="mx-auto max-w-[760px] px-6 py-14"><h1 className="font-lato text-[28px] font-black">Không mở được khóa học</h1><p className="mt-3 text-neutral-600">{err.message}</p></div>
           : !c ? <div className="grid h-full place-items-center"><Spinner /></div> : (
             <div className="mx-auto max-w-[880px] px-6 pb-20 pt-8">
               <Thumb img={c.img} className="h-48 rounded-2xl"><div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                <div className="absolute inset-x-6 bottom-5 text-white"><div className="text-[13px] font-semibold uppercase tracking-wider text-orange-200">Khóa học · {c.items.length} phần</div><h1 className="mt-1 font-lato text-[32px] font-black leading-tight">{c.title}</h1></div></Thumb>
+                <div className="absolute inset-x-6 bottom-5 text-white"><div className="text-[13px] font-semibold uppercase tracking-wider text-white/80">Khóa học · {c.items.length} phần</div><h1 className="mt-1 font-lato text-[32px] font-black leading-tight">{c.title}</h1></div></Thumb>
               {c.desc && <p className="mt-5 font-serif text-[17px] leading-relaxed text-neutral-800">{c.desc}</p>}
               <div className="mt-5 flex items-center gap-4 rounded-2xl border border-line px-5 py-4">
                 <div className="flex-1"><div className="flex items-center gap-3"><div className="h-2 flex-1 rounded-full bg-neutral-200"><div className="h-2 rounded-full bg-sky-500" style={{ width: `${c.percent}%` }} /></div><span className="text-[14px] font-semibold">{c.percent}%</span></div>
@@ -58,11 +60,11 @@ export function CoursePage() {
               </div>
               <div className="mt-6 divide-y divide-line rounded-2xl border border-line">
                 {c.items.map((x, i) => { const [st, sc, cta, ok] = itemState(x); return (
-                  <button key={x.id} onClick={() => open(x)} className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-neutral-50">
+                  <button key={x.id} onClick={() => open(x)} className="group flex w-full items-center gap-4 px-4 py-4 text-left hover:bg-neutral-50">
                     <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[13px] font-semibold ${ok ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-100 text-neutral-600'}`}>{ok ? <CheckCircle2 size={16} /> : i + 1}</span>
-                    <FormatIcon type={x.type} size={38} r={10} />
-                    <div className="min-w-0 flex-1"><div className="text-[13px] font-medium text-neutral-500">{FORMATS[x.type].name}</div><div className="truncate text-[16px] font-semibold">{x.title}</div>{x.summary && <div className="truncate text-[13px] text-neutral-500">{x.summary}</div>}</div>
-                    <span className={`flex shrink-0 items-center gap-1 text-[13px] ${sc}`}>{x.type === 'exam' && x.grading && <Hourglass size={13} />}{st}</span>
+                    <Thumb img={x.img} className="h-[72px] w-[128px] shrink-0 rounded-lg"><span className="absolute bottom-1.5 left-1.5 grid h-6 w-6 place-items-center rounded-md bg-white/95 shadow-sm"><FormatGlyph type={x.type} size={14} /></span></Thumb>
+                    <div className="min-w-0 flex-1"><div className="text-[13px] font-medium text-neutral-500">{FORMATS[x.type].name}</div><div className="truncate text-[16px] font-semibold group-hover:underline">{x.title}</div>{x.summary && <div className="truncate text-[13px] text-neutral-500">{x.summary}</div>}</div>
+                    <span className={`flex w-32 shrink-0 items-center justify-end gap-1 text-[13px] ${sc}`}>{x.type === 'exam' && x.grading && <Hourglass size={13} />}{st}</span>
                     <span className="flex w-28 shrink-0 items-center justify-end gap-1 text-[14px] font-semibold">{cta}<ArrowRight size={14} /></span>
                   </button>) })}
               </div>

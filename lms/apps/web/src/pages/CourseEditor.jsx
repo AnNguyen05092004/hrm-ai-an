@@ -14,9 +14,18 @@ const NEW_BLOCK = {
   para: () => ({ t: 'para', p: '' }), heading: () => ({ t: 'heading', h: '', p: '' }), list: () => ({ t: 'list', intro: '', items: [''] }),
   image: () => ({ t: 'image', img: 'office', cap: '' }), accordion: () => ({ t: 'accordion', h: '', p: '', items: [{ t: '', b: '' }] }),
   flash: () => ({ t: 'flash', h: '', p: '', cards: [{ f: '', b: '' }, { f: '', b: '' }] }), process: () => ({ t: 'process', h: '', steps: [''] }),
+  tabs: () => ({ t: 'tabs', h: '', p: '', items: [{ t: 'Tab 1', b: '' }, { t: 'Tab 2', b: '' }] }),
+  timeline: () => ({ t: 'timeline', h: '', items: [{ d: '', t: '', b: '' }, { d: '', t: '', b: '' }, { d: '', t: '', b: '' }] }),
+  hotspot: () => ({ t: 'hotspot', h: '', p: '', img: 'desk', spots: [{ x: 30, y: 40, t: '', b: '' }] }),
+  sorting: () => ({ t: 'sorting', h: '', p: '', groups: [{ name: 'Nhóm 1', items: [''] }, { name: 'Nhóm 2', items: [''] }] }),
   table: () => ({ t: 'table', head: ['Cột 1', 'Cột 2'], rows: [['', '']] }), code: () => ({ t: 'code', h: '', code: '' }), kc: () => ({ t: 'kc', q: '', choices: ['', '', ''], correct: 0 }),
 }
-const BLOCK_NAMES = [['para', 'Văn bản'], ['heading', 'Tiêu đề + đoạn'], ['list', 'Danh sách'], ['image', 'Hình ảnh'], ['accordion', 'Mục mở rộng'], ['flash', 'Thẻ lật'], ['process', 'Các bước'], ['table', 'Bảng'], ['code', 'Mã lệnh'], ['kc', 'Câu hỏi kiểm tra nhanh']]
+const BLOCK_GROUPS = [
+  ['Văn bản', [['para', 'Văn bản'], ['heading', 'Tiêu đề + đoạn'], ['list', 'Danh sách'], ['table', 'Bảng'], ['code', 'Mã lệnh']]],
+  ['Hình ảnh', [['image', 'Hình ảnh'], ['hotspot', 'Ảnh có chú thích']]],
+  ['Tương tác', [['tabs', 'Tab'], ['accordion', 'Mục mở rộng'], ['flash', 'Thẻ lật'], ['timeline', 'Dòng thời gian'], ['process', 'Các bước']]],
+  ['Luyện tập', [['kc', 'Câu hỏi kiểm tra nhanh'], ['sorting', 'Kéo thả phân loại']]],
+]
 
 /** Chèn khối: chọn loại để tự viết, hoặc mô tả để AI viết từ tài liệu nguồn */
 function BlockLibrary({ open, onClose, onPick, artId }) {
@@ -38,7 +47,8 @@ function BlockLibrary({ open, onClose, onPick, artId }) {
           <button disabled={txt.trim().length < 3 || busy} onClick={aiBlock} className="btn-dark btn-sm mt-2 h-9 w-full">{busy ? <Spinner size={16} w={2} /> : 'Tạo từ tài liệu nguồn'}</button>
         </div>
         <div className="scroll-thin mt-3 flex-1 overflow-y-auto px-3 pb-4">
-          {BLOCK_NAMES.map(([k, l]) => <button key={k} onClick={() => onPick({ ...NEW_BLOCK[k]() })} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[15px] hover:bg-neutral-50"><Plus size={15} className="text-neutral-400" />{l}</button>)}
+          {BLOCK_GROUPS.map(([g, list]) => <div key={g} className="mb-2"><div className="px-3 pb-1 pt-3 text-[12px] font-bold uppercase tracking-wider text-neutral-400">{g}</div>
+            {list.map(([k, l]) => <button key={k} onClick={() => onPick({ ...NEW_BLOCK[k]() })} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[15px] hover:bg-neutral-50"><Plus size={15} className="text-neutral-400" />{l}</button>)}</div>)}
         </div>
       </div>
     </div>
@@ -113,7 +123,7 @@ function LessonEditor({ art, lesson, up, onBack }) {
   )
 }
 
-const QTYPE = { mc: 'Một đáp án', mr: 'Nhiều đáp án', fill: 'Điền chỗ trống', essay: 'Tự luận', code: 'Bài code' }
+const QTYPE = { mc: 'Một đáp án', mr: 'Nhiều đáp án', fill: 'Điền chỗ trống', match: 'Ghép cặp', order: 'Sắp thứ tự', cat: 'Phân loại kéo thả', essay: 'Tự luận', code: 'Bài code' }
 const toTest = (t) => (typeof t === 'string' ? { name: t, args: '[]', expected: '' } : t)
 
 function CodeTests({ q, upCur }) {
@@ -137,6 +147,51 @@ function CodeTests({ q, upCur }) {
       </table>
       <MiniBtn onClick={() => upCur((x) => { x.tests = [...tests, { name: '', args: '[]', expected: '' }] })} className="mt-2"><Plus size={13} />Thêm test</MiniBtn>
       <p className="mt-3 text-[13px] text-neutral-500">AI chỉ nhận xét chất lượng code (đặt tên, cấu trúc, xử lý lỗi), không quyết định đạt.</p>
+    </div>
+  )
+}
+
+/** Ghép cặp: mỗi dòng một cặp đúng; người thi thấy vế phải bị xáo */
+function MatchEdit({ q, upCur }) {
+  return (
+    <div className="mt-4 rounded-xl border border-line p-5">
+      <div className="flex items-center gap-2 font-semibold">Các cặp đúng<span className="text-[13px] font-normal text-neutral-500">· người thi kéo vế phải (đã xáo) vào vế trái; chấm từng cặp</span></div>
+      <div className="mt-3 grid grid-cols-[1fr_24px_1fr_24px] items-center gap-2 text-[14px]">
+        {q.pairs.map((p, i) => [
+          <div key={`l${i}`} className="rounded-lg bg-neutral-100 px-3 py-2"><Editable value={p.l} className="block" placeholder="Vế trái" onChange={(v) => upCur((x) => { x.pairs[i].l = v })} /></div>,
+          <span key={`a${i}`} className="text-center text-neutral-400">↔</span>,
+          <div key={`r${i}`} className="rounded-lg border border-line px-3 py-2"><Editable value={p.r} className="block" placeholder="Vế phải" onChange={(v) => upCur((x) => { x.pairs[i].r = v })} /></div>,
+          <button key={`d${i}`} disabled={q.pairs.length <= 2} title="Xóa cặp" onClick={() => upCur((x) => { x.pairs.splice(i, 1) })} className="text-neutral-400 hover:text-red-600 disabled:opacity-20"><Trash2 size={15} /></button>,
+        ])}
+      </div>
+      <MiniBtn onClick={() => upCur((x) => { x.pairs.push({ l: '', r: '' }) })} className="mt-3"><Plus size={13} />Thêm cặp</MiniBtn>
+    </div>
+  )
+}
+
+/** Sắp thứ tự: nhập theo đúng thứ tự; người thi nhận thứ tự đã xáo */
+function OrderEdit({ q, upCur }) {
+  return (
+    <div className="mt-4 rounded-xl border border-line p-5">
+      <div className="flex items-center gap-2 font-semibold">Thứ tự đúng<span className="text-[13px] font-normal text-neutral-500">· người thi nhận danh sách đã xáo; chấm từng vị trí</span></div>
+      <EditableList items={q.items?.length ? q.items : ['']} placeholder="Mục" itemClass="block flex-1" onChange={(v) => upCur((x) => { x.items = v })}
+        render={(el, i) => <div className="mt-2 flex items-center gap-3 rounded-lg border border-line px-3 py-2 text-[14px]"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-neutral-100 text-[12px] font-semibold">{i + 1}</span>{el}</div>} />
+      <p className="mt-3 text-[12px] text-neutral-500">Enter để thêm mục, Backspace ở dòng trống để xóa.</p>
+    </div>
+  )
+}
+
+/** Phân loại: các nhóm và mục thuộc nhóm; người thi kéo từng mục vào nhóm */
+function CatEdit({ q, upCur }) {
+  return (
+    <div className="mt-4 rounded-xl border border-line p-5">
+      <div className="flex items-center gap-2 font-semibold">Nhóm và mục đúng<span className="text-[13px] font-normal text-neutral-500">· người thi thấy mọi mục trộn lẫn; chấm từng mục</span></div>
+      <div className="mt-3 grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(q.groups.length, 3)}, minmax(0, 1fr))` }}>{q.groups.map((g, gi) => (
+        <div key={gi} className="rounded-lg border border-line p-3">
+          <div className="flex items-center gap-2 font-semibold"><Editable value={g.name} className="block flex-1" placeholder="Tên nhóm" onChange={(v) => upCur((x) => { x.groups[gi].name = v })} />{q.groups.length > 2 && <button title="Xóa nhóm" onClick={() => upCur((x) => { x.groups.splice(gi, 1) })} className="text-neutral-400 hover:text-red-600"><Trash2 size={14} /></button>}</div>
+          <EditableList items={g.items?.length ? g.items : ['']} placeholder="Mục thuộc nhóm" itemClass="block flex-1" onChange={(v) => upCur((x) => { x.groups[gi].items = v })} render={(el) => <div className="mt-2 flex rounded-md bg-neutral-50 px-2 py-1.5 text-[14px]">{el}</div>} />
+        </div>))}</div>
+      {q.groups.length < 4 && <MiniBtn onClick={() => upCur((x) => { x.groups.push({ name: `Nhóm ${x.groups.length + 1}`, items: [''] }) })} className="mt-3"><Plus size={13} />Thêm nhóm</MiniBtn>}
     </div>
   )
 }
@@ -238,7 +293,7 @@ function QuizEditor({ art, up, onBack, exam = false }) {
               </div>
               <div className="mt-2 flex items-center gap-2"><SrcChip src={q.src} />
                 <select className="chip cursor-pointer outline-none" value={q.level} onChange={(e) => upCur((x) => { x.level = +e.target.value })}>{LEVELS.map((l) => <option key={l.v} value={l.v}>Mức {l.v}</option>)}</select></div>
-              <div className="mt-6 flex justify-end"><select className="rounded-lg px-2 py-1 text-[14px] font-semibold outline-none hover:bg-neutral-100" value={q.type} onChange={(e) => upCur((x) => { const t = e.target.value; x.type = t; if ((t === 'mc' || t === 'mr') && !x.choices) x.choices = [{ t: '', ok: true, fb: '' }, { t: '', ok: false, fb: '' }]; if (t === 'essay' && !x.rubric) x.rubric = ['']; if (t === 'code' && !x.tests) { x.tests = [{ name: '', args: '[]', expected: '' }]; x.starter = 'function solve() {\n  \n}' } if (t === 'fill' && x.answer == null) x.answer = '' })}>{Object.entries(QTYPE).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></div>
+              <div className="mt-6 flex justify-end"><select className="rounded-lg px-2 py-1 text-[14px] font-semibold outline-none hover:bg-neutral-100" value={q.type} onChange={(e) => upCur((x) => { const t = e.target.value; x.type = t; if ((t === 'mc' || t === 'mr') && !x.choices) x.choices = [{ t: '', ok: true, fb: '' }, { t: '', ok: false, fb: '' }]; if (t === 'essay' && !x.rubric) x.rubric = ['']; if (t === 'code' && !x.tests) { x.tests = [{ name: '', args: '[]', expected: '' }]; x.starter = 'function solve() {\n  \n}' } if (t === 'fill' && x.answer == null) x.answer = ''; if (t === 'match' && !x.pairs) x.pairs = [{ l: '', r: '' }, { l: '', r: '' }, { l: '', r: '' }]; if (t === 'order' && !x.items) x.items = ['', '', '']; if (t === 'cat' && !x.groups) x.groups = [{ name: 'Nhóm 1', items: [''] }, { name: 'Nhóm 2', items: [''] }] })}>{Object.entries(QTYPE).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></div>
               {(q.type === 'mc' || q.type === 'mr') && q.choices && (<>
                 <table className="mt-2 w-full text-[14px]">
                   <thead><tr className="text-left text-[13px] font-semibold"><th className="w-20 pb-3">Đúng</th><th className="pb-3">Lựa chọn</th><th className="w-6" /><th className="pb-3">Phản hồi khi chọn</th><th className="w-8" /></tr></thead>
@@ -255,6 +310,9 @@ function QuizEditor({ art, up, onBack, exam = false }) {
               {q.type === 'fill' && <div className="mt-4 flex items-center gap-2 rounded-xl border border-line p-4 text-[14px]">Đáp án chấp nhận: <b className="font-mono"><Editable value={q.answer || ''} placeholder="Nhập đáp án" onChange={(v) => upCur((x) => { x.answer = v })} /></b> <span className="text-neutral-500">· không phân biệt hoa thường; nhiều đáp án cách nhau bằng dấu |</span></div>}
               {q.type === 'essay' && <div className="mt-4 rounded-xl border border-line p-5"><div className="flex items-center gap-2 font-semibold"><FileText size={16} />Rubric chấm (AI chấm nháp, người chấm xác nhận)</div><EditableList items={q.rubric?.length ? q.rubric : ['']} placeholder="Tiêu chí chấm" itemClass="block flex-1" onChange={(v) => upCur((x) => { x.rubric = v })} render={(el, i) => <div className="mt-3 flex gap-3 text-[14px]"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-neutral-100 text-[12px] font-semibold">{i + 1}</span>{el}</div>} /><p className="mt-3 text-[12px] text-neutral-500">Enter để thêm tiêu chí, Backspace ở dòng trống để xóa.</p></div>}
               {q.type === 'code' && <CodeTests q={q} upCur={upCur} />}
+              {q.type === 'match' && <MatchEdit q={q} upCur={upCur} />}
+              {q.type === 'order' && <OrderEdit q={q} upCur={upCur} />}
+              {q.type === 'cat' && <CatEdit q={q} upCur={upCur} />}
             </div>
           )}
         </main>

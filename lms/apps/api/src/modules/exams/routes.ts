@@ -8,7 +8,8 @@ import { me, requireAuthor, requireUser, type AuthUser } from '../../lib/auth.js
 import { badRequest, conflict, forbidden, must } from '../../lib/errors.js'
 import { audit } from '../../lib/audit.js'
 import { publishedContent, viewable } from '../learn/access.js'
-import { applySkill, gradeQuestion, remediation, scoreOf, versionContent, type Attempt, type Grade } from './grade.js'
+import { themeOf } from '../kits/service.js'
+import { applySkill, gradeQuestion, lessonSetsFor, remediation, scoreOf, versionContent, type Attempt, type Grade } from './grade.js'
 
 type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 const GRACE_MS = 30_000
@@ -23,7 +24,20 @@ const shuffle = <T>(xs: T[]): T[] => {
 function buildPaper(quiz: Json): Json[] {
   const bank: Json[] = (quiz.questions ?? []).filter((q: Json) => q.approved)
   const n = Math.min(Number(quiz.pick ?? bank.length) || bank.length, bank.length)
-  return shuffle(bank).slice(0, n).map((q) => (q.choices && (q.type === 'mc' || q.type === 'mr') ? { ...q, choices: shuffle(q.choices) } : q))
+  return shuffle(bank).slice(0, n).map((q) => {
+    if (q.choices && (q.type === 'mc' || q.type === 'mr')) return { ...q, choices: shuffle(q.choices) }
+    // thứ tự hiển thị các lựa chọn kéo thả được chốt trong đề riêng để tải lại trang không đổi
+    if (q.type === 'match') return { ...q, opts: shuffle((q.pairs ?? []).map((p: Json) => p.r)) }
+    if (q.type === 'order') return { ...q, opts: scramble(q.items ?? []) }
+    if (q.type === 'cat') return { ...q, opts: shuffle((q.groups ?? []).flatMap((g: Json) => g.items ?? [])) }
+    return q
+  })
+}
+
+/** Xáo cho tới khi khác thứ tự đúng (câu sắp thứ tự không được ra sẵn đáp án) */
+function scramble<T>(xs: T[]): T[] {
+  for (let i = 0; i < 8; i++) { const s = shuffle(xs); if (s.some((x, j) => x !== xs[j])) return s }
+  return [...xs].reverse()
 }
 
 /** Đề gửi cho người thi: bỏ đáp án, giải thích, rubric, giá trị mong đợi */
@@ -31,6 +45,9 @@ const publicQ = (q: Json): Json => ({
   id: q.id, type: q.type, q: q.q, level: q.level, starter: q.starter,
   choices: q.choices?.map((c: Json) => c.t), tests: q.type === 'code' ? (q.tests ?? []).map((t: Json) => (typeof t === 'string' ? t : t.name)) : undefined,
   criteria: q.type === 'essay' ? (q.rubric ?? []).length : undefined,
+  left: q.type === 'match' ? (q.pairs ?? []).map((p: Json) => p.l) : undefined,
+  opts: ['match', 'order', 'cat'].includes(q.type) ? q.opts : undefined,
+  groups: q.type === 'cat' ? (q.groups ?? []).map((g: Json) => g.name) : undefined,
 })
 
 async function getAttempt(u: AuthUser, id: string): Promise<Attempt> {
@@ -72,7 +89,7 @@ async function view(a: Attempt): Promise<Json> {
       const auto = x?.auto
       return { id: q.id, correct: graded || auto ? (x?.final ?? x?.score ?? 0) >= 1 : null, score: graded || auto ? (x?.final ?? x?.score) : null, tests: x?.tests, feedback: q.type === 'mc' && auto ? (q.choices as Json[]).find((c, i) => Number(a.answers[q.id]) === i)?.fb : undefined }
     }),
-    review: graded && a.status === 'failed' ? remediation(content, a.questions, g) : [],
+    review: graded && a.status === 'failed' ? remediation(await lessonSetsFor(a, content), a.questions, g) : [],
   }
 }
 
@@ -100,7 +117,7 @@ export const examRoutes: FastifyPluginAsyncZod = async (app) => {
     const used = mine.filter((x) => x.status !== 'in_progress' || expired(x)).length
     const bank = (quiz.questions ?? []).filter((q: Json) => q.approved).length
     return {
-      title, version, kitId: art.kitId, type: art.type, mode: quiz.mode, level: quiz.level ?? 1, passScore: quiz.passScore ?? 80, minutes: quiz.minutes ?? 30, attempts: quiz.attempts ?? 1, proctor: !!quiz.proctor && quiz.mode === 'official',
+      title, version, kitId: art.kitId, type: art.type, theme: themeOf((await db.select({ details: schema.kits.details }).from(schema.kits).where(eq(schema.kits.id, art.kitId)))[0] ?? { details: {} }), mode: quiz.mode, level: quiz.level ?? 1, passScore: quiz.passScore ?? 80, minutes: quiz.minutes ?? 30, attempts: quiz.attempts ?? 1, proctor: !!quiz.proctor && quiz.mode === 'official',
       count: Math.min(Number(quiz.pick ?? bank) || bank, bank), bank, used, openAttempt: open?.id ?? null,
       passed: mine.some((x) => x.status === 'passed'),
       history: mine.map((x) => ({ id: x.id, status: x.status, score: x.status === 'grading' ? null : x.score, submittedAt: x.submittedAt })),

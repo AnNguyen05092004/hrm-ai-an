@@ -7,6 +7,8 @@ import { fmtTime } from '../data'
 import { Spinner } from '../ui'
 import { DeviceBar } from './Common'
 import { get, post, patch } from '../api'
+import { themeStyle } from '../theme'
+import { MatchBoard, OrderBoard, CatBoard } from '../arrange'
 
 const box = 'mx-auto max-w-[760px] px-6 py-14'
 const SAVE_MS = 1200
@@ -104,8 +106,11 @@ function Run({ attempt, proctor, onDone }) {
           <span className={`flex items-center gap-1 font-semibold ${left < 120 ? 'text-red-600' : 'text-ink'}`}><Clock size={15} />{fmtTime(left)}</span></div>
         <div className="mt-2 flex gap-1">{qs.map((x, j) => <button key={x.id} onClick={() => setI(j)} className={`h-1.5 flex-1 rounded ${j === i ? 'bg-ink' : ans[x.id] !== undefined && ans[x.id] !== '' ? 'bg-brand' : 'bg-neutral-200'}`} aria-label={`Câu ${j + 1}`} />)}</div>
         <div className="mt-8 whitespace-pre-wrap font-lato text-[22px] font-bold leading-snug">{q.q}</div>
-        {q.type === 'mc' && <div className="mt-6 space-y-3">{q.choices.map((c, j) => <button key={j} onClick={() => set(j)} className={`flex w-full items-center gap-3 rounded-md border px-4 py-3.5 text-left font-serif text-[15px] ${ans[q.id] === j ? 'border-brand bg-orange-50/40' : 'border-line'}`}><span className={`h-4 w-4 shrink-0 rounded-full border-2 ${ans[q.id] === j ? 'border-brand bg-brand' : 'border-neutral-400'}`} />{c}</button>)}</div>}
-        {q.type === 'mr' && <div className="mt-6 space-y-3"><div className="text-[13px] text-neutral-500">Chọn tất cả đáp án đúng</div>{q.choices.map((c, j) => { const on = (ans[q.id] ?? []).includes(j); return <button key={j} onClick={() => set(on ? ans[q.id].filter((x) => x !== j) : [...(ans[q.id] ?? []), j])} className={`flex w-full items-center gap-3 rounded-md border px-4 py-3.5 text-left font-serif text-[15px] ${on ? 'border-brand bg-orange-50/40' : 'border-line'}`}><span className={`h-4 w-4 shrink-0 rounded border-2 ${on ? 'border-brand bg-brand' : 'border-neutral-400'}`} />{c}</button> })}</div>}
+        {q.type === 'mc' && <div className="mt-6 space-y-3">{q.choices.map((c, j) => <button key={j} onClick={() => set(j)} className={`flex w-full items-center gap-3 rounded-md border px-4 py-3.5 text-left font-serif text-[15px] ${ans[q.id] === j ? 'border-brand bg-brand/5' : 'border-line'}`}><span className={`h-4 w-4 shrink-0 rounded-full border-2 ${ans[q.id] === j ? 'border-brand bg-brand' : 'border-neutral-400'}`} />{c}</button>)}</div>}
+        {q.type === 'mr' && <div className="mt-6 space-y-3"><div className="text-[13px] text-neutral-500">Chọn tất cả đáp án đúng</div>{q.choices.map((c, j) => { const on = (ans[q.id] ?? []).includes(j); return <button key={j} onClick={() => set(on ? ans[q.id].filter((x) => x !== j) : [...(ans[q.id] ?? []), j])} className={`flex w-full items-center gap-3 rounded-md border px-4 py-3.5 text-left font-serif text-[15px] ${on ? 'border-brand bg-brand/5' : 'border-line'}`}><span className={`h-4 w-4 shrink-0 rounded border-2 ${on ? 'border-brand bg-brand' : 'border-neutral-400'}`} />{c}</button> })}</div>}
+        {q.type === 'match' && <div className="mt-6"><p className="mb-3 text-[13px] text-neutral-500">Kéo mỗi vế bên dưới vào ô phù hợp, hoặc bấm chọn rồi bấm vào ô.</p><MatchBoard left={q.left} opts={q.opts} value={ans[q.id]} onChange={set} /></div>}
+        {q.type === 'order' && <div className="mt-6"><p className="mb-3 text-[13px] text-neutral-500">Kéo thả hoặc dùng nút mũi tên để xếp đúng thứ tự từ trên xuống.</p><OrderBoard opts={q.opts} value={ans[q.id]} onChange={set} /></div>}
+        {q.type === 'cat' && <div className="mt-6"><p className="mb-3 text-[13px] text-neutral-500">Kéo từng mục vào đúng nhóm, hoặc bấm chọn mục rồi bấm vào nhóm.</p><CatBoard groups={q.groups} opts={q.opts} value={ans[q.id]} onChange={set} /></div>}
         {q.type === 'fill' && <input className="field mt-6 font-mono" value={ans[q.id] ?? ''} onChange={(e) => set(e.target.value)} onPaste={onPaste} placeholder="Nhập đáp án" />}
         {q.type === 'essay' && <><textarea className="field mt-6 h-52 font-serif" value={ans[q.id] ?? ''} maxLength={20000} onChange={(e) => set(e.target.value)} onPaste={onPaste} placeholder="Viết câu trả lời…" /><div className="mt-1 text-[12px] text-neutral-500">Chấm theo {q.criteria} tiêu chí. AI chấm nháp, người chấm xác nhận.</div></>}
         {q.type === 'code' && <>
@@ -143,7 +148,7 @@ function Result({ attempt, onBack, onRetry, canRetry }) {
         </>)}
       </div>
       {attempt.review?.length > 0 && <div className="mt-6"><div className="font-lato text-[18px] font-bold">Nên xem lại</div><p className="mt-1 text-[14px] text-neutral-600">Các câu chưa đúng thuộc phần sau của khóa:</p>
-        {attempt.review.map((x, k) => <button key={k} onClick={() => x.lessonId && nav(`/learn/${attempt.artifactId}?l=${x.lessonId}`)} className="mt-2 flex w-full items-center gap-3 rounded-xl bg-orange-50 px-4 py-3 text-left text-[14px]"><AlertTriangle size={16} className="shrink-0 text-brand" /><span className="flex-1">{x.q.slice(0, 80)}{x.q.length > 80 ? '…' : ''}</span><span className="shrink-0 font-semibold">{x.where}</span></button>)}</div>}
+        {attempt.review.map((x, k) => <button key={k} onClick={() => x.lessonId && nav(`/learn/${x.artifactId ?? attempt.artifactId}?l=${x.lessonId}`)} className="mt-2 flex w-full items-center gap-3 rounded-xl bg-brand/5 px-4 py-3 text-left text-[14px]"><AlertTriangle size={16} className="shrink-0 text-brand" /><span className="flex-1">{x.q.slice(0, 80)}{x.q.length > 80 ? '…' : ''}</span><span className="shrink-0 font-semibold">{x.where}</span></button>)}</div>}
       {attempt.results?.some((r) => r.tests) && <div className="mt-6"><div className="font-lato text-[18px] font-bold">Kết quả test bài code</div>{attempt.results.filter((r) => r.tests).flatMap((r) => r.tests).map((t, k) => <div key={k} className="mt-2 flex items-center gap-2 rounded-lg bg-neutral-50 px-3 py-2 font-mono text-[13px]">{t.pass ? <Check size={14} className="text-emerald-600" /> : <XCircle size={14} className="text-red-500" />}{t.name}{t.error && <span className="text-red-600">· {t.error}</span>}</div>)}</div>}
       <div className="mt-8 flex gap-3"><button onClick={onBack} className="rounded-full border-2 border-ink px-8 py-2.5 font-lato font-bold">Quay lại khóa học</button>{st === 'failed' && canRetry && <button onClick={onRetry} className="rounded-full bg-brand px-8 py-2.5 font-lato font-bold text-white">Thi lại</button>}</div>
     </div>
@@ -180,7 +185,7 @@ export function ExamPage() {
   else if (a) body = <Result attempt={a} onBack={back} canRetry={info.data.used < info.data.attempts} onRetry={() => { setAttemptId(null); setParams({}); qc.invalidateQueries({ queryKey: ['exam-info', aid] }) }} />
   else body = <Intro info={info.data} onStart={(c) => start(c)} onResume={() => start(true, true)} busy={busy} />
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" style={themeStyle(info.data?.theme)}>
       <DeviceBar devices={false} left={<><button className="icon-btn" onClick={back} aria-label="Quay lại"><ChevronLeft size={20} /></button><span className="h-7 w-px bg-line" /><span className="text-[15px] font-medium">{info.data?.title ?? 'Bài kiểm tra'}</span></>} />
       <div className="scroll-thin flex-1 overflow-y-auto">{body}</div>
     </div>

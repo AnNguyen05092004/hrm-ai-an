@@ -12,7 +12,7 @@ import { get, post } from '../api'
 export const GEN_FORMATS = ['qr', 'deck', 'scenario', 'video']
 export const useSkills = () => useQuery({ queryKey: ['skills'], queryFn: () => get('/skills'), staleTime: 300_000 }).data ?? []
 
-const KIT_FIELDS = ['title', 'desc', 'audience', 'goals', 'takeaways', 'metrics', 'practice', 'delivery', 'skill', 'level', 'plan', 'sourceIds']
+const KIT_FIELDS = ['title', 'desc', 'audience', 'goals', 'takeaways', 'metrics', 'practice', 'delivery', 'skill', 'level', 'plan', 'sourceIds', 'theme', 'img']
 export const kitBody = (k) => Object.fromEntries(KIT_FIELDS.map((f) => [f, f === 'desc' ? k.desc : k[f]]).filter(([, v]) => v !== undefined && v !== null))
 export const useKit = (id) => useDoc(['kit', id], `/kits/${id}`, kitBody)
 

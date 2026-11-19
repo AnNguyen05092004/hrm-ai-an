@@ -6,8 +6,9 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['Figtree', 'system-ui', 'sans-serif'],
-        lato: ['Lato', 'system-ui', 'sans-serif'],
-        serif: ['Merriweather', 'Georgia', 'serif'],
+        // giao diện từng khóa đổi font qua biến CSS (theme.js); mặc định Lato + Merriweather
+        lato: ['var(--font-head, Lato)', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-body, Merriweather)', 'Georgia', 'serif'],
       },
       colors: {
         ink: '#0b0b0c',
@@ -15,7 +16,8 @@ export default {
         mute: '#6b6b73',
         navsel: '#e1f1fb',
         navtxt: '#1d5f95',
-        brand: '#ff6119',
+        // màu nhấn đổi theo giao diện khóa (theme.js), mặc định cam
+        brand: 'rgb(var(--brand-rgb, 255 97 25) / <alpha-value>)',
       },
       boxShadow: {
         card: '0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06)',

@@ -77,7 +77,6 @@ export function ScenarioPlay({ art, onExit }) {
 }
 
 export function ScenarioEditor({ art, kit, up, saveText, onRestored }) {
-  const nav = useNavigate()
   const set = artSet(art, up)
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState('edit')
@@ -110,8 +109,6 @@ export function ScenarioEditor({ art, kit, up, saveText, onRestored }) {
     </div>
   )
 
-  const dec = sc.cards.find((c) => c.kind === 'decision')
-  const char = sc.cards.find((c) => c.kind === 'char')
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-white">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line px-4">
@@ -414,7 +411,7 @@ export function VideoEditor({ art, kit, up, saveText, onRestored }) {
             {tab === 'vo' && <><p className="mb-3 text-[13px] text-neutral-500">Lời giọng AI đọc cho từng slide. Sửa xong bấm "Dựng lại phần đã sửa": chỉ đoạn đổi được dựng lại, lời thoại và chương tự cập nhật theo thời lượng thật.</p>{art.slides.map((x, si) => <div key={x.id ?? si} className={`mb-3 rounded-lg border p-3 ${si === cur ? 'border-neutral-500' : 'border-line'}`} onFocusCapture={() => setCur(si)}><div className="text-[13px] font-semibold"><Editable value={x.title} className="block" placeholder="Tiêu đề slide" onChange={(v) => upA((a) => { a.slides[si].title = v })} /></div><div className="mt-1 text-[14px] text-neutral-700"><Editable value={x.notes ?? ''} multiline className="block" placeholder="Lời đọc cho đoạn này" onChange={(v) => upA((a) => { a.slides[si].notes = v })} /></div></div>)}</>}
             {tab === 'tr' && <>{fromSlides && <p className="mb-3 text-[13px] text-neutral-500">Lời thoại chép từ lời đọc khi dựng. Muốn đổi thì sửa ở tab Lời đọc rồi dựng lại.</p>}
               {!art.transcript.length && <p className="text-[14px] text-neutral-500">Chưa có lời thoại. Dựng video để tạo.</p>}
-              {art.transcript.map((x, xi) => <div key={xi} className={`mb-1 flex gap-3 rounded-lg p-2 ${t >= x.t ? 'bg-orange-50/60' : ''}`}><button onClick={() => seek(x.t)} className="w-12 shrink-0 font-mono text-[12px] text-sky-700">{fmtTime(x.t)}</button>{fromSlides ? <span className="flex-1 text-[14px]">{x.x}</span> : <Editable value={x.x} multiline className="block flex-1 text-[14px]" placeholder="Lời thoại" onChange={(v) => upA((a) => { a.transcript[xi].x = v })} />}</div>)}</>}
+              {art.transcript.map((x, xi) => <div key={xi} className={`mb-1 flex gap-3 rounded-lg p-2 ${t >= x.t ? 'bg-brand/5' : ''}`}><button onClick={() => seek(x.t)} className="w-12 shrink-0 font-mono text-[12px] text-sky-700">{fmtTime(x.t)}</button>{fromSlides ? <span className="flex-1 text-[14px]">{x.x}</span> : <Editable value={x.x} multiline className="block flex-1 text-[14px]" placeholder="Lời thoại" onChange={(v) => upA((a) => { a.transcript[xi].x = v })} />}</div>)}</>}
           </div>
         </aside>
       </div>

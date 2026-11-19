@@ -72,6 +72,21 @@ export async function embed(orgId: string, texts: string[]): Promise<number[][]>
 }
 
 /** Giọng đọc AI (giọng có sẵn của dịch vụ, không nhân bản giọng người thật) */
+/** Ảnh minh họa cho tài liệu đào tạo (PNG ngang 3:2). Mock trả null để bên gọi tự vẽ ảnh thay thế. */
+export async function imageGen(orgId: string, prompt: string): Promise<Buffer | null> {
+  if (isMock()) return null
+  await checkQuota(orgId)
+  const r = await oa().images.generate({
+    model: env.AI_IMAGE_MODEL, size: '1536x1024', quality: 'medium', n: 1,
+    prompt: `Ảnh minh họa cho tài liệu đào tạo nội bộ doanh nghiệp. Phong cách ảnh chụp chân thực, ánh sáng tự nhiên, bố cục gọn. Không có chữ, không logo, không thương hiệu thật, không người nổi tiếng. Nội dung: ${prompt}`,
+  })
+  const b64 = r.data?.[0]?.b64_json
+  if (!b64) throw new Error('AI không trả về ảnh')
+  // giá ảnh tính theo ảnh; quy đổi tương đương token để vào chung hạn mức
+  await track(orgId, 'image', env.AI_IMAGE_MODEL, r.usage?.input_tokens ?? 0, r.usage?.output_tokens ?? 4000)
+  return Buffer.from(b64, 'base64')
+}
+
 export async function tts(orgId: string, text: string): Promise<Buffer | null> {
   if (isMock()) return null
   await checkQuota(orgId)

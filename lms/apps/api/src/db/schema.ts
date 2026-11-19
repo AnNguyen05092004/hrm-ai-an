@@ -149,6 +149,19 @@ export const kits = pgTable('kits', {
   updatedAt: updated(),
 })
 
+// Ảnh của tổ chức: tải lên hoặc AI tạo; dùng cho khối ảnh, slide, ảnh bìa tài liệu và khóa
+export const images = pgTable('images', {
+  id: id(),
+  orgId: text('org_id').notNull().references(() => orgs.id),
+  name: text('name').notNull(),
+  mime: text('mime').notNull(),
+  size: integer('size').notNull(),
+  kind: text('kind', { enum: ['upload', 'ai'] }).notNull(),
+  prompt: text('prompt'),
+  createdBy: text('created_by').references(() => users.id),
+  createdAt: created(),
+}, (t) => [index('images_org').on(t.orgId)])
+
 export const ARTIFACT_TYPES = ['qr', 'deck', 'scenario', 'video', 'guide', 'exam'] as const
 export type ArtifactType = typeof ARTIFACT_TYPES[number]
 export const artifacts = pgTable('artifacts', {

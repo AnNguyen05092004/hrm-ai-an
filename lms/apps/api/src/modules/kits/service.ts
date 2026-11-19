@@ -42,9 +42,12 @@ export async function kitDto(k: Kit): Promise<Json> {
     id: k.id, title: k.title, desc: k.goal, goalText: d.goalText ?? '', audience: d.audience ?? '', goals: d.goals ?? [], takeaways: d.takeaways ?? [],
     metrics: d.metrics ?? [], practice: d.practice ?? 'balanced', delivery: d.delivery ?? 'self', plan: d.plan ?? [], warnings: d.warnings ?? [],
     skill: k.skillId, level: k.level, stage: k.stage, fromPlan: k.fromPlan, img: k.img, updated: fmt(k.updatedAt), updatedAt: k.updatedAt,
-    sources: srcs, sourceIds: k.sourceIds, artifacts: arts.map(artifactMeta), job: d.job ?? null, shareSlug: k.shareSlug,
+    sources: srcs, sourceIds: k.sourceIds, artifacts: arts.map(artifactMeta), job: d.job ?? null, shareSlug: k.shareSlug, theme: d.theme ?? null,
   }
 }
+
+/** Giao diện khóa (màu nhấn, font) lưu trong details */
+export const themeOf = (k: { details: unknown }): Json | null => ((k.details as Json)?.theme as Json) ?? null
 
 export async function listKits(orgId: string): Promise<Json[]> {
   const kits = await db.select().from(schema.kits).where(eq(schema.kits.orgId, orgId)).orderBy(desc(schema.kits.updatedAt))
@@ -135,16 +138,17 @@ const srcRef = (code: string | null | undefined, hits: Hit[]): Json => {
   const h = m ? hits[Number(m[1]) - 1] : undefined
   return h ? { src: `${h.sourceName} · ${h.section}`, srcRef: { sourceId: h.sourceId, chunkId: h.id, version: h.version } } : {}
 }
-const NEEDS_SRC = new Set(['heading', 'para', 'list', 'flash', 'accordion', 'table', 'code', 'process'])
+const NEEDS_SRC = new Set(['heading', 'para', 'list', 'flash', 'accordion', 'tabs', 'timeline', 'sorting', 'table', 'code', 'process'])
 const clean = (o: Json): Json => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null && v !== undefined))
 
 export function qrContent(r: QrDraft, kit: Kit, hits: Hit[], hasSources: boolean): Json {
   const lessons = r.lessons.slice(0, 3).map((l) => ({
     id: uid('l'), kind: 'lesson', title: l.title,
     blocks: [{ id: uid('b'), t: 'image', img: l.img, cap: l.title }, ...l.blocks.filter((b) => b.t !== 'image').map((b) => {
-      const { accordion, src, ...rest } = b
+      const { accordion, timeline, src, ...rest } = b
       const ref = srcRef(src, hits)
-      const block = clean({ ...rest, items: b.t === 'accordion' ? accordion : rest.items, id: uid('b'), ...ref })
+      const items = b.t === 'accordion' || b.t === 'tabs' ? accordion : b.t === 'timeline' ? timeline : rest.items
+      const block = clean({ ...rest, items, id: uid('b'), ...ref })
       if (block.t === 'kc') return { ...block, choices: block.choices ?? [], correct: Math.max(0, Math.min((block.choices?.length ?? 1) - 1, block.correct ?? 0)) }
       if (NEEDS_SRC.has(block.t) && hasSources && !ref.src) return { ...block, nosrc: true }
       return block
@@ -153,6 +157,7 @@ export function qrContent(r: QrDraft, kit: Kit, hits: Hit[], hasSources: boolean
   const questions = r.questions.map((q) => clean({
     id: uid('q'), type: q.type, level: Math.min(3, Math.max(1, q.level)), approved: false, q: q.q,
     choices: q.choices ?? undefined, answer: q.answer, rubric: q.rubric, starter: q.starter,
+    pairs: q.type === 'match' ? q.pairs : undefined, items: q.type === 'order' ? q.order : undefined, groups: q.type === 'cat' ? q.groups : undefined,
     tests: q.tests?.map((t) => ({ name: t.name, args: t.args, expected: t.expected })), ...srcRef(q.src, hits),
   }))
   return {

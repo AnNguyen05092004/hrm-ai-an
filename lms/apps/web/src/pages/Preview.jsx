@@ -9,6 +9,7 @@ import { BlockView } from '../blocks'
 import { DeviceBar, DEVICES } from './Common'
 import { Slide, VideoStage, ScenarioPlay } from './OtherEditors'
 import { Md } from '../md'
+import { themeStyle } from '../theme'
 import { get, post } from '../api'
 
 const STARTERS = [['bulb', 'Giải thích đơn giản hơn'], ['list', 'Tóm tắt khóa này'], ['search', 'Khái niệm quan trọng nhất là gì?'], ['book', 'Mình chỉ cần học một phần, nên xem phần nào?']]
@@ -243,7 +244,7 @@ export function LearnerPlayer() {
   if (!q.data) return <Loading />
   if (q.data.type === 'exam') return <Navigate to={`/exam/${q.data.id}`} replace />
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" style={themeStyle(q.data.theme)}>
       <DeviceBar devices={false} left={<><button className="icon-btn" onClick={() => nav(me.role === 'learner' ? `/course/${q.data.kitId}` : -1)} aria-label="Quay lại"><ChevronLeft size={20} /></button><span className="h-7 w-px bg-line" /><span className="text-[15px] font-medium">{me.role === 'learner' ? q.data.kitTitle ?? 'Khóa học của tôi' : 'Bản người học thấy'}</span><span className="ml-2 flex items-center gap-1 text-[13px] text-neutral-500"><Clock size={13} />Phiên bản {q.data.version}</span></>} />
       <div className="scroll-thin flex-1 overflow-y-auto bg-white"><Player art={q.data} start={params.get('l')} /></div>
     </div>
@@ -262,7 +263,7 @@ export function AuthorPreview() {
   if (q.data.type === 'exam') return <Navigate to={`/exam/${aid}?preview=1`} replace />
   const w = DEVICES.find((d) => d[0] === device)[3]
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" style={themeStyle(q.data.theme)}>
       <DeviceBar device={device} setDevice={setDevice}
         left={<><button className="icon-btn" onClick={() => nav(-1)} aria-label="Quay lại"><ChevronLeft size={20} /></button><span className="h-7 w-px bg-line" /><span className="text-[15px] font-medium">Xem trước bản nháp</span></>}
         right={<button className="btn-dark btn-sm ml-3 h-9" onClick={() => nav(`/edit/${aid}`)}>Sửa</button>} />

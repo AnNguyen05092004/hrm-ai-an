@@ -3,10 +3,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Search, FileText, Box, Flag, ShieldCheck, Check, X, Upload, Trash2, RefreshCw, AlertTriangle, MessageSquareWarning, CheckCircle2, Hourglass, Code2 } from 'lucide-react'
 import { useStore, useMe } from '../store'
-import { FORMATS, TYPE_ORDER } from '../data'
+import { TYPE_ORDER } from '../data'
 import { Thumb, FormatGlyph, Status, Avatar, Spinner, Modal } from '../ui'
 import { TopOrg } from '../Shell'
-import { useSkills } from './KitFlow'
 import { api, get, post, patch, del } from '../api'
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—')
@@ -170,9 +169,12 @@ function GradeDetail({ id, onDone }) {
       )}
       {a.questions.map((x, n) => { const g = a.grades[x.id] ?? {}; return (
         <div key={x.id} className="card mt-6 p-6">
-          <div className="flex items-start gap-3"><span className="font-lato text-[18px] italic text-neutral-400">{String(n + 1).padStart(2, '0')}</span><div className="flex-1"><div className="text-[15px] font-medium">{x.q}</div><div className="mt-1 text-[12px] text-neutral-500">{{ mc: 'Trắc nghiệm · code chấm', mr: 'Nhiều đáp án · code chấm', fill: 'Điền · code chấm', essay: 'Tự luận · AI chấm nháp, bạn xác nhận', code: 'Bài code · test case quyết định' }[x.type]}</div></div>
+          <div className="flex items-start gap-3"><span className="font-lato text-[18px] italic text-neutral-400">{String(n + 1).padStart(2, '0')}</span><div className="flex-1"><div className="text-[15px] font-medium">{x.q}</div><div className="mt-1 text-[12px] text-neutral-500">{{ match: 'Ghép cặp · chấm tự động từng cặp', order: 'Sắp thứ tự · chấm tự động từng vị trí', cat: 'Phân loại · chấm tự động từng mục', mc: 'Trắc nghiệm · code chấm', mr: 'Nhiều đáp án · code chấm', fill: 'Điền · code chấm', essay: 'Tự luận · AI chấm nháp, bạn xác nhận', code: 'Bài code · test case quyết định' }[x.type]}</div></div>
             <span className={`text-[14px] font-semibold ${finalOf(x.id) >= 1 ? 'text-emerald-700' : finalOf(x.id) > 0 ? 'text-amber-700' : 'text-red-600'}`}>{Math.round(finalOf(x.id) * 100)}%</span></div>
           {(x.type === 'mc' || x.type === 'mr') && <div className="mt-3 space-y-1.5">{x.choices.map((c, i) => { const picked = [].concat(ans(x) ?? []).map(Number).includes(i); return <div key={i} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-[14px] ${c.ok ? 'bg-emerald-50' : picked ? 'bg-red-50' : ''}`}>{c.ok ? <Check size={14} className="text-emerald-600" /> : picked ? <X size={14} className="text-red-500" /> : <span className="w-[14px]" />}{c.t}{picked && <span className="ml-auto text-[12px] text-neutral-500">Người thi chọn</span>}</div> })}</div>}
+          {x.type === 'match' && <div className="mt-3 space-y-1.5">{(x.pairs ?? []).map((p, i) => { const got = (ans(x) ?? {})[i]; return <div key={i} className={`grid grid-cols-[1fr_1fr] gap-3 rounded-lg px-3 py-2 text-[14px] ${got === p.r ? 'bg-emerald-50' : 'bg-red-50'}`}><span className="font-medium">{p.l}</span><span>{got ?? '(chưa ghép)'}{got !== p.r && <span className="text-neutral-500"> · đúng: {p.r}</span>}</span></div> })}</div>}
+          {x.type === 'order' && <div className="mt-3 space-y-1.5">{(Array.isArray(ans(x)) ? ans(x) : x.opts ?? []).map((t, i) => <div key={i} className={`flex gap-3 rounded-lg px-3 py-2 text-[14px] ${x.items?.[i] === t ? 'bg-emerald-50' : 'bg-red-50'}`}><span className="w-5 font-semibold">{i + 1}</span><span className="flex-1">{t}</span>{x.items?.[i] !== t && <span className="text-neutral-500">đúng: {x.items?.[i]}</span>}</div>)}</div>}
+          {x.type === 'cat' && <div className="mt-3 space-y-1.5">{(x.groups ?? []).flatMap((gr) => (gr.items ?? []).map((t) => { const got = (ans(x) ?? {})[t]; return <div key={t} className={`flex gap-3 rounded-lg px-3 py-2 text-[14px] ${got === gr.name ? 'bg-emerald-50' : 'bg-red-50'}`}><span className="flex-1">{t}</span><span>{got ?? '(chưa xếp)'}{got !== gr.name && <span className="text-neutral-500"> · đúng: {gr.name}</span>}</span></div> }))}</div>}
           {x.type === 'fill' && <div className="mt-3 text-[14px]">Trả lời: <b className="font-mono">{String(ans(x) ?? '(bỏ trống)')}</b> · Đáp án: <span className="font-mono">{x.answer}</span></div>}
           {x.type === 'essay' && <>
             <div className="mt-3 whitespace-pre-wrap rounded-xl bg-neutral-50 p-4 font-serif text-[15px] leading-relaxed">{ans(x) || '(bỏ trống)'}</div>

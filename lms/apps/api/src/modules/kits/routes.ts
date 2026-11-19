@@ -12,6 +12,8 @@ import { kitShareRoutes } from './share.js'
 import { briefOf, createArtifact, getKit, kitDto, listKits, patchKit, type PlanItem } from './service.js'
 
 const P = z.object({ id: z.string() })
+// giao diện khóa: màu nhấn và bộ font
+const Theme = z.object({ accent: z.string().regex(/^#[0-9a-f]{6}$/i), font: z.enum(['classic', 'modern', 'clean']) })
 
 async function assertSkill(orgId: string, id: string): Promise<void> {
   const [s] = await db.select({ id: schema.skills.id }).from(schema.skills).where(and(eq(schema.skills.id, id), eq(schema.skills.orgId, orgId)))
@@ -57,6 +59,7 @@ export const kitRoutes: FastifyPluginAsyncZod = async (app) => {
       practice: z.enum(['less', 'balanced', 'more']).optional(), delivery: z.enum(['self', 'live', 'both']).optional(),
       skill: z.string().nullable().optional(), level: z.number().int().min(1).max(3).optional(),
       plan: z.array(planItem).max(8).optional(), sourceIds: z.array(z.string()).max(20).optional(), warnings: z.array(z.string()).optional(),
+      theme: Theme.optional(), img: z.string().max(300).optional(),
     }) },
   }, async (req) => {
     const u = me(req)
@@ -66,10 +69,10 @@ export const kitRoutes: FastifyPluginAsyncZod = async (app) => {
     if (b.skill) await assertSkill(u.orgId, b.skill)
     let sourceIds = k.sourceIds
     if (b.sourceIds) sourceIds = (await db.select({ id: schema.sources.id }).from(schema.sources).where(and(eq(schema.sources.orgId, u.orgId), inArray(schema.sources.id, b.sourceIds.length ? b.sourceIds : ['-'])))).map((s) => s.id)
-    const details = Object.fromEntries(Object.entries({ audience: b.audience, goals: b.goals, takeaways: b.takeaways, metrics: b.metrics, practice: b.practice, delivery: b.delivery, plan: b.plan, warnings: b.warnings }).filter(([, v]) => v !== undefined))
+    const details = Object.fromEntries(Object.entries({ theme: b.theme, audience: b.audience, goals: b.goals, takeaways: b.takeaways, metrics: b.metrics, practice: b.practice, delivery: b.delivery, plan: b.plan, warnings: b.warnings }).filter(([, v]) => v !== undefined))
     await patchKit(k.id, {
       ...(b.title !== undefined ? { title: b.title } : {}), ...(b.desc !== undefined ? { goal: b.desc } : {}),
-      ...(b.skill !== undefined ? { skillId: b.skill } : {}), ...(b.level !== undefined ? { level: b.level } : {}), sourceIds,
+      ...(b.skill !== undefined ? { skillId: b.skill } : {}), ...(b.img !== undefined ? { img: b.img } : {}), ...(b.level !== undefined ? { level: b.level } : {}), sourceIds,
     }, details)
     return kitDto(await getKit(u.orgId, k.id))
   })
