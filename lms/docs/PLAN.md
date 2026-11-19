@@ -88,6 +88,6 @@ Mỗi phase xong: chạy test + build, review diff (`/code-review`), sửa, comm
 
 Việc còn lại (tùy chọn): màn đổi mật khẩu, SSO, sandbox code bằng container, hàng đợi job riêng khi chạy nhiều máy chủ, Hướng dẫn từng bước tạo bằng AI.
 
-Cách chạy: `cd lms && docker compose up -d db && (cd apps/api && npm run db:seed && npm run dev)` và `cd apps/web && npx vite`. Test: `cd apps/api && npx vitest run`.
+Cách chạy: `cd lms && npm start` (xem README). Test: `npm test`.
 
 Ghi chú quyết định: web giữ JSX (tái dùng prototype, TS ở backend nơi cần an toàn kiểu); sandbox code là worker + vm, env rỗng, chỉ truyền chuỗi vào vm (production nên thay bằng container).
