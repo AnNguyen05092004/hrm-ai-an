@@ -1,7 +1,7 @@
 // Chia sẻ cả khóa học (xuất bản hàng loạt, giao cả khóa, đường dẫn cả bộ) và tạo đề kiểm tra riêng.
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Link2, Users, Copy, AlertTriangle, Sparkles, ShieldCheck } from 'lucide-react'
+import { Check, Link2, Users, Copy, AlertTriangle, Sparkles, ShieldCheck, PackageOpen, Download } from 'lucide-react'
 import { useStore } from '../store'
 import { FORMATS, LEVELS } from '../data'
 import { Modal, Spinner, FormatGlyph, Toggle } from '../ui'
@@ -34,9 +34,9 @@ export function KitShareModal({ open, onClose, kit, onChanged }) {
   return (
     <Modal open={open} onClose={onClose} w={860} pad={false} title="Chia sẻ cả khóa">
       <div className="mx-6 flex items-center gap-2 border-b border-line pb-3 text-[13px]"><b>{kit.title}</b><span className="h-3 w-px bg-line" />{items.length} tài liệu · {pub.length} đã xuất bản · {st.data?.learners ?? 0} người học</div>
-      <div className="grid grid-cols-[170px_1fr] gap-6 px-6 py-4">
+      <div className="grid grid-cols-[190px_1fr] gap-6 px-6 py-4">
         <div className="space-y-1">
-          {[['publish', 'Xuất bản cả khóa', Check], ['assign', 'Giao cả khóa', Users], ['link', 'Đường dẫn cả khóa', Link2]].map(([k, l, I]) => (
+          {[['publish', 'Xuất bản cả khóa', Check], ['assign', 'Giao cả khóa', Users], ['link', 'Đường dẫn cả khóa', Link2], ['scorm', 'Xuất SCORM', PackageOpen]].map(([k, l, I]) => (
             <button key={k} onClick={() => setTab(k)} className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[14px] ${tab === k ? 'bg-navsel font-medium text-navtxt' : 'hover:bg-neutral-50'}`}><I size={15} />{l}</button>
           ))}
         </div>
@@ -63,6 +63,7 @@ export function KitShareModal({ open, onClose, kit, onChanged }) {
               intro={`Giao cả khóa: người được chọn nhận ${pub.length} tài liệu đã xuất bản, thấy chung một khóa trong "Khóa học của tôi". Tài liệu xuất bản sau cần giao thêm.`}
               onSubmit={async (b) => { const r = await post(`/kits/${kit.id}/assign`, b); refresh(); return `Đã giao ${r.artifacts} tài liệu cho ${r.users} người` }} />
             : <p className="text-[14px] text-neutral-600">Xuất bản ít nhất một tài liệu trước khi giao cả khóa.</p>)}
+          {tab === 'scorm' && <ScormExport kit={kit} />}
           {tab === 'link' && st.data && (<>
             <p className="text-[14px]">Một đường dẫn cho cả khóa. Ai trong công ty đã đăng nhập mở được mọi tài liệu đã xuất bản của khóa; tiến độ và kết quả ghi theo tài khoản.</p>
             <div className={`mt-3 flex items-center gap-3 rounded-xl border border-line px-4 py-3 text-[14px] ${slug ? 'bg-white' : 'bg-neutral-50 text-neutral-500'}`}>
@@ -78,6 +79,24 @@ export function KitShareModal({ open, onClose, kit, onChanged }) {
       </div>
     </Modal>
   )
+}
+
+/** Xuất SCORM 1.2: xem trước phần nào vào gói, tải gói về để đưa lên LMS khác */
+function ScormExport({ kit }) {
+  const info = useQuery({ queryKey: ['scorm-info', kit.id], queryFn: () => get(`/kits/${kit.id}/export/scorm/info`) })
+  if (info.isLoading) return <Spinner size={20} w={2} />
+  const inc = info.data?.included ?? [], exc = info.data?.excluded ?? []
+  return (<>
+    <p className="text-[14px]">Gói SCORM 1.2 đưa được lên LMS khác của công ty (Moodle, SAP SuccessFactors, Cornerstone, Docebo…). Gói dùng bản đã xuất bản, cùng giao diện học; LMS ghi nhận hoàn thành, điểm bài luyện tập và tiến độ học dở.</p>
+    <div className="mt-3 rounded-xl border border-line">
+      <div className="border-b border-line px-4 py-2 text-[13px] font-semibold text-neutral-500">Có trong gói ({inc.length})</div>
+      {inc.map((x) => <div key={x.id} className="flex items-center gap-2 border-b border-line px-4 py-2 text-[14px] last:border-0"><FormatGlyph type={x.type} size={15} /><span className="w-28 shrink-0 text-neutral-500">{FORMATS[x.type].name}</span><span className="flex-1 truncate">{x.title}</span><Check size={15} className="text-emerald-600" /></div>)}
+      {!inc.length && <div className="px-4 py-3 text-[14px] text-neutral-500">Chưa có tài liệu nào đã xuất bản.</div>}
+    </div>
+    {exc.length > 0 && <div className="mt-3 rounded-xl bg-neutral-50 px-4 py-3 text-[13px] text-neutral-600"><div className="mb-1 font-semibold">Không đưa vào gói</div>{exc.map((x) => <div key={x.id}>{x.title}: {x.reason}</div>)}</div>}
+    <p className="mt-3 text-[12px] text-neutral-500">AI Tutor và đề kiểm tra chính thức cần máy chủ LMS này nên không có trong gói. Muốn kết quả học trên LMS này tự sang hệ thống công ty, dùng Cài đặt → Tích hợp (xAPI hoặc webhook).</p>
+    <div className="mt-4 flex justify-end border-t border-line pt-4"><a href={inc.length ? `/api/kits/${kit.id}/export/scorm` : undefined} aria-disabled={!inc.length} className={`btn-dark ${inc.length ? '' : 'pointer-events-none opacity-40'}`}><Download size={16} />Tải gói SCORM (.zip)</a></div>
+  </>)
 }
 
 /** Đề kiểm tra riêng: AI soạn ngân hàng câu theo mức, mỗi người thi một đề rút ngẫu nhiên */

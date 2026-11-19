@@ -23,8 +23,8 @@ export const Avatar = ({ text = 'AN', size = 32, color = '#8b88c9' }) => (
 )
 
 export function Thumb({ img = 'server', className = '', children, pos = 'center' }) {
-  // khóa ảnh có sẵn, hoặc ảnh tải lên / AI tạo (đường dẫn /api/images/...)
-  const m = IMG[img] || (typeof img === 'string' && img.startsWith('/api/images/') ? { src: img, grad: 'linear-gradient(135deg,#1f2a37,#8aa0b6)' } : IMG.server)
+  // khóa ảnh có sẵn, hoặc ảnh tải lên / AI tạo (/api/images/..., trong gói SCORM là media/...)
+  const m = IMG[img] || (typeof img === 'string' && (img.startsWith('/api/images/') || img.startsWith('media/')) ? { src: img, grad: 'linear-gradient(135deg,#1f2a37,#8aa0b6)' } : IMG.server)
   return (
     <div className={`relative overflow-hidden ${className}`} style={{ background: m.grad }}>
       <img src={m.src} alt="" loading="lazy" draggable={false} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: pos }} onError={(e) => { e.currentTarget.style.display = 'none' }} />

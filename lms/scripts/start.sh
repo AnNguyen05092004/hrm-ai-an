@@ -21,6 +21,10 @@ fi
 
 [ -d node_modules ] || npm install
 
+# trình học cho gói SCORM (Chia sẻ cả khóa → Xuất SCORM); build lại mỗi lần chạy để gói luôn theo giao diện mới nhất
+echo "→ Build trình học cho gói SCORM"
+npm run build:scorm -w apps/web --silent >/dev/null
+
 echo "→ Bật Postgres (Docker)"
 docker compose up -d --wait db >/dev/null
 

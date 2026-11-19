@@ -4,6 +4,8 @@ export class ApiError extends Error {
 }
 
 export async function api(path, { method = 'GET', body, form, signal } = {}) {
+  // gói SCORM: không có máy chủ, trình học gọi vào bộ xử lý cục bộ (scorm/main.jsx)
+  if (typeof window !== 'undefined' && window.__LMS_OFFLINE__) return window.__LMS_OFFLINE__(path, { method, body })
   const headers = { 'x-lms': '1' }
   let payload
   if (form) payload = form

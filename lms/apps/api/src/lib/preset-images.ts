@@ -1,3 +1,7 @@
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+import { env } from '../env.js'
+import { filePath } from './storage.js'
 // Ảnh có sẵn (Unsplash) theo khóa, bản sao của IMG trong web/src/data.js (test kiểm tra hai bên khớp nhau).
 // Server cần để vẽ ảnh vào video dựng từ slide.
 export const PRESET_IMAGES: Record<string, string> = {
@@ -55,3 +59,23 @@ export const PRESET_IMAGES: Record<string, string> = {
   woman3: '1573496359142-b8d87734a5a2',
 }
 export const presetUrl = (key: string): string | null => (PRESET_IMAGES[key] ? `https://images.unsplash.com/photo-${PRESET_IMAGES[key]}?auto=format&fit=crop&w=1280&q=70` : null)
+
+/** Ảnh có sẵn dạng JPEG: tải một lần rồi lưu đệm trong kho; không tải được thì null */
+export async function presetJpeg(key: string): Promise<Buffer | null> {
+  const url = presetUrl(key)
+  if (!url || env.NODE_ENV === 'test') return null // test không phụ thuộc mạng
+  const cache = filePath(`cache/presets/${key}.jpg`)
+  try {
+    return await readFile(cache)
+  } catch { /* chưa có trong bộ đệm */ }
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(15_000) })
+    if (!r.ok) return null
+    const buf = Buffer.from(await r.arrayBuffer())
+    await mkdir(path.dirname(cache), { recursive: true })
+    await writeFile(cache, buf)
+    return buf
+  } catch {
+    return null
+  }
+}

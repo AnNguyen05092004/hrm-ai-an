@@ -7,6 +7,7 @@ import type { Flag } from '../../db/schema.js'
 import { me, requireAuthor, requireUser, type AuthUser } from '../../lib/auth.js'
 import { badRequest, conflict, forbidden, must } from '../../lib/errors.js'
 import { audit } from '../../lib/audit.js'
+import { onLearning } from '../../lib/integrations.js'
 import { publishedContent, viewable } from '../learn/access.js'
 import { themeOf } from '../kits/service.js'
 import { applySkill, gradeQuestion, lessonSetsFor, remediation, scoreOf, versionContent, type Attempt, type Grade } from './grade.js'
@@ -72,6 +73,7 @@ export async function submit(a: Attempt): Promise<Attempt> {
   const status = needsHuman ? 'grading' : score >= pass ? 'passed' : 'failed'
   const [r] = await db.update(schema.attempts).set({ grades: grades as unknown as Attempt['grades'], score, status }).where(eq(schema.attempts.id, a.id)).returning()
   if (status === 'passed') await applySkill(r, true, null)
+  if (status !== 'grading') await onLearning('exam', r.userId, r.artifactId, { score, passed: status === 'passed', mode: r.mode }).catch(() => { /* gửi ngoài không chặn nộp bài */ })
   return r
 }
 
@@ -255,6 +257,7 @@ export const gradingRoutes: FastifyPluginAsyncZod = async (app) => {
       .where(and(eq(schema.attempts.id, a.id), eq(schema.attempts.status, 'grading'))).returning()
     if (!r) throw conflict('Bài đã được người khác chấm')
     const skill = await applySkill(r, passed, u.id)
+    await onLearning('exam', r.userId, r.artifactId, { score, passed, mode: r.mode }).catch((e) => req.log.warn({ err: e }, 'tích hợp: không ghi được sự kiện'))
     await audit(u, 'grading.confirm', a.id, { score, passed, note: req.body.note, violation })
     return { status: r.status, score, skill }
   })

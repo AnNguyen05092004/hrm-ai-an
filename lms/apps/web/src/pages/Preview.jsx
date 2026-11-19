@@ -10,6 +10,7 @@ import { DeviceBar, DEVICES } from './Common'
 import { Slide, VideoStage, ScenarioPlay } from './OtherEditors'
 import { Md } from '../md'
 import { themeStyle } from '../theme'
+import { useOffline } from '../offline'
 import { get, post } from '../api'
 
 const STARTERS = [['bulb', 'Giải thích đơn giản hơn'], ['list', 'Tóm tắt khóa này'], ['search', 'Khái niệm quan trọng nhất là gì?'], ['book', 'Mình chỉ cần học một phần, nên xem phần nào?']]
@@ -100,7 +101,8 @@ function CoursePlayer({ art, start, preview, onTutorJump }) {
   const learnCount = lessons.filter((x) => x.kind === 'lesson').length
   const pct = Math.round((done.length / Math.max(1, learnCount)) * 100)
   useEffect(() => { onTutorJump.current = (j) => { if (j.to.lesson && lessons.some((x) => x.id === j.to.lesson)) { setCur(j.to.lesson); window.scrollTo(0, 0) } } })
-  const openQuiz = () => nav(`/exam/${art.id}${preview ? '?preview=1' : ''}`)
+  const off = useOffline()
+  const openQuiz = () => (off ? off.onQuiz(art) : nav(`/exam/${art.id}${preview ? '?preview=1' : ''}`))
   if (!cur) return (
     <div>
       <div className="grid min-h-[520px] grid-cols-2">
@@ -194,8 +196,9 @@ function GuideViewer({ art, preview }) {
 }
 
 /** Trình học dùng chung cho người học (bản xuất bản) và người soạn (xem trước bản nháp) */
-function Player({ art, preview, start }) {
+export function Player({ art, preview, start }) {
   const nav = useNavigate()
+  const off = useOffline()
   const [tutor, setTutor] = useState(false)
   const [other, setOther] = useState(null)
   const jumpRef = useRef(() => {})
@@ -209,11 +212,12 @@ function Player({ art, preview, start }) {
     <>
       {art.type === 'qr' && <CoursePlayer key={start || 'cover'} art={art} start={start} preview={preview} onTutorJump={jumpRef} />}
       {art.type === 'video' && <VideoPlayer art={art} preview={preview} onTutorJump={jumpRef} />}
-      {art.type === 'scenario' && <div className="h-[calc(100vh-56px)]"><ScenarioPlay art={art} onExit={() => { if (!done.includes('end')) mark('end'); nav(-1) }} /></div>}
+      {art.type === 'scenario' && <div className="h-[calc(100vh-56px)]"><ScenarioPlay art={art} onExit={() => { if (!done.includes('end')) mark('end'); if (off) off.onExit(); else nav(-1) }} /></div>}
       {art.type === 'deck' && <DeckViewer art={art} preview={preview} onTutorJump={jumpRef} />}
       {art.type === 'guide' && <GuideViewer art={art} preview={preview} />}
-      {art.type !== 'scenario' && <TutorBtn onClick={() => setTutor(!tutor)} />}
-      <Tutor open={tutor} onClose={() => setTutor(false)} artId={art.id} courseTitle={art.title} draft={art.draft} onJump={onJump} />
+      {/* AI Tutor cần máy chủ: không có trong gói SCORM */}
+      {art.type !== 'scenario' && !off && <TutorBtn onClick={() => setTutor(!tutor)} />}
+      {!off && <Tutor open={tutor} onClose={() => setTutor(false)} artId={art.id} courseTitle={art.title} draft={art.draft} onJump={onJump} />}
       {other && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-6" onClick={() => setOther(null)}>
           <div className="w-[440px] rounded-2xl bg-white p-6 shadow-pop" onClick={(e) => e.stopPropagation()}>

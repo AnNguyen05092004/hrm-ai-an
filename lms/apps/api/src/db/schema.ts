@@ -18,6 +18,8 @@ export const orgs = pgTable('orgs', {
   id: id(),
   name: text('name').notNull(),
   aiMonthlyTokens: integer('ai_monthly_tokens').notNull().default(2_000_000),
+  // kết nối hệ thống ngoài: { xapi: { enabled, endpoint, username, password }, webhook: { enabled, url, secret } }
+  integrations: jsonb('integrations').$type<Record<string, Record<string, unknown>>>().notNull().default({}),
   createdAt: created(),
 })
 
@@ -310,6 +312,10 @@ export const outbox = pgTable('outbox', {
   topic: text('topic').notNull(),
   payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  // gửi lỗi thì thử lại sau, giãn dần; quá số lần thì dừng và giữ lỗi để xem
+  attempts: integer('attempts').notNull().default(0),
+  nextAt: timestamp('next_at', { withTimezone: true }).notNull().defaultNow(),
+  lastError: text('last_error'),
   createdAt: created(),
 })
 

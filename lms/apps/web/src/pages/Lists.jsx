@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Search, FileText, Box, Flag, ShieldCheck, Check, X, Upload, Trash2, RefreshCw, AlertTriangle, MessageSquareWarning, CheckCircle2, Hourglass, Code2 } from 'lucide-react'
 import { useStore, useMe } from '../store'
 import { TYPE_ORDER } from '../data'
+import { IntegrationsTab } from './Integrations'
 import { Thumb, FormatGlyph, Status, Avatar, Spinner, Modal } from '../ui'
 import { TopOrg } from '../Shell'
 import { api, get, post, patch, del } from '../api'
@@ -229,7 +230,17 @@ export function Grading() {
 }
 
 /* ---------- Cài đặt ---------- */
-const FEATURE = { kit_details: 'Soạn chi tiết khóa học', outline_qr: 'Dàn ý tài liệu nhanh', outline_deck: 'Dàn ý slide', outline_video: 'Dàn ý video', outline_scenario: 'Dàn ý tình huống', gen_qr: 'Soạn tài liệu nhanh', gen_deck: 'Soạn slide', gen_video: 'Kịch bản video', gen_scenario: 'Soạn tình huống', tutor: 'AI Tutor', embed: 'Lập chỉ mục tìm kiếm', grade_essay: 'Chấm nháp tự luận', review_code: 'Nhận xét code', gen_questions: 'Sinh câu hỏi', ai_edit: 'Sửa bằng AI', ai_block: 'Tạo khối bằng AI', tts: 'Giọng đọc AI', advisor: 'Trợ lý giám đốc', plan_item: 'Thêm tài liệu', kpi_skills: 'Gợi ý kỹ năng cho KPI', assess: 'Đánh giá năng lực' }
+const FEATURE = { kit_details: 'Soạn chi tiết khóa học', outline_qr: 'Dàn ý tài liệu nhanh', outline_deck: 'Dàn ý slide', outline_video: 'Dàn ý video', outline_scenario: 'Dàn ý tình huống', gen_qr: 'Soạn tài liệu nhanh', gen_deck: 'Soạn slide', gen_video: 'Kịch bản video', gen_scenario: 'Soạn tình huống', tutor: 'AI Tutor', embed: 'Lập chỉ mục tìm kiếm', grade_essay: 'Chấm nháp tự luận', review_code: 'Nhận xét code', gen_questions: 'Sinh câu hỏi', ai_edit: 'Sửa bằng AI', ai_block: 'Tạo khối bằng AI', tts: 'Giọng đọc AI', image: 'AI tạo ảnh', advisor: 'Trợ lý giám đốc', plan_item: 'Thêm tài liệu', kpi_skills: 'Gợi ý kỹ năng cho KPI', assess: 'Đánh giá năng lực' }
+
+const ACTION = {
+  'kit.create': 'Tạo khóa học', 'kit.generate': 'AI soạn khóa học', 'kit.delete': 'Xóa khóa học', 'kit.publish_all': 'Xuất bản cả khóa', 'kit.assign': 'Giao cả khóa',
+  'kit.share': 'Bật đường dẫn cả khóa', 'kit.unshare': 'Tắt đường dẫn cả khóa', 'kit.export_scorm': 'Xuất gói SCORM',
+  'artifact.publish': 'Xuất bản tài liệu', 'artifact.unpublish': 'Ngừng xuất bản', 'artifact.delete': 'Xóa tài liệu', 'assignment.create': 'Giao tài liệu',
+  'exam.create': 'Tạo đề kiểm tra', 'exam.start': 'Bắt đầu thi', 'exam.submit': 'Nộp bài thi', 'grading.view': 'Mở bài để chấm', 'grading.confirm': 'Xác nhận kết quả chấm',
+  'image.upload': 'Tải ảnh lên', 'image.generate': 'AI tạo ảnh', 'kpi.create': 'Thêm KPI', 'member.create': 'Thêm thành viên', 'plan.assign': 'Giao khóa theo kế hoạch',
+  'settings.ai_quota': 'Đổi hạn mức AI', 'settings.integrations': 'Đổi cài đặt tích hợp', 'settings.webhook_secret': 'Tạo khóa ký webhook mới',
+}
+const META = { version: 'phiên bản', users: 'số người', artifacts: 'số tài liệu', created: 'đã tạo', published: 'đã xuất bản', skipped: 'bỏ qua', items: 'số phần', size: 'dung lượng (byte)', score: 'điểm', passed: 'đạt', status: 'trạng thái', title: 'tên', quota: 'hạn mức', xapi: 'xAPI', webhook: 'webhook', note: 'ghi chú', violation: 'vi phạm' }
 
 export function SettingsPage() {
   const { me } = useMe()
@@ -243,7 +254,8 @@ export function SettingsPage() {
   const pct = ai.data ? Math.min(100, Math.round((100 * ai.data.used) / ai.data.quota)) : 0
   return (
     <Page title="Cài đặt">
-      <Tabs value={tab} onChange={setTab} items={[['profile', 'Hồ sơ'], ['ai', 'Hạn mức AI'], ['audit', 'Nhật ký']]} />
+      <Tabs value={tab} onChange={setTab} items={[['profile', 'Hồ sơ'], ['ai', 'Hạn mức AI'], ['integrations', 'Tích hợp'], ['audit', 'Nhật ký']]} />
+      {tab === 'integrations' && <IntegrationsTab />}
       {tab === 'profile' && <div className="mt-6 max-w-[520px] space-y-3 text-[15px]">{[['Họ tên', me.name], ['Email', me.email], ['Chức danh', me.title], ['Tổ chức', me.orgName], ['Vai trò', me.role === 'author' ? 'Người tạo khóa học' : 'Người học']].map(([k, v]) => <div key={k} className="flex border-b border-line py-3"><span className="w-40 text-neutral-500">{k}</span><span className="font-medium">{v}</span></div>)}</div>}
       {tab === 'ai' && (ai.isLoading ? <div className="mt-6"><Spinner /></div> : <div className="mt-6 max-w-[720px]">
         <div className="card p-6"><div className="flex items-end"><div className="flex-1"><div className="text-[13px] text-neutral-500">Đã dùng tháng này</div><div className="font-display text-[30px] font-semibold">{ai.data.used.toLocaleString('vi-VN')} <span className="text-[16px] font-normal text-neutral-500">/ {ai.data.quota.toLocaleString('vi-VN')} token</span></div></div><span className="text-[14px] font-semibold">{pct}%</span></div>
@@ -255,7 +267,7 @@ export function SettingsPage() {
           <tbody>{[...ai.data.byFeature].sort((a, b) => b.tokens - a.tokens).map((f) => <tr key={f.feature} className="border-b border-line"><td className="py-2.5">{FEATURE[f.feature] ?? f.feature}</td><td>{f.calls}</td><td>{f.tokens.toLocaleString('vi-VN')}</td></tr>)}</tbody></table>
       </div>)}
       {tab === 'audit' && <div className="mt-6">{log.isLoading ? <Spinner /> : <table className="w-full text-[14px]"><thead><tr className="border-b border-line text-left text-[13px] text-neutral-500"><th className="py-2 font-medium">Lúc</th><th className="font-medium">Ai</th><th className="font-medium">Hành động</th><th className="font-medium">Chi tiết</th></tr></thead>
-        <tbody>{log.data?.map((x) => <tr key={x.id} className="border-b border-line"><td className="py-2.5 text-neutral-500">{fmtDate(x.at)}</td><td>{x.who}</td><td className="font-mono text-[13px]">{x.action}</td><td className="max-w-[420px] truncate text-[13px] text-neutral-600">{JSON.stringify(x.meta)}</td></tr>)}</tbody></table>}</div>}
+        <tbody>{log.data?.map((x) => <tr key={x.id} className="border-b border-line"><td className="py-2.5 text-neutral-500">{fmtDate(x.at)}</td><td>{x.who}</td><td title={x.action}>{ACTION[x.action] ?? x.action}</td><td className="max-w-[420px] truncate text-[13px] text-neutral-600">{Object.entries(x.meta ?? {}).filter(([, v]) => v !== null && v !== '' && typeof v !== 'object').map(([k, v]) => `${META[k] ?? k}: ${v === true ? 'có' : v === false ? 'không' : v}`).join(' · ')}</td></tr>)}</tbody></table>}</div>}
     </Page>
   )
 }

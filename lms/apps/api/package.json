@@ -22,6 +22,7 @@
     "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.8",
     "fastify-type-provider-zod": "^7.0.0",
+    "fflate": "^0.8.2",
     "mammoth": "^1.13.0",
     "openai": "^7.60.0",
     "pdf-parse": "^2.4.5",

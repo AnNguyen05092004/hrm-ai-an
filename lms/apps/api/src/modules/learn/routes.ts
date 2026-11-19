@@ -4,6 +4,7 @@ import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { db, schema } from '../../db/client.js'
 import { me, requireUser } from '../../lib/auth.js'
 import { forbidden, must } from '../../lib/errors.js'
+import { onLearning } from '../../lib/integrations.js'
 import { artifactMeta, themeOf } from '../kits/service.js'
 import { learnerView, publishedContent, unitsOf, viewable } from './access.js'
 
@@ -116,9 +117,11 @@ export const learnRoutes: FastifyPluginAsyncZod = async (app) => {
       const percent = Math.round((100 * done.length) / Math.max(1, units.length))
       const completedAt = percent >= 100 ? (p?.completedAt ?? new Date()) : null
       await tx.update(schema.progress).set({ done, percent, completedAt, lastAt: new Date() }).where(and(eq(schema.progress.userId, u.id), eq(schema.progress.artifactId, a.id)))
-      return { done, percent }
+      return { done, percent, justCompleted: !p?.completedAt && !!completedAt }
     })
     const { done, percent } = r
+    // gửi sang LMS/LRS công ty nếu đã kết nối; lỗi gửi không làm hỏng việc ghi tiến độ
+    if (r.justCompleted) await onLearning('completed', u.id, a.id).catch((e) => req.log.warn({ err: e }, 'tích hợp: không ghi được sự kiện'))
     return { percent, done }
   })
 }

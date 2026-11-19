@@ -3,7 +3,7 @@
 import crypto from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { mkdir, writeFile, readFile, access, readdir, unlink } from 'node:fs/promises'
+import { mkdir, writeFile, access, readdir, unlink } from 'node:fs/promises'
 import path from 'node:path'
 import { Resvg } from '@resvg/resvg-js'
 import { eq } from 'drizzle-orm'
@@ -11,8 +11,7 @@ import { db, schema } from '../../db/client.js'
 import { tts, isMock } from '../../lib/ai/index.js'
 import { defineJob } from '../../lib/jobs.js'
 import { filePath } from '../../lib/storage.js'
-import { env } from '../../env.js'
-import { presetUrl } from '../../lib/preset-images.js'
+import { presetJpeg } from '../../lib/preset-images.js'
 import { loadImage } from '../images/routes.js'
 
 const run = promisify(execFile)
@@ -141,20 +140,8 @@ async function picture(orgId: string, img: unknown): Promise<string | null> {
     const f = await loadImage(orgId, own[1])
     return f ? `data:${f.mime};base64,${f.data.toString('base64')}` : null
   }
-  const url = presetUrl(img)
-  if (!url || env.NODE_ENV === 'test') return null // test không phụ thuộc mạng
-  const cache = filePath(`cache/presets/${img}.jpg`)
-  try {
-    if (!(await exists(cache))) {
-      const r = await fetch(url, { signal: AbortSignal.timeout(15_000) })
-      if (!r.ok) return null
-      await mkdir(path.dirname(cache), { recursive: true })
-      await writeFile(cache, Buffer.from(await r.arrayBuffer()))
-    }
-    return `data:image/jpeg;base64,${(await readFile(cache)).toString('base64')}`
-  } catch {
-    return null // không tải được ảnh có sẵn thì slide vẫn dựng, chỉ thiếu ảnh
-  }
+  const jpg = await presetJpeg(img)
+  return jpg ? `data:image/jpeg;base64,${jpg.toString('base64')}` : null // không tải được ảnh thì slide vẫn dựng, chỉ thiếu ảnh
 }
 
 const vttTime = (t: number): string => { const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${s.toFixed(3).padStart(6, '0')}` }

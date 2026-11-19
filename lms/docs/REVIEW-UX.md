@@ -1,6 +1,6 @@
 # Rà soát UI/UX và so sánh với Articulate 360
 
-Cập nhật 19/11/2026. Rà trên bản chạy thật (nhánh `feat/lms-app`), cả hai vai.
+Cập nhật 19/11/2026 (lần 2, sau khi bổ sung ảnh, giao diện khóa, khối và dạng câu mới, tích hợp). Rà trên bản chạy thật (nhánh `feat/lms-app`), cả hai vai.
 
 ## 1. Cấu trúc từ trên xuống
 
@@ -53,26 +53,31 @@ Nguồn: [Articulate Q1 2026](https://www.articulate.com/blog/articulate-feature
 | Năng lực | Thi đạt cập nhật mức kỹ năng; KPI → khoảng cách → giao khóa; trợ lý giám đốc | Không có (cần LMS khác) |
 | Video AI | Slide + giọng AI → MP4 có phụ đề, dựng lại từng đoạn | Có giọng đọc AI, không dựng video từ slide |
 
-### Mình thua (xếp theo mức ảnh hưởng)
+### Đã bù trong lần này
+
+| Trước đây thiếu | Đã có |
+|---|---|
+| Xuất SCORM để đưa khóa sang LMS khác | Gói SCORM 1.2 cho cả khóa, cùng giao diện học, ghi hoàn thành/điểm/học dở; thêm xAPI và webhook ([INTEGRATION.md](INTEGRATION.md)) |
+| Tải ảnh, thư viện ảnh, AI tạo ảnh | Ảnh có sẵn, tải ảnh lên, AI tạo ảnh; ảnh vào cả video |
+| Câu ghép cặp, sắp thứ tự, kéo thả | Có cả ba, chấm tự động từng phần, thao tác bằng chuột hoặc bấm chọn (dùng được trên điện thoại) |
+| Khối tab, timeline, ảnh có chú thích | Có, kèm khối luyện tập kéo thả; AI soạn được |
+| Giao diện riêng từng khóa | Màu nhấn, font, ảnh bìa |
+
+### Còn thua (xếp theo mức ảnh hưởng)
 
 | # | Thiếu | Articulate có | Mức |
 |---|---|---|---|
-| 1 | Xuất SCORM / xAPI / cmi5 để đưa khóa sang LMS khác | Có, là chuẩn ngành | Cao nếu cần tích hợp |
-| 2 | Góp ý của người duyệt (comment trên từng khối, trạng thái duyệt) | Review 360 | Cao cho quy trình chuyên gia duyệt |
-| 3 | Tải ảnh, thư viện ảnh, AI tạo ảnh | Content Library, AI image | Trung bình |
-| 4 | Dạng câu hỏi: ghép cặp, sắp thứ tự, kéo thả, điểm nóng trên ảnh | Có | Trung bình |
-| 5 | Khối tương tác: tab, timeline, ảnh có chú thích, sắp xếp | Rise có nhiều khối hơn | Trung bình |
-| 6 | Giao diện khóa (font, màu, logo theo khóa) | Theme | Thấp–trung bình |
-| 7 | Dịch khóa sang ngôn ngữ khác | Localization | Thấp (nội bộ dùng tiếng Việt) |
-| 8 | Chứng chỉ hoàn thành, nhắc hạn qua email | Reach 360 | Trung bình |
-| 9 | Sửa toàn khóa bằng chat AI (giọng văn, đối tượng) | Beta 2026 | Thấp: đã có sửa từng khối/slide |
-| 10 | Hướng dẫn từng bước từ quay màn hình | Có | Trung bình |
-| 11 | Nhiều người soạn cùng lúc, phân quyền chi tiết | Có | Thấp (phạm vi 2 vai) |
+| 1 | Góp ý của người duyệt trên bản nháp (comment từng khối, trạng thái duyệt) | Review 360 | Cao cho quy trình chuyên gia duyệt |
+| 2 | Chứng chỉ hoàn thành, nhắc hạn qua email | Reach 360 | Trung bình |
+| 3 | Hướng dẫn từng bước từ quay màn hình | Có | Trung bình |
+| 4 | Thư viện ảnh/biểu tượng/nhân vật có sẵn lớn | Content Library 360 | Thấp–trung bình |
+| 5 | Dịch khóa sang ngôn ngữ khác | Localization | Thấp (nội bộ dùng tiếng Việt) |
+| 6 | Sửa toàn khóa bằng chat AI (giọng văn, đối tượng) | Beta 2026 | Thấp: đã sửa được từng khối/slide |
+| 7 | SCORM 2004, cmi5, LTI | Có | Thấp: làm khi LMS công ty yêu cầu |
+| 8 | Nhiều người soạn cùng lúc, phân quyền chi tiết | Có | Thấp (phạm vi 2 vai) |
 
 ### Nên làm tiếp (theo thứ tự)
 
 1. Góp ý của người duyệt trên bản nháp (đúng BR "chuyên gia duyệt" của spec).
-2. Tải ảnh lên cho khối ảnh và slide.
-3. Thêm dạng câu ghép cặp và sắp thứ tự (chấm tự động được).
-4. Xuất SCORM 1.2 cho Tài liệu nhanh nếu công ty cần chạy trên LMS khác.
-5. Nhắc hạn và chứng chỉ khi hoàn thành khóa.
+2. Chứng chỉ khi hoàn thành khóa, nhắc hạn qua email.
+3. SSO công ty và LTI 1.3 (cần IT công ty cung cấp thông tin).
