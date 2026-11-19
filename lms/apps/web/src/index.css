@@ -42,6 +42,25 @@ h1, h2, h3, h4 { @apply font-display; }
 .ed:focus { box-shadow: 0 0 0 2px #7dd3fc; background-color: rgba(240, 249, 255, .35); }
 .ed:empty::before { content: attr(data-ph); color: #a3a3a3; pointer-events: none; }
 
+/* Chữ có định dạng (rich.js) */
+.rich a, .ed[data-rich] a { color: rgb(var(--brand-rgb, 255 97 25)); text-decoration: underline; text-underline-offset: 3px; }
+.rich s, .ed[data-rich] s, .ed[data-rich] strike { text-decoration: line-through; }
+.rich b, .ed[data-rich] b { font-weight: 700; }
+.rich span[data-c="brand"] { color: rgb(var(--brand-rgb, 255 97 25)); }
+.rich span[data-c="red"] { color: #dc2626; } .rich span[data-c="amber"] { color: #b45309; }
+.rich span[data-c="green"] { color: #047857; } .rich span[data-c="blue"] { color: #1d4ed8; }
+.rich span[data-c="violet"] { color: #6d28d9; } .rich span[data-c="gray"] { color: #6b7280; }
+.rich mark { color: inherit; border-radius: 3px; padding: 0 2px; background: #fef08a; }
+.rich mark[data-c="green"] { background: #bbf7d0; } .rich mark[data-c="blue"] { background: #bfdbfe; } .rich mark[data-c="pink"] { background: #fbcfe8; }
+/* màu nhấn khi đang soạn: trình duyệt ghi font color tạm, hiển thị theo màu nhấn của khóa */
+.ed[data-rich] font[color="#010203"] { color: rgb(var(--brand-rgb, 255 97 25)); }
+
+/* Định dạng cả khối: cỡ chữ (phóng cả khối cho cân đối), căn lề */
+.bs-s { zoom: .9; }
+.bs-l { zoom: 1.15; }
+.ba-center :is(h2, p, figcaption, .ed) { text-align: center; }
+.ba-right :is(h2, p, figcaption, .ed) { text-align: right; }
+
 /* Định dạng slide (SlideKit) */
 .fx-color, .fx-color * { color: var(--fx-c) !important; }
 .fx-bold, .fx-bold * { font-weight: 700 !important; }

@@ -12,10 +12,16 @@ import { advisorContext, askAdvisor, assessEvidence, suggestKpiSkills } from './
 
 const ID = z.object({ id: z.string() })
 const kpiSkill = z.object({ skillId: z.string(), why: z.string().max(300).optional(), boost: z.number().int().min(0).max(3).optional(), positions: z.array(z.string()).max(20).optional() })
+const kpiFields = {
+  name: z.string().trim().min(3).max(200), metric: z.string().max(100), current: z.string().max(60),
+  target: z.string().max(60), due: z.string().max(30), skills: z.array(kpiSkill).max(6), active: z.boolean(),
+}
 const kpiBody = z.object({
-  name: z.string().trim().min(3).max(200), metric: z.string().max(100).default(''), current: z.string().max(60).default(''),
-  target: z.string().max(60).default(''), due: z.string().max(30).default(''), skills: z.array(kpiSkill).max(6).default([]), active: z.boolean().default(true),
+  ...kpiFields, metric: kpiFields.metric.default(''), current: kpiFields.current.default(''), target: kpiFields.target.default(''),
+  due: kpiFields.due.default(''), skills: kpiFields.skills.default([]), active: kpiFields.active.default(true),
 })
+// Sửa KPI: không có giá trị mặc định, nếu không thì bật/tắt KPI sẽ ghi đè kỹ năng, chỉ số, mục tiêu về rỗng (zod 4 vẫn điền default trong .partial())
+const kpiPatch = z.object(kpiFields).partial()
 const COLORS = ['#5b7bd5', '#3a9d8f', '#e07a3f', '#c2577a', '#6aa84f', '#7d5ba6', '#c98a2e', '#4f9bd1']
 
 export const workforceRoutes: FastifyPluginAsyncZod = async (app) => {
@@ -36,11 +42,13 @@ export const workforceRoutes: FastifyPluginAsyncZod = async (app) => {
     await audit(u, 'kpi.create', k.id, { name: k.name })
     return k
   })
-  app.patch('/kpis/:id', { schema: { params: ID, body: kpiBody.partial() } }, async (req) => {
+  app.patch('/kpis/:id', { schema: { params: ID, body: kpiPatch } }, async (req) => {
     const u = me(req)
     if (req.body.skills) await validSkills(u.orgId, req.body.skills.map((s) => s.skillId))
     const [k] = await db.update(schema.kpis).set(req.body).where(and(eq(schema.kpis.id, req.params.id), eq(schema.kpis.orgId, u.orgId))).returning()
-    return must(k, 'KPI')
+    must(k, 'KPI')
+    await audit(u, 'kpi.update', k.id, { name: k.name, fields: Object.keys(req.body) })
+    return k
   })
   app.delete('/kpis/:id', { schema: { params: ID } }, async (req) => {
     const u = me(req)

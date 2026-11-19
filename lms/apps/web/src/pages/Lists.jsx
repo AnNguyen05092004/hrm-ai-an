@@ -237,7 +237,7 @@ const ACTION = {
   'kit.share': 'Bật đường dẫn cả khóa', 'kit.unshare': 'Tắt đường dẫn cả khóa', 'kit.export_scorm': 'Xuất gói SCORM',
   'artifact.publish': 'Xuất bản tài liệu', 'artifact.unpublish': 'Ngừng xuất bản', 'artifact.delete': 'Xóa tài liệu', 'assignment.create': 'Giao tài liệu',
   'exam.create': 'Tạo đề kiểm tra', 'exam.start': 'Bắt đầu thi', 'exam.submit': 'Nộp bài thi', 'grading.view': 'Mở bài để chấm', 'grading.confirm': 'Xác nhận kết quả chấm',
-  'image.upload': 'Tải ảnh lên', 'image.generate': 'AI tạo ảnh', 'kpi.create': 'Thêm KPI', 'member.create': 'Thêm thành viên', 'plan.assign': 'Giao khóa theo kế hoạch',
+  'image.upload': 'Tải ảnh lên', 'image.generate': 'AI tạo ảnh', 'kpi.create': 'Thêm KPI', 'kpi.update': 'Sửa KPI', 'member.create': 'Thêm thành viên', 'plan.assign': 'Giao khóa theo kế hoạch',
   'settings.ai_quota': 'Đổi hạn mức AI', 'settings.integrations': 'Đổi cài đặt tích hợp', 'settings.webhook_secret': 'Tạo khóa ký webhook mới',
 }
 const META = { version: 'phiên bản', users: 'số người', artifacts: 'số tài liệu', created: 'đã tạo', published: 'đã xuất bản', skipped: 'bỏ qua', items: 'số phần', size: 'dung lượng (byte)', score: 'điểm', passed: 'đạt', status: 'trạng thái', title: 'tên', quota: 'hạn mức', xapi: 'xAPI', webhook: 'webhook', note: 'ghi chú', violation: 'vi phạm' }

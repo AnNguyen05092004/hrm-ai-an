@@ -9,7 +9,7 @@ const Loose = z.object({ json: z.string().describe('nội dung sau khi sửa, d�
 export async function aiEditBlock(orgId: string, sourceIds: string[], kind: string, value: Record<string, unknown>, instruction: string): Promise<Record<string, unknown>> {
   const text = JSON.stringify(value).slice(0, 4000)
   const hits = await searchSources(orgId, sourceIds, `${instruction} ${text.slice(0, 500)}`, 5)
-  const r = await aiRewrite(orgId, Loose, value, `${instruction} (phần cần sửa là một ${kind})`, hits, () => ({ json: JSON.stringify(value) }))
+  const r = await aiRewrite(orgId, Loose, value, `${instruction} (phần cần sửa là một ${kind}. Chữ có thể chứa thẻ định dạng <b> <i> <u> <s> <br> <span data-c="…"> <mark data-c="…"> <a href="…">: giữ nguyên các thẻ này quanh phần chữ tương ứng, không thêm thẻ khác)`, hits, () => ({ json: JSON.stringify(value) }))
   let out: Record<string, unknown>
   try {
     out = JSON.parse(r.json) as Record<string, unknown>

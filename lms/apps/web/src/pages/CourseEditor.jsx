@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { AlignLeft, HelpCircle, ChevronLeft, Eye, Sparkles, Plus, ArrowUp, ArrowDown, Copy, Trash2, X, Check, ShieldCheck, GripVertical, Code2, FileText, Wand2, AlertTriangle } from 'lucide-react'
+import { AlignLeft, AlignCenter, AlignRight, Type, HelpCircle, ChevronLeft, Eye, Sparkles, Plus, ArrowUp, ArrowDown, Copy, Trash2, X, Check, ShieldCheck, GripVertical, Code2, FileText, Wand2, AlertTriangle } from 'lucide-react'
 import { useStore, uid } from '../store'
 import { LEVELS } from '../data'
 import { Tip, Toggle, SrcChip, Modal, Spinner } from '../ui'
-import { BlockView } from '../blocks'
+import { BlockView, BLOCK_SIZES, BLOCK_ALIGNS, BLOCK_BGS, ALIGNABLE } from '../blocks'
+import RichToolbar from '../RichToolbar'
 import { Editable, EditableList, MiniBtn } from '../edit'
 import { ArtifactTop, ShareModal, DraftBar } from './Common'
 import { useSkills } from './KitFlow'
@@ -74,14 +75,40 @@ function AiEdit({ artId, kind, value, onApply, onClose }) {
   )
 }
 
+const ALIGN_ICON = { left: AlignLeft, center: AlignCenter, right: AlignRight }
+
+/** Định dạng cả khối: cỡ chữ, căn lề, nền */
+function BlockStyle({ b, onChange, onClose }) {
+  const st = b.st ?? {}
+  const set = (k, v) => { const n = { ...st, [k]: v }; const clean = Object.fromEntries(Object.entries(n).filter(([kk, x]) => x && !(kk === 'size' && x === 'm') && !(kk === 'align' && x === 'left'))); onChange({ ...b, st: Object.keys(clean).length ? clean : undefined }) }
+  const Seg = ({ k, opts, cur, icons }) => (
+    <div className="flex rounded-lg bg-neutral-100 p-0.5">{opts.map(([v, l]) => { const I = icons?.[v]; return (
+      <button key={v} type="button" title={l} aria-label={l} aria-pressed={cur === v} onClick={() => set(k, v)} className={`flex h-8 flex-1 items-center justify-center rounded-md text-[13px] ${cur === v ? 'bg-white font-semibold shadow-sm' : 'text-neutral-600 hover:text-ink'}`}>{I ? <I size={16} /> : l}</button>) })}</div>
+  )
+  return (
+    <div className="fade absolute right-5 top-16 z-20 w-[280px] space-y-3 rounded-2xl border border-line bg-white p-4 text-[13px] shadow-pop">
+      <div className="flex items-center gap-2 text-[15px] font-semibold"><Type size={16} />Định dạng khối<div className="flex-1" /><button onClick={onClose} aria-label="Đóng"><X size={16} /></button></div>
+      <div><div className="mb-1.5 font-medium text-neutral-600">Cỡ chữ</div><Seg k="size" opts={BLOCK_SIZES} cur={st.size ?? 'm'} /></div>
+      {ALIGNABLE.includes(b.t) && <div><div className="mb-1.5 font-medium text-neutral-600">Căn lề</div><Seg k="align" opts={BLOCK_ALIGNS} cur={st.align ?? 'left'} icons={ALIGN_ICON} /></div>}
+      <div><div className="mb-1.5 font-medium text-neutral-600">Nền khối</div>
+        <div className="grid grid-cols-3 gap-1.5">{BLOCK_BGS.map(([v, l]) => (
+          <button key={v || 'none'} type="button" onClick={() => set('bg', v)} aria-pressed={(st.bg ?? '') === v} className={`flex flex-col items-center gap-1 rounded-lg border p-1.5 ${(st.bg ?? '') === v ? 'border-ink' : 'border-line hover:border-neutral-400'}`}>
+            <span className={`h-5 w-full rounded ${v === 'soft' ? 'bg-neutral-100' : v === 'tint' ? 'bg-brand/[0.12]' : 'border border-dashed border-neutral-300'}`} /><span className="text-[11px]">{l}</span></button>))}</div></div>
+      <p className="text-[12px] leading-snug text-neutral-500">Bôi đen chữ để in đậm, nghiêng, đổi màu, tô nền hoặc gắn liên kết.</p>
+    </div>
+  )
+}
+
 function LessonEditor({ art, lesson, up, onBack }) {
   const [lib, setLib] = useState(null)
   const [aiAt, setAiAt] = useState(null)
+  const [fmtAt, setFmtAt] = useState(null)
   const [hover, setHover] = useState(null)
   const nav = useNavigate()
   const li = art.lessons.findIndex((l) => l.id === lesson.id)
   const upL = (fn) => up((a) => fn(a.lessons[li]))
-  const move = (i, dir) => upL((l) => { const j = i + dir; if (j < 0 || j >= l.blocks.length) return; [l.blocks[i], l.blocks[j]] = [l.blocks[j], l.blocks[i]] })
+  const move = (i, dir) => { setFmtAt(null); setAiAt(null); doMove(i, dir) }
+  const doMove = (i, dir) => upL((l) => { const j = i + dir; if (j < 0 || j >= l.blocks.length) return; [l.blocks[i], l.blocks[j]] = [l.blocks[j], l.blocks[i]] })
   const insert = (at, b) => { upL((l) => { l.blocks.splice(at, 0, { ...b, id: uid('b') }) }); setLib(null) }
   return (
     <div className="min-h-full pb-24">
@@ -100,17 +127,19 @@ function LessonEditor({ art, lesson, up, onBack }) {
       {lesson.blocks.length === 0 && <p className="mx-auto mt-10 max-w-[680px] px-6 text-[15px] text-neutral-500">Bài này chưa có nội dung. Bấm "Thêm khối" để bắt đầu.</p>}
       {lesson.blocks.map((b, i) => (
         <div key={b.id} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} className={`relative border-b border-dashed py-10 ${hover === i ? 'border-neutral-300 bg-neutral-50/40' : 'border-transparent'}`}>
-          {hover === i && <>
+          {(hover === i || fmtAt === i) && <>
             {b.t !== 'image' && b.t !== 'gap' && <div className="absolute left-5 top-4 z-10 flex items-center gap-0.5 rounded-full bg-white px-1.5 py-1 shadow-card">
               <Tip label="Sửa bằng AI" className="h-8 w-8" onClick={() => setAiAt(aiAt === i ? null : i)}><Sparkles size={16} className="text-violet-600" /></Tip>
             </div>}
             <div className="absolute right-5 top-4 z-10 flex items-center gap-0.5 rounded-full bg-white px-1.5 py-1 shadow-card">
+              {b.t !== 'gap' && <Tip label="Định dạng khối" active={fmtAt === i} className="h-8 w-8" onClick={() => setFmtAt(fmtAt === i ? null : i)}><Type size={16} /></Tip>}
               <Tip label="Lên" className="h-8 w-8" onClick={() => move(i, -1)}><ArrowUp size={16} /></Tip>
               <Tip label="Xuống" className="h-8 w-8" onClick={() => move(i, 1)}><ArrowDown size={16} /></Tip>
               <Tip label="Nhân đôi" className="h-8 w-8" onClick={() => upL((l) => { l.blocks.splice(i + 1, 0, { ...structuredClone(b), id: uid('b') }) })}><Copy size={16} /></Tip>
-              <Tip label="Xóa" className="h-8 w-8" onClick={() => upL((l) => { l.blocks.splice(i, 1) })}><Trash2 size={16} /></Tip>
+              <Tip label="Xóa" className="h-8 w-8" onClick={() => { setFmtAt(null); setAiAt(null); upL((l) => { l.blocks.splice(i, 1) }) }}><Trash2 size={16} /></Tip>
             </div>
           </>}
+          {fmtAt === i && <BlockStyle b={b} onChange={(nb) => upL((l) => { l.blocks[i] = nb })} onClose={() => setFmtAt(null)} />}
           {aiAt === i && <AiEdit artId={art.id} kind="block" value={b} onClose={() => setAiAt(null)} onApply={(nb) => upL((l) => { l.blocks[i] = { ...nb, id: b.id, nosrc: undefined } })} />}
           {b.nosrc && <div className="mx-auto mb-3 max-w-[680px] px-6"><span className="chip bg-amber-50 text-amber-700"><AlertTriangle size={12} />Chưa có nguồn trích dẫn, kiểm tra lại nội dung</span></div>}
           <BlockView b={b} editor onChange={(nb) => upL((l) => { l.blocks[i] = nb })} />
@@ -118,6 +147,7 @@ function LessonEditor({ art, lesson, up, onBack }) {
         </div>
       ))}
       <div className="mt-10 flex justify-center"><button onClick={() => setLib(lesson.blocks.length)} className="btn-line"><Plus size={16} />Thêm khối</button></div>
+      <RichToolbar />
       <BlockLibrary artId={art.id} open={lib !== null} onClose={() => setLib(null)} onPick={(b) => insert(lib, b)} />
     </div>
   )

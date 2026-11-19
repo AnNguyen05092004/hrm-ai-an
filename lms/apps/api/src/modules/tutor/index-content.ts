@@ -3,6 +3,7 @@ import { and, eq, isNotNull } from 'drizzle-orm'
 import { db, schema } from '../../db/client.js'
 import type { Jump } from '../../db/schema.js'
 import { embed } from '../../lib/ai/index.js'
+import { richText } from '../../lib/text.js'
 
 type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 export interface Section { label: string; jump: Jump; text: string; src?: string }
@@ -10,7 +11,7 @@ export interface Section { label: string; jump: Jump; text: string; src?: string
 const mmss = (t: number): string => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(Math.floor(t % 60)).padStart(2, '0')}`
 const flat = (x: unknown): string => {
   if (!x) return ''
-  if (typeof x === 'string') return x
+  if (typeof x === 'string') return richText(x)
   if (Array.isArray(x)) return x.map(flat).filter(Boolean).join(' – ')
   if (typeof x === 'object') { const o = x as Json; return flat(o.t ?? o.text ?? o.h ?? o.title ?? (o.f && o.b ? `${o.f}: ${o.b}` : '')) }
   return String(x)

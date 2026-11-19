@@ -62,7 +62,7 @@ Muốn chạy không cần key: đặt `AI_PROVIDER=mock` trong `.env`.
 | Khối nội dung | Văn bản, tiêu đề, danh sách, bảng, mã lệnh, ảnh, ảnh có chú thích (điểm bấm), tab, mục mở rộng, thẻ lật, dòng thời gian, các bước, câu hỏi nhanh, luyện tập kéo thả phân loại. AI soạn được các khối này từ tài liệu nguồn |
 | Ảnh | Ảnh có sẵn, tải ảnh lên (kiểm tra định dạng thật của tệp, tối đa 8 MB), AI tạo ảnh từ mô tả. Dùng cho khối ảnh, slide, ảnh bìa tài liệu và khóa; ảnh vào cả video dựng |
 | Giao diện khóa | Màu nhấn, bộ font, ảnh bìa riêng cho từng khóa; áp cho trình soạn, trang khóa, bài học, slide, video và trang thi |
-| Soạn tại chỗ | Bấm vào chữ là sửa, tự lưu. Sửa từng khối bằng AI, sinh câu hỏi theo mức. Xuất bản có phiên bản, khôi phục được bản cũ |
+| Soạn tại chỗ | Bấm vào chữ là sửa, tự lưu. Bôi đen chữ để in đậm, nghiêng, gạch chân, gạch ngang, đổi màu, tô nền, gắn liên kết (⌘B/I/U/K). Mỗi khối chỉnh được cỡ chữ, căn lề, nền. Sửa từng khối bằng AI, sinh câu hỏi theo mức. Xuất bản có phiên bản, khôi phục được bản cũ |
 | Slide | 8 bố cục, sửa chữ tại chỗ; định dạng như phần mềm trình chiếu: kéo di chuyển, cỡ chữ, màu, đậm/nghiêng, căn lề, hộp chữ tự do, màu nền; sửa slide bằng AI; nghe thử lời đọc bằng giọng AI |
 | Video AI | Slide + lời đọc → giọng AI → MP4 có phụ đề, chương theo thời lượng thật (giữ đúng định dạng slide). Sửa slide ngay trong trang video; sửa slide nào chỉ dựng lại đoạn đó |
 | Khóa học | Một khóa gồm Tài liệu nhanh, Slide, Tình huống, Video, Đề kiểm tra. Chia sẻ cả khóa: xuất bản hàng loạt (bỏ qua tài liệu không đổi, nêu lý do tài liệu bị chặn), giao cả khóa, một đường dẫn cho cả khóa |

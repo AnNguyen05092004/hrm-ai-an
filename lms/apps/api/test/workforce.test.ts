@@ -24,6 +24,18 @@ describe('workforce planning', () => {
     expect(after.assigned.length).toBeGreaterThanOrEqual(2)
   })
 
+  it('toggling a KPI keeps its skills, metric and target', async () => {
+    const k = (await ctx.author('GET', '/api/workforce')).body.kpis.find((x: { skills: unknown[] }) => x.skills.length)
+    const off = await ctx.author('PATCH', `/api/workforce/kpis/${k.id}`, { active: false })
+    expect(off.status).toBe(200)
+    expect(off.body.skills).toEqual(k.skills)
+    expect([off.body.metric, off.body.target]).toEqual([k.metric, k.target])
+    const on = await ctx.author('PATCH', `/api/workforce/kpis/${k.id}`, { active: true })
+    expect(on.body.skills).toEqual(k.skills)
+    const recs = (await ctx.author('GET', '/api/workforce')).body.recs
+    expect(recs.length).toBeGreaterThan(0)
+  })
+
   it('adds a custom KPI and an employee', async () => {
     const k = await ctx.author('POST', '/api/workforce/kpis', { name: 'Giảm thời gian phản hồi khách', skills: [{ skillId: 'cs', boost: 2 }] })
     expect(k.status).toBe(200)

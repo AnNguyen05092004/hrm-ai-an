@@ -12,7 +12,7 @@ export function KitThemeModal({ open, onClose, kit, onSave }) {
   const changed = img !== kit.img || t.accent !== (kit.theme?.accent ?? DEFAULT_THEME.accent) || t.font !== (kit.theme?.font ?? DEFAULT_THEME.font)
   return (
     <Modal open={open} onClose={onClose} w={900} title="Giao diện khóa" sub="Áp dụng cho trang khóa, bài học, slide, video dựng và trang thi của khóa này."
-      footer={<><button className="btn-line h-10" onClick={onClose}>Hủy</button><button className="btn-dark h-10" disabled={!changed} onClick={() => { onSave({ theme: t, img }); onClose() }}>Lưu giao diện</button></>}>
+      footer={<>{!changed && <span className="mr-auto text-[13px] text-neutral-500">Khóa đang dùng giao diện này. Đổi ảnh, màu hoặc font để lưu.</span>}<button className="btn-line h-10" onClick={onClose}>Hủy</button><button className="btn-dark h-10" disabled={!changed} onClick={() => { onSave({ theme: t, img }); onClose() }}>Lưu giao diện</button></>}>
       <div className="grid grid-cols-[300px_1fr] gap-6">
         <div className="space-y-5 text-[14px]">
           <div><div className="mb-2 font-semibold">Ảnh bìa</div><Thumb img={img} className="aspect-[16/9] rounded-xl"><ChangeImage value={img} onPick={setImg} className="absolute bottom-2 left-2" /></Thumb></div>
