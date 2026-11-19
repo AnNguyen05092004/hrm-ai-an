@@ -14,6 +14,7 @@ import { Slide, SlideCanvas } from './SlideKit'
 
 /* ================= TÌNH HUỐNG ================= */
 
+// Mức của lựa chọn: good / neutral / bad. Giá trị lạ (dữ liệu cũ) hiển thị như neutral để màn không vỡ
 const OK = { good: [CheckCircle2, 'text-emerald-600'], bad: [XCircle, 'text-red-500'], neutral: [MinusCircle, 'text-neutral-400'] }
 
 function Portrait({ mood = 0, className = '', img = 'person' }) {
@@ -167,7 +168,7 @@ export function ScenarioEditor({ art, kit, up, saveText, onRestored }) {
                         {c.kind === 'char' && <div className="flex gap-3 p-4"><Avatar text={(art.character.name.split(' ').pop() || 'A')[0]} size={40} color="#475569" /><div className="min-w-0 flex-1"><div className="text-[13px] font-semibold">{art.character.name}</div><div className="mt-1 rounded-lg bg-neutral-100 p-2.5 text-[13px] font-medium"><Editable value={c.text} multiline className="block" placeholder="Nhân vật nói gì?" onChange={(v) => upCard(c.id, (k) => { k.text = v })} /></div></div></div>}
                         {c.kind === 'text' && <div className="p-4 font-serif text-[14px] italic text-neutral-700"><Editable value={c.text} multiline className="block" placeholder="Lời dẫn, bối cảnh" onChange={(v) => upCard(c.id, (k) => { k.text = v })} /></div>}
                         {c.kind === 'decision' && <div className="space-y-2 p-3">
-                          {c.choices.map((ch, i) => { const [OI, cl] = OK[ch.ok]; return (
+                          {c.choices.map((ch, i) => { const [OI, cl] = OK[ch.ok] ?? OK.neutral; return (
                             <div key={i} className="group/o rounded-xl border border-line p-3 text-[13px]">
                               <div className="flex gap-2.5"><button title="Đổi đánh giá: tốt / chưa tốt / trung tính" onClick={(e) => { e.stopPropagation(); upCard(c.id, (k) => { const o = k.choices[i]; o.ok = o.ok === 'good' ? 'bad' : o.ok === 'bad' ? 'neutral' : 'good' }) }}><OI size={18} className={cl} /></button>
                                 <Editable value={ch.t} multiline className="block flex-1 font-medium" placeholder="Câu người học chọn" onChange={(v) => upCard(c.id, (k) => { k.choices[i].t = v })} />

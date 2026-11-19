@@ -224,7 +224,8 @@ export const ScenarioSchema = z.object({
   scenes: z.array(z.object({
     title: z.string(), goal: z.string(),
     line: z.string().describe('câu nhân vật nói mở đầu cảnh'),
-    choices: z.array(z.object({ t: z.string(), ok: z.enum(['good', 'ok', 'bad']), reply: z.string() })),
+    // cùng thang với trình soạn và trình học: good (tốt nhất) / neutral (chấp nhận được) / bad
+    choices: z.array(z.object({ t: z.string(), ok: z.enum(['good', 'neutral', 'bad']), reply: z.string() })),
   })),
 })
 export type ScenarioDraft = z.infer<typeof ScenarioSchema>
@@ -233,7 +234,7 @@ export function draftScenario(orgId: string, kit: KitBrief, item: { title: strin
   return aiJson({
     orgId, feature: 'gen_scenario', schema: ScenarioSchema,
     system: `${RULES}
-Nhiệm vụ: viết tình huống hội thoại luyện tập. Mỗi cảnh ứng với một mục tiêu: nhân vật nói một câu (line), người học chọn 1 trong 3 lựa chọn (1 good, 1 ok, 1 bad), nhân vật đáp lại (reply) giải thích hệ quả dựa trên nguồn. Lời thoại tự nhiên như chat công việc.`,
+Nhiệm vụ: viết tình huống hội thoại luyện tập. Mỗi cảnh ứng với một mục tiêu: nhân vật nói một câu (line), người học chọn 1 trong 3 lựa chọn (1 good: tốt nhất, 1 neutral: chấp nhận được nhưng chưa tối ưu, 1 bad: sai hoặc rủi ro), nhân vật đáp lại (reply) giải thích hệ quả dựa trên nguồn. Lời thoại tự nhiên như chat công việc.`,
     input: `${brief(kit)}\n\nTài liệu: ${item.title}\nNhân vật: ${o.character}\nNgười học đóng vai: ${o.learner}\nBối cảnh: ${o.situation}\nMục tiêu từng cảnh:\n${o.goals.map((g, i) => `${i + 1}. ${g}`).join('\n')}\n\nTrích đoạn nguồn:\n${hitsText(hits) || '(không có nguồn)'}`,
     mock: () => {
       const [name, ...role] = o.character.split(' · ')
@@ -243,7 +244,7 @@ Nhiệm vụ: viết tình huống hội thoại luyện tập. Mỗi cảnh ứ
           title: `Cảnh ${i + 1}`, goal: g, line: `Em xử lý việc này thế nào? (${g.toLowerCase()})`,
           choices: [
             { t: 'Em làm theo đúng quy trình và hỏi lại chỗ chưa rõ.', ok: 'good' as const, reply: 'Tốt, cách đó an toàn nhất.' },
-            { t: 'Em làm trước rồi báo sau.', ok: 'ok' as const, reply: 'Được, nhưng nên báo trước để tránh rủi ro.' },
+            { t: 'Em làm trước rồi báo sau.', ok: 'neutral' as const, reply: 'Được, nhưng nên báo trước để tránh rủi ro.' },
             { t: 'Em làm theo cách quen, không cần xem quy trình.', ok: 'bad' as const, reply: 'Cách đó dễ sai nếu quy trình vừa thay đổi.' },
           ],
         })),
