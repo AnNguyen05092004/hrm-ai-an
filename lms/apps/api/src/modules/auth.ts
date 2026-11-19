@@ -1,9 +1,11 @@
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { db, schema } from '../db/client.js'
 import { COOKIE, checkPassword, createSession, destroySession, me, requireUser, setSessionCookie } from '../lib/auth.js'
-import { AppError } from '../lib/errors.js'
+import { AppError, notFound } from '../lib/errors.js'
+import { demoMode } from '../env.js'
+import { AUTHOR_EMAIL, LEARNER_EMAIL } from '../db/demo-accounts.js'
 
 export const authRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post('/login', {
@@ -16,6 +18,32 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     const s = await createSession(u.id)
     setSessionCookie(reply, s.token, s.expiresAt)
     return { id: u.id }
+  })
+
+  // ----- Bản demo: vào thẳng và đổi vai không cần mật khẩu (chỉ hai tài khoản mẫu, tắt ở production) -----
+  const DEMO = [
+    { email: AUTHOR_EMAIL, label: 'Giám đốc' },
+    { email: LEARNER_EMAIL, label: 'Người học' },
+  ]
+  const demoUsers = async () => {
+    if (!demoMode()) throw notFound('Không có bản demo')
+    const rows = await db.select({ id: schema.users.id, email: schema.users.email, name: schema.users.name, title: schema.users.title, role: schema.users.role, color: schema.users.color, active: schema.users.active })
+      .from(schema.users).where(inArray(schema.users.email, DEMO.map((d) => d.email)))
+    return DEMO.flatMap((d) => { const u = rows.find((r) => r.email === d.email && r.active); return u ? [{ ...u, label: d.label }] : [] })
+  }
+  app.get('/demo', async () => (await demoUsers()).map(({ active: _a, ...u }) => u))
+  app.post('/demo', {
+    config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+    schema: { body: z.object({ email: z.string().email().optional() }) },
+  }, async (req, reply) => {
+    const list = await demoUsers()
+    const u = req.body.email ? list.find((x) => x.email === req.body.email) : list[0]
+    if (!u) throw new AppError(400, 'not_demo', 'Tài khoản này không thuộc bản demo')
+    const old = req.cookies[COOKIE]
+    if (old) await destroySession(old)
+    const s = await createSession(u.id)
+    setSessionCookie(reply, s.token, s.expiresAt)
+    return { id: u.id, role: u.role }
   })
 
   app.post('/logout', async (req, reply) => {
@@ -31,6 +59,6 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
       id: schema.users.id, name: schema.users.name, email: schema.users.email, role: schema.users.role,
       title: schema.users.title, color: schema.users.color, orgName: schema.orgs.name, deptId: schema.users.deptId,
     }).from(schema.users).innerJoin(schema.orgs, eq(schema.orgs.id, schema.users.orgId)).where(eq(schema.users.id, u.id))
-    return row
+    return { ...row, demo: demoMode() }
   })
 }

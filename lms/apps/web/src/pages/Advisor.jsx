@@ -24,7 +24,7 @@ export function Advisor({ onAction }) {
     <div className="fade fixed bottom-6 right-6 z-40 flex h-[min(600px,calc(100vh-120px))] w-[440px] flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-pop">
       <div className="flex items-center gap-2 border-b border-line px-4 py-3">
         <span className="grid h-7 w-7 place-items-center rounded-full bg-violet-100"><Sparkles size={15} className="text-violet-600" /></span>
-        <div className="flex-1 leading-tight"><div className="text-[14px] font-semibold">Trợ lý năng lực đội ngũ</div><div className="text-[12px] text-neutral-500">Trả lời từ dữ liệu đội, KPI và tiến độ học</div></div>
+        <div className="flex-1 leading-tight"><div className="text-[14px] font-semibold">Trợ lý kế hoạch đào tạo</div><div className="text-[12px] text-neutral-500">Trả lời từ dữ liệu đội, KPI và tiến độ học</div></div>
         {msgs.length > 0 && <button onClick={() => setMsgs([])} className="rounded-lg px-2 py-1 text-[12px] font-medium text-neutral-600 hover:bg-neutral-100">Hỏi mới</button>}
         <button onClick={() => setOpen(false)} className="grid h-8 w-8 place-items-center rounded-lg border border-line" aria-label="Đóng"><X size={16} /></button>
       </div>

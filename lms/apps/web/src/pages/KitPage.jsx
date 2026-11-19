@@ -77,7 +77,7 @@ export default function KitPage() {
         {kit.fromPlan && (
           <div className="mb-6 flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-[14px]">
             <Target size={18} className="shrink-0 text-violet-600" />
-            <span className="flex-1">Khóa này được tạo từ <b>kế hoạch năng lực đội ngũ</b> để bù kỹ năng {skill?.name}. Rà bản nháp, xuất bản, rồi quay lại giao cho người còn thiếu.</span>
+            <span className="flex-1">Khóa này được tạo từ <b>kế hoạch đào tạo</b> để bù kỹ năng {skill?.name}. Rà bản nháp, xuất bản, rồi quay lại giao cho người còn thiếu.</span>
             <button onClick={() => nav('/workforce')} className="btn-line btn-sm shrink-0">Về kế hoạch<ArrowRight size={14} /></button>
           </div>
         )}

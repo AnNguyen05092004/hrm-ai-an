@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Target, Plus, Sparkles, Check, Users, BookOpen, Wand2, X, ChevronRight, TrendingUp, ClipboardCheck, Search, UserPlus, AlertTriangle, Trash2 } from 'lucide-react'
@@ -7,6 +7,7 @@ import { Avatar, Modal, Spinner, Toggle, Drawer, FormatGlyph } from '../ui'
 import { TopOrg } from '../Shell'
 import { get, post, patch, del } from '../api'
 import { Advisor } from './Advisor'
+import { PlanCriteria, PlanFlow, PlanWaves, criteriaKey, planDue, planWaves, scopeRecs } from './TrainingPlan'
 
 const ST = {
   gap: ['bg-red-50 text-red-700 border-red-200', 'Cần học, chưa giao'],
@@ -84,11 +85,11 @@ function MemberModal({ open, onClose, m, onSaved }) {
   )
 }
 
-function AssignModal({ r, m, onClose, onDone }) {
+function AssignModal({ r, m, onClose, onDone, due: initialDue }) {
   const { say } = useStore()
   const free = r ? r.byCourse.filter((id) => !r.assigned.includes(id)) : []
   const [sel, setSel] = useState(() => new Set(free))
-  const [due, setDue] = useState(defaultDue)
+  const [due, setDue] = useState(() => initialDue ?? defaultDue())
   const [busy, setBusy] = useState(false)
   if (!r) return null
   const person = (id) => m.team.find((p) => p.id === id)
@@ -126,7 +127,8 @@ function PersonNode({ p, m, onPerson, onSkill }) {
 
 function OrgChart({ m, boss, deptSel, setDeptSel, onPerson, onSkill }) {
   const depts = m.depts.filter((d) => m.team.some((p) => p.deptId === d.id))
-  const top = depts[0]?.parentId === null ? depts.slice(0, 1) : []
+  // bộ phận đầu (cấp quản lý) đứng riêng một hàng; chỉ áp dụng khi có từ 2 bộ phận trở lên
+  const top = depts.length > 1 && depts[0]?.parentId === null ? depts.slice(0, 1) : []
   const rest = depts.filter((d) => !top.includes(d))
   return (
     <div className="card mt-5 p-6">
@@ -136,8 +138,8 @@ function OrgChart({ m, boss, deptSel, setDeptSel, onPerson, onSkill }) {
         <div className="mx-auto w-[240px] rounded-xl bg-ink px-4 py-3 text-white"><div className="flex items-center gap-2.5"><Avatar text={boss.initials} size={30} color={boss.color} /><div className="leading-tight"><div className="text-[14px] font-semibold">{boss.name}</div><div className="text-[11px] text-white/70">{m.team.length} người</div></div></div></div>
         <div className="mx-auto h-6 w-px bg-neutral-300" />
         {top.map((d) => <div key={d.id} className="flex justify-center gap-3">{m.team.filter((p) => p.deptId === d.id).map((p) => <div key={p.id} className="w-[240px]"><PersonNode p={p} m={m} onPerson={onPerson} onSkill={onSkill} /></div>)}</div>)}
-        {top.length > 0 && <div className="mx-auto h-6 w-px bg-neutral-300" />}
-        <div className="relative grid" style={{ gridTemplateColumns: `repeat(${rest.length}, minmax(0, 1fr))` }}>
+        {top.length > 0 && rest.length > 0 && <div className="mx-auto h-6 w-px bg-neutral-300" />}
+        {rest.length > 0 && <div className="relative mx-auto grid" style={{ gridTemplateColumns: `repeat(${rest.length}, minmax(0, 1fr))`, width: rest.length < 4 ? rest.length * 260 : undefined }}>
           <div className="absolute top-0 h-px bg-neutral-300" style={{ left: `${50 / rest.length}%`, right: `${50 / rest.length}%` }} />
           {rest.map((d) => { const ps = m.team.filter((p) => p.deptId === d.id); const need = ps.filter((p) => Object.values(m.cells[p.id] ?? {}).some((c) => c.state !== 'ok')).length; const on = deptSel === d.id; return (
             <div key={d.id} className={`relative px-1.5 pt-6 transition ${deptSel && !on ? 'opacity-40' : ''}`}>
@@ -145,7 +147,7 @@ function OrgChart({ m, boss, deptSel, setDeptSel, onPerson, onSkill }) {
               <button onClick={() => setDeptSel(on ? null : d.id)} className={`w-full rounded-xl border px-3 py-2.5 text-left transition ${on ? 'border-ink bg-neutral-100 ring-1 ring-ink' : 'border-line bg-neutral-50 hover:bg-neutral-100'}`}><div className="truncate text-[13px] font-semibold">{d.name}</div><div className="text-[11px] text-neutral-600">{ps.length} người · {need} cần học</div></button>
               <div className="ml-3 space-y-2 border-l border-neutral-300 pl-2 pt-2">{ps.map((p) => <PersonNode key={p.id} p={p} m={m} onPerson={onPerson} onSkill={onSkill} />)}</div>
             </div>) })}
-        </div>
+        </div>}
       </div></div>
     </div>
   )
@@ -252,12 +254,40 @@ export default function Workforce() {
   const [deptSel, setDeptSel] = useState(null)
   const [search, setSearch] = useState('')
   const [gen, setGen] = useState(null)
+  // Kế hoạch: chọn tiêu chí rồi mới phân tích; nhớ lần phân tích trong phiên để quay lại không mất kết quả
+  const saved = (() => { try { return JSON.parse(sessionStorage.getItem('plan-criteria') ?? 'null') } catch { return null } })()
+  const [scope, setScope] = useState(saved?.scope ?? [])
+  const [due, setDue] = useState(saved?.due ?? planDue())
+  // plan: ảnh chụp lần phân tích gần nhất (dữ liệu + tiêu chí); kết quả chỉ đổi khi bấm Phân tích lại
+  const [plan, setPlan] = useState(null)
+  const [analyzing, setAnalyzing] = useState(false)
   const m = q.data
+  useEffect(() => {
+    if (!m) return
+    // khôi phục lần phân tích trong phiên nếu tiêu chí vẫn như cũ
+    if (!plan) { if (saved?.key && criteriaKey(m, saved.scope, saved.due) === saved.key) setPlan({ m, scope: saved.scope, due: saved.due, key: saved.key }); return }
+    // giao khóa, tạo khóa, cập nhật kỹ năng… mà tiêu chí không đổi thì kết quả cập nhật theo
+    if (plan.m !== m && criteriaKey(m, plan.scope, plan.due) === plan.key) setPlan((p) => ({ ...p, m }))
+  }, [m]) // eslint-disable-line react-hooks/exhaustive-deps
   const refresh = () => qc.invalidateQueries({ queryKey: ['workforce'] })
   const pending = useQuery({ queryKey: ['evidence'], queryFn: () => get('/workforce/evidence') }).data?.filter((x) => x.e.status === 'pending').length ?? 0
-  const recs = useMemo(() => (m ? m.recs.filter((r) => !deptSel || r.gap.some((id) => m.team.find((p) => p.id === id)?.deptId === deptSel)) : []), [m, deptSel])
+  const planRecs = useMemo(() => (plan ? scopeRecs(plan.m, plan.scope) : []), [plan])
+  const waves = useMemo(() => (plan ? planWaves(planRecs, plan.due) : []), [plan, planRecs])
+  const recs = useMemo(() => planRecs.filter((r) => !deptSel || r.gap.some((id) => m.team.find((p) => p.id === id)?.deptId === deptSel)), [m, planRecs, deptSel])
   if (q.isLoading || !m) return <div className="grid h-full place-items-center"><Spinner /></div>
-  const toggleKpi = async (k) => { await patch(`/workforce/kpis/${k.id}`, { active: !k.active }); refresh() }
+  const toggleKpi = async (k) => { try { await patch(`/workforce/kpis/${k.id}`, { active: !k.active }); refresh() } catch (e) { say(e.message) } }
+  const key = criteriaKey(m, scope, due)
+  const analyze = async () => {
+    setAnalyzing(true); setDeptSel(null)
+    try {
+      const fresh = (await q.refetch()).data ?? m
+      const k = criteriaKey(fresh, scope, due)
+      setPlan({ m: fresh, scope, due, key: k })
+      try { sessionStorage.setItem('plan-criteria', JSON.stringify({ scope, due, key: k })) } catch { /* bộ nhớ phiên bị chặn: chỉ mất phần nhớ kết quả */ }
+      setTimeout(() => document.getElementById('plan-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
+    } catch (e) { say(e.message) } finally { setAnalyzing(false) }
+  }
+  const dueOf = (sk) => waves.find((w) => w.skills.includes(sk))?.to
   const delKpi = async (k) => { await del(`/workforce/kpis/${k.id}`); refresh() }
   const generate = async (r) => {
     setGen(r.skillId)
@@ -276,37 +306,68 @@ export default function Workforce() {
     <div className="min-h-full pb-24">
       <TopOrg />
       <div className="px-10 py-8">
-        <div className="flex items-end gap-4"><div className="flex-1"><h1 className="text-[36px] font-semibold">Năng lực đội ngũ</h1><p className="mt-1 text-[15px] text-neutral-600">Từ KPI của khối, xem ai thiếu kỹ năng gì, giao khóa có sẵn hoặc tạo khóa mới bằng AI.</p></div>
+        <div className="flex items-end gap-4"><div className="flex-1"><h1 className="text-[36px] font-semibold">Kế hoạch đào tạo</h1><p className="mt-1 text-[15px] text-neutral-600">Chọn KPI cần đạt, bộ phận và thời hạn, rồi phân tích để ra lộ trình khóa học cho từng người.</p></div>
           <div className="w-[300px]"><div className="flex justify-between text-[13px]"><span className="font-semibold">Mức sẵn sàng cho KPI</span><span>{m.readiness.now}% → <b className="text-violet-700">{m.readiness.after}%</b></span></div><div className="mt-2"><Bar now={m.readiness.now} next={m.readiness.after} /></div><div className="mt-1 text-[12px] text-neutral-500">Sau khi học xong các khóa đề xuất</div></div></div>
-        <div className="mt-6 flex gap-6 border-b border-line">{[['plan', 'Kế hoạch theo KPI', Target], ['team', 'Đội ngũ', Users], ['assess', 'Đánh giá năng lực', ClipboardCheck, pending], ['impact', 'Tác động lên KPI', TrendingUp]].map(([k, l, I, n]) => <button key={k} onClick={() => setTab(k)} className={`-mb-px flex items-center gap-2 border-b-2 pb-2.5 text-[15px] ${tab === k ? 'border-ink font-semibold' : 'border-transparent text-neutral-500'}`}><I size={16} />{l}{n > 0 && <span className="rounded-full bg-brand px-1.5 text-[11px] font-semibold text-white">{n}</span>}</button>)}</div>
+        <div className="mt-6 flex gap-6 border-b border-line">{[['plan', 'Lập kế hoạch', Target], ['team', 'Đội ngũ', Users], ['assess', 'Đánh giá năng lực', ClipboardCheck, pending], ['impact', 'Tác động lên KPI', TrendingUp]].map(([k, l, I, n]) => <button key={k} onClick={() => setTab(k)} className={`-mb-px flex items-center gap-2 border-b-2 pb-2.5 text-[15px] ${tab === k ? 'border-ink font-semibold' : 'border-transparent text-neutral-500'}`}><I size={16} />{l}{n > 0 && <span className="rounded-full bg-brand px-1.5 text-[11px] font-semibold text-white">{n}</span>}</button>)}</div>
 
         {tab === 'plan' && <>
-          <div className="mt-6 flex items-center"><div className="flex-1 text-[16px] font-semibold">KPI của khối</div><button className="btn-line btn-sm" onClick={() => setKpiOpen(true)}><Plus size={15} />Thêm KPI</button></div>
-          <div className="mt-3 grid grid-cols-2 gap-4">{m.kpis.map((k) => (
-            <div key={k.id} className={`group card p-5 ${k.active ? '' : 'opacity-60'}`}>
-              <div className="flex items-start gap-3"><Target size={18} className="mt-0.5 shrink-0 text-violet-600" /><div className="flex-1"><div className="font-semibold leading-snug">{k.name}</div><div className="mt-1 text-[13px] text-neutral-500">{[k.metric, k.current && `hiện ${k.current}`, k.target && `mục tiêu ${k.target}`, k.due && `hạn ${k.due}`].filter(Boolean).join(' · ')}</div></div>
-                <Toggle on={k.active} onChange={() => toggleKpi(k)} /><button onClick={() => delKpi(k)} className="icon-btn h-8 w-8 opacity-0 group-hover:opacity-100" aria-label="Xóa KPI"><Trash2 size={15} /></button></div>
-              <div className="mt-3 flex flex-wrap gap-1.5">{k.skills.map((s) => <span key={s.skillId} className="chip bg-violet-50 text-violet-700" title={s.why}>{m.skills.find((x) => x.id === s.skillId)?.name}{s.boost ? ` · cần mức ${s.boost}` : ''}</span>)}</div>
-            </div>))}</div>
+          <section className="card mt-6 p-6">
+            <div className="mb-4 flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full bg-ink text-[13px] font-semibold text-white">1</span><div className="text-[17px] font-semibold">Chọn tiêu chí</div></div>
+            <div className="flex items-center"><div className="flex-1 text-[14px] font-semibold">KPI cần đạt <span className="font-normal text-neutral-500">· bật các KPI muốn đưa vào kế hoạch</span></div><button className="btn-line btn-sm" onClick={() => setKpiOpen(true)}><Plus size={15} />Thêm KPI</button></div>
+            <div className="mt-3 grid grid-cols-2 gap-4">{m.kpis.map((k) => (
+              <div key={k.id} className={`group card p-5 ${k.active ? '' : 'opacity-60'}`}>
+                <div className="flex items-start gap-3"><Target size={18} className="mt-0.5 shrink-0 text-violet-600" /><div className="flex-1"><div className="font-semibold leading-snug">{k.name}</div><div className="mt-1 text-[13px] text-neutral-500">{[k.metric, k.current && `hiện ${k.current}`, k.target && `mục tiêu ${k.target}`, k.due && `hạn ${k.due}`].filter(Boolean).join(' · ')}</div></div>
+                  <Toggle on={k.active} onChange={() => toggleKpi(k)} /><button onClick={() => delKpi(k)} className="icon-btn h-8 w-8 opacity-0 group-hover:opacity-100" aria-label="Xóa KPI"><Trash2 size={15} /></button></div>
+                <div className="mt-3 flex flex-wrap gap-1.5">{k.skills.map((s) => <span key={s.skillId} className="chip bg-violet-50 text-violet-700" title={s.why}>{m.skills.find((x) => x.id === s.skillId)?.name}{s.boost ? ` · cần mức ${s.boost}` : ''}</span>)}</div>
+              </div>))}</div>
 
-          <OrgChart m={m} boss={me} deptSel={deptSel} setDeptSel={setDeptSel} onPerson={setWho} onSkill={onSkill} />
+            <PlanCriteria m={m} scope={scope} setScope={setScope} due={due} setDue={setDue} onAnalyze={analyze} busy={analyzing} analyzed={!!plan} stale={!!plan && plan.key !== key} />
+          </section>
 
-          <div className="mt-8 text-[16px] font-semibold">Kế hoạch đề xuất <span className="font-normal text-neutral-500">· xếp theo mức thiếu × số KPI bị ảnh hưởng{deptSel && ` · lọc: ${m.depts.find((d) => d.id === deptSel)?.name}`}</span></div>
-          {recs.length === 0 && <p className="mt-3 text-[14px] text-neutral-500">Đội đã đủ kỹ năng cho các KPI đang theo dõi.</p>}
-          <div className="mt-3 space-y-4">{recs.map((r) => { const left = r.byCourse.filter((id) => !r.assigned.includes(id)); return (
-            <div key={r.skillId} id={`rec-${r.skillId}`} className="card scroll-mt-24 p-5">
-              <div className="flex items-start gap-4">
-                <div className="flex-1"><div className="text-[17px] font-semibold">{r.skillName}</div>
-                  <div className="mt-1 text-[13px] text-neutral-600">Thiếu: {r.gap.length} người · đã giao {r.assigned.length} · học xong {r.completed.length} · ảnh hưởng {r.kpiIds.length} KPI</div>
-                  <div className="mt-2 flex flex-wrap gap-1.5">{r.kpiIds.map((id) => <span key={id} className="chip">{m.kpis.find((k) => k.id === id)?.name}</span>)}</div></div>
-                {r.courses.length ? <button className="btn-dark btn-sm h-9" disabled={!left.length} onClick={() => setAsg(r)}><BookOpen size={15} />{left.length ? `Giao khóa cho ${left.length} người` : 'Đã giao đủ'}</button>
-                  : <button className="btn-dark btn-sm h-9" disabled={gen === r.skillId} onClick={() => generate(r)}>{gen === r.skillId ? <Spinner size={15} w={2} /> : <Wand2 size={15} />}Tạo khóa bằng AI</button>}
+          {!plan ? (
+            <div className="mt-6 rounded-2xl border border-dashed border-line px-6 py-10 text-center">
+              <div className="text-[16px] font-semibold">Chưa có kế hoạch</div>
+              <p className="mx-auto mt-1 max-w-[520px] text-[14px] text-neutral-600">Chọn xong tiêu chí ở trên rồi bấm <b>Phân tích và lập kế hoạch</b>. Hệ thống so kỹ năng hiện có của từng người với mức KPI cần, rồi đề xuất khóa và chia lộ trình theo đợt.</p>
+            </div>
+          ) : (
+          <section id="plan-result" className={`scroll-mt-20 transition ${plan.key !== key ? 'opacity-60' : ''}`}>
+            <div className="mb-4 mt-8 flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full bg-ink text-[13px] font-semibold text-white">2</span><div className="flex-1 text-[17px] font-semibold">Kế hoạch đề xuất</div></div>
+            {planRecs.length === 0 ? <p className="text-[14px] text-neutral-600">Đội trong phạm vi đã đủ kỹ năng cho các KPI đang bật. Không cần giao thêm khóa.</p> : <>
+              <div className="grid grid-cols-4 gap-3">{[
+                ['Kỹ năng cần bù', planRecs.length],
+                ['Người cần học', new Set(planRecs.flatMap((r) => r.gap)).size],
+                ['Khóa có sẵn', planRecs.filter((r) => r.courses.length).length, `cần tạo thêm ${planRecs.filter((r) => !r.courses.length).length}`],
+                ['Mức sẵn sàng cho KPI', `${plan.m.readiness.now}% → ${plan.m.readiness.after}%`, 'sau khi học xong'],
+              ].map(([l, v, sub]) => <div key={l} className="card p-4"><div className="text-[13px] text-neutral-500">{l}</div><div className="mt-1 text-[24px] font-semibold">{v}</div>{sub && <div className="text-[12px] text-neutral-500">{sub}</div>}</div>)}</div>
+
+              <div className="card mt-5 p-6">
+                <div className="flex flex-wrap items-start gap-4"><div className="flex-1"><div className="text-[16px] font-semibold">Sơ đồ kế hoạch khóa học</div><p className="mt-0.5 text-[13px] text-neutral-600">KPI nào cần kỹ năng nào, khóa nào bù kỹ năng đó và ai cần học. Bấm kỹ năng để xem chi tiết.</p></div>
+                  <div className="flex gap-3 text-[12px] text-neutral-600"><span className="flex items-center gap-1.5"><span className="h-0.5 w-5 bg-neutral-400" />Có khóa</span><span className="flex items-center gap-1.5"><span className="h-0 w-5 border-t-2 border-dashed border-amber-500" />Chưa có khóa</span></div></div>
+                <div className="mt-5"><PlanFlow m={plan.m} recs={planRecs} waves={waves} onSkill={onSkill} onAssign={(r) => setAsg({ ...r, due: dueOf(r.skillId) })} onGenerate={generate} gen={gen} /></div>
+                <div className="mt-6 text-[14px] font-semibold">Lộ trình theo đợt <span className="font-normal text-neutral-500">· kỹ năng ưu tiên cao học trước, chia đều trong hạn kế hoạch</span></div>
+                <div className="mt-2"><PlanWaves waves={waves} recs={planRecs} /></div>
               </div>
-              {r.courses.length ? <div className="mt-3 flex flex-wrap gap-2">{r.courses.map((c) => <span key={c.id} className="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1 text-[13px]"><FormatGlyph type={c.type} size={13} />{c.title}</span>)}<span className="self-center text-[12px] text-neutral-500">đưa tới mức {r.courseLevel}</span></div>
-                : <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-800"><AlertTriangle size={14} />Thư viện chưa có khóa đã xuất bản cho kỹ năng này.</div>}
-              <div className="mt-3 flex flex-wrap gap-1.5">{r.gap.map((id) => { const p = person(id), c = m.cells[id]?.[r.skillId]; return <button key={id} onClick={() => setWho(id)} className={`flex items-center gap-1.5 rounded-full border py-0.5 pl-0.5 pr-2.5 text-[12px] ${ST[c?.state ?? 'gap'][0]}`} title={r.mentors[id] ? `Có thể kèm cặp: ${person(r.mentors[id])?.name}` : undefined}><Avatar text={p.initials} size={20} color={p.color} />{p.name} · {c?.cur}→{c?.need}</button> })}</div>
-              {r.beyondCourse.length > 0 && r.courses.length > 0 && <p className="mt-2 text-[12px] text-neutral-500">{r.beyondCourse.length} người đã đạt mức của khóa: cần kèm cặp hoặc dự án thực tế{r.beyondCourse.map((id) => r.mentors[id]).filter(Boolean).length ? ` (người kèm gợi ý: ${[...new Set(r.beyondCourse.map((id) => person(r.mentors[id])?.name).filter(Boolean))].join(', ')})` : ''}.</p>}
-            </div>) })}</div>
+
+              <OrgChart m={plan.scope.length ? { ...plan.m, team: plan.m.team.filter((p) => plan.scope.includes(p.deptId)) } : plan.m} boss={me} deptSel={deptSel} setDeptSel={setDeptSel} onPerson={setWho} onSkill={onSkill} />
+
+              <div className="mt-8 text-[16px] font-semibold">Chi tiết từng kỹ năng <span className="font-normal text-neutral-500">· xếp theo mức thiếu × số KPI bị ảnh hưởng{deptSel && ` · lọc: ${m.depts.find((d) => d.id === deptSel)?.name}`}</span></div>
+              {recs.length === 0 && <p className="mt-3 text-[14px] text-neutral-500">Bộ phận đang lọc đã đủ kỹ năng cho các KPI đã chọn.</p>}
+              <div className="mt-3 space-y-4">{recs.map((r) => { const left = r.byCourse.filter((id) => !r.assigned.includes(id)); return (
+                <div key={r.skillId} id={`rec-${r.skillId}`} className="card scroll-mt-24 p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-1"><div className="text-[17px] font-semibold">{r.skillName}</div>
+                      <div className="mt-1 text-[13px] text-neutral-600">Thiếu: {r.gap.length} người · đã giao {r.assigned.length} · học xong {r.completed.length} · ảnh hưởng {r.kpiIds.length} KPI</div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">{r.kpiIds.map((id) => <span key={id} className="chip">{m.kpis.find((k) => k.id === id)?.name}</span>)}</div></div>
+                    {r.courses.length ? <button className="btn-dark btn-sm h-9" disabled={!left.length} onClick={() => setAsg({ ...r, due: dueOf(r.skillId) })}><BookOpen size={15} />{left.length ? `Giao khóa cho ${left.length} người` : 'Đã giao đủ'}</button>
+                      : <button className="btn-dark btn-sm h-9" disabled={gen === r.skillId} onClick={() => generate(r)}>{gen === r.skillId ? <Spinner size={15} w={2} /> : <Wand2 size={15} />}Tạo khóa bằng AI</button>}
+                  </div>
+                  {r.courses.length ? <div className="mt-3 flex flex-wrap gap-2">{r.courses.map((c) => <span key={c.id} className="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1 text-[13px]"><FormatGlyph type={c.type} size={13} />{c.title}</span>)}<span className="self-center text-[12px] text-neutral-500">đưa tới mức {r.courseLevel}</span></div>
+                    : <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-800"><AlertTriangle size={14} />Thư viện chưa có khóa đã xuất bản cho kỹ năng này.</div>}
+                  <div className="mt-3 flex flex-wrap gap-1.5">{r.gap.map((id) => { const p = person(id), c = m.cells[id]?.[r.skillId]; return <button key={id} onClick={() => setWho(id)} className={`flex items-center gap-1.5 rounded-full border py-0.5 pl-0.5 pr-2.5 text-[12px] ${ST[c?.state ?? 'gap'][0]}`} title={r.mentors[id] ? `Có thể kèm cặp: ${person(r.mentors[id])?.name}` : undefined}><Avatar text={p.initials} size={20} color={p.color} />{p.name} · {c?.cur}→{c?.need}</button> })}</div>
+                  {r.beyondCourse.length > 0 && r.courses.length > 0 && <p className="mt-2 text-[12px] text-neutral-500">{r.beyondCourse.length} người đã đạt mức của khóa: cần kèm cặp hoặc dự án thực tế{r.beyondCourse.map((id) => r.mentors[id]).filter(Boolean).length ? ` (người kèm gợi ý: ${[...new Set(r.beyondCourse.map((id) => person(r.mentors[id])?.name).filter(Boolean))].join(', ')})` : ''}.</p>}
+                </div>) })}</div>
+            </>}
+          </section>)}
         </>}
 
         {tab === 'team' && <>
@@ -321,7 +382,7 @@ export default function Workforce() {
       </div>
       <KpiModal open={kpiOpen} onClose={() => setKpiOpen(false)} m={m} onSaved={refresh} />
       <MemberModal open={memOpen} onClose={() => setMemOpen(false)} m={m} onSaved={refresh} />
-      {asg && <AssignModal r={asg} m={m} onClose={() => setAsg(null)} onDone={() => { setAsg(null); refresh() }} />}
+      {asg && <AssignModal r={asg} due={asg.due} m={m} onClose={() => setAsg(null)} onDone={() => { setAsg(null); refresh() }} />}
       {who && <PersonDrawer id={who} m={m} onClose={() => setWho(null)} onChanged={refresh} />}
       <Advisor m={m} onAction={(a) => {
         if (a.kind === 'person') setWho(a.target)

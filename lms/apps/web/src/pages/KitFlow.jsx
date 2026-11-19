@@ -24,7 +24,7 @@ export function KitHeader({ kit, step, saveText }) {
         <button onClick={() => nav('/')} aria-label="Trang chủ"><Logo size={26} /></button>
         <span className="text-[17px] font-semibold">{kit.title}</span>
         {saveText && <span className="text-[13px] italic text-neutral-500">{saveText}</span>}
-        {kit.fromPlan && <button onClick={() => nav('/workforce')} className="flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[13px] font-medium text-violet-800 hover:bg-violet-100"><ArrowLeft size={14} />Về Năng lực đội ngũ</button>}
+        {kit.fromPlan && <button onClick={() => nav('/workforce')} className="flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[13px] font-medium text-violet-800 hover:bg-violet-100"><ArrowLeft size={14} />Về Kế hoạch đào tạo</button>}
       </div>
       {step && (
         <div className="flex h-12 items-center justify-center gap-4 border-b border-line text-[15px]">

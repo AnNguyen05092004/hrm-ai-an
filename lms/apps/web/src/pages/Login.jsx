@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Logo, Spinner } from '../ui'
-import { post } from '../api'
+import { get, post } from '../api'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -11,6 +11,16 @@ export default function Login() {
   const [busy, setBusy] = useState(false)
   const qc = useQueryClient()
   const nav = useNavigate()
+  const from = useLocation().state?.from
+  // Bản demo: không hiện màn đăng nhập, vào thẳng vai người tạo khóa (đổi vai ở góc dưới thanh bên)
+  const [demo, setDemo] = useState('checking') // checking | on | off
+  useEffect(() => {
+    let alive = true
+    get('/auth/demo')
+      .then(async () => { if (!alive) return; setDemo('on'); await post('/auth/demo', {}); await qc.invalidateQueries({ queryKey: ['me'] }); nav(from && from !== '/login' ? from : '/', { replace: true }) })
+      .catch(() => alive && setDemo('off'))
+    return () => { alive = false }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const submit = async (e) => {
     e.preventDefault(); setErr(''); setBusy(true)
     try {
@@ -19,6 +29,7 @@ export default function Login() {
       nav('/', { replace: true })
     } catch (x) { setErr(x.message) } finally { setBusy(false) }
   }
+  if (demo !== 'off') return <div className="grid min-h-full place-items-center"><div className="flex items-center gap-3 text-[15px] text-neutral-600"><Spinner size={22} w={2} />Đang mở bản demo…</div></div>
   return (
     <div className="hero-bg grid min-h-full place-items-center p-6">
       <form onSubmit={submit} className="card w-full max-w-[420px] p-8 shadow-pop">

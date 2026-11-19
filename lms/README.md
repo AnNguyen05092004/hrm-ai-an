@@ -30,11 +30,13 @@ Mở http://localhost:5190. Dừng bằng Ctrl+C.
 
 Muốn chạy không cần key: đặt `AI_PROVIDER=mock` trong `.env`.
 
+**Bản demo:** mở web là vào thẳng vai giám đốc, không qua màn đăng nhập. Bấm tên ở góc dưới thanh bên để đổi sang vai người học và ngược lại. Chế độ này tự bật khi không phải production; tắt bằng `DEMO_MODE=false` trong `.env` để dùng lại màn đăng nhập.
+
 **Tài khoản mẫu** (mật khẩu `demo1234`, chỉ dùng ở môi trường phát triển):
 
 | Vai | Email | Thấy gì |
 |---|---|---|
-| Giám đốc, người tạo khóa học | an@demo.local | Trang chủ, Thư viện, Năng lực đội ngũ, Phân tích, Chấm bài, Cài đặt |
+| Giám đốc, người tạo khóa học | an@demo.local | Trang chủ, Thư viện, Kế hoạch đào tạo, Phân tích, Chấm bài, Cài đặt |
 | Người học | ha@demo.local | Khóa học của tôi, học, hỏi AI Tutor, thi |
 
 ## Tech stack
@@ -72,7 +74,7 @@ Muốn chạy không cần key: đặt `AI_PROVIDER=mock` trong `.env`.
 | Dạng câu hỏi | Một đáp án, nhiều đáp án, điền chỗ trống, ghép cặp, sắp thứ tự, phân loại kéo thả (chấm tự động, cho điểm từng phần), tự luận (AI chấm nháp), bài code JavaScript (chạy cách ly) |
 | Thi và chấm | Mỗi người một đề riêng, rút từ ngân hàng câu đã duyệt. Có giờ thi, số lượt, lưu liên tục, làm tiếp được khi mất mạng. Trắc nghiệm và bài code JavaScript chấm tự động. AI chấm nháp tự luận theo rubric, người chấm xác nhận |
 | Giám sát | Bật theo bài, người thi phải đồng ý. Gắn cờ khi chuyển tab, rời cửa sổ, dán từ ngoài. Người chấm quyết định. Tự xóa sau 30 ngày |
-| Năng lực đội ngũ | Từ KPI ra kỹ năng cần và khoảng cách của từng người. Gợi ý khóa có sẵn, hoặc tạo khóa bằng AI cho kỹ năng chưa có. Có sơ đồ đội ngũ và đánh giá mức từ bằng chứng. Thi chính thức đạt thì nâng mức (tối đa 3). Trợ lý AI trả lời trên dữ liệu đội |
+| Kế hoạch đào tạo | Chọn KPI, bộ phận, thời hạn rồi phân tích: từ KPI ra kỹ năng cần và khoảng cách của từng người, sơ đồ KPI → kỹ năng → khóa → người học, lộ trình chia đợt. Gợi ý khóa có sẵn, hoặc tạo khóa bằng AI cho kỹ năng chưa có. Có sơ đồ đội ngũ và đánh giá mức từ bằng chứng. Thi chính thức đạt thì nâng mức (tối đa 3). Trợ lý AI trả lời trên dữ liệu đội |
 | Kết nối LMS công ty | Xuất khóa thành gói SCORM 1.2 (cùng giao diện học, ghi hoàn thành, điểm, học dở); gửi kết quả học sang LRS qua xAPI; webhook có chữ ký cho hệ thống nội bộ |
 | Vận hành | Hạn mức AI theo tháng, thống kê token theo tính năng, nhật ký thao tác. Phân tích câu Tutor chưa trả lời được và câu hỏi bị sai nhiều |
 
@@ -83,8 +85,8 @@ Muốn chạy không cần key: đặt `AI_PROVIDER=mock` trong `.env`.
 3. Mở Video → tab **Lời đọc** → **Dựng video**.
 4. Vào Thư viện → Tài liệu nguồn → `Runbook-Backup-v2.docx` → **Tải bản mới** bằng [docs/demo/Runbook-Backup-v3.md](docs/demo/Runbook-Backup-v3.md). Mở bộ "Docker Volume cơ bản": banner chỉ ra bài bị ảnh hưởng.
 5. Đăng nhập `ha@demo.local`. Mở "Lệnh và lựa chọn khi dùng Docker Volume" và hỏi Tutor 3 câu: "Khi nào dùng bind mount?", "Chính sách nghỉ phép năm bao nhiêu ngày?", "Đáp án câu 2 là gì?". Sau đó làm bài thi chính thức có giám sát.
-6. Quay lại `an@demo.local` → **Chấm bài**. Xem rubric AI đề xuất, xử lý cờ, xác nhận. Nếu đạt, mức Docker của Hà lên 2 ở **Năng lực đội ngũ**.
-7. Ở **Năng lực đội ngũ**: xem kế hoạch theo KPI, giao khóa, tạo khóa bằng AI cho kỹ năng chưa có khóa, hỏi trợ lý "Bộ phận nào yếu nhất?".
+6. Quay lại `an@demo.local` → **Chấm bài**. Xem rubric AI đề xuất, xử lý cờ, xác nhận. Nếu đạt, mức Docker của Hà lên 2 ở **Kế hoạch đào tạo** → Đội ngũ.
+7. Ở **Kế hoạch đào tạo**: bật KPI, chọn bộ phận và hạn, bấm **Phân tích và lập kế hoạch** để xem sơ đồ khóa học theo đợt, giao khóa, tạo khóa bằng AI cho kỹ năng chưa có khóa, hỏi trợ lý "Bộ phận nào yếu nhất?".
 
 ## Cấu trúc
 

@@ -84,5 +84,5 @@ const ok = req.headers['x-lms-signature'] === 'sha256=' + crypto.createHmac('sha
 |---|---|
 | Đăng nhập một lần (SSO qua SAML hoặc OIDC) | Cần thông tin nhà cung cấp định danh của công ty |
 | LTI 1.3 | Để LMS công ty mở thẳng khóa học trên LMS này (giữ được Tutor và thi chính thức) |
-| Đồng bộ danh sách nhân viên và phòng ban từ HRM | Hiện thêm thành viên trong Năng lực đội ngũ |
+| Đồng bộ danh sách nhân viên và phòng ban từ HRM | Hiện thêm thành viên trong Kế hoạch đào tạo → Đội ngũ |
 | SCORM 2004 / cmi5 | Làm thêm khi LMS công ty yêu cầu |

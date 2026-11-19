@@ -14,6 +14,8 @@ const schema = z.object({
   AI_EMBED_MODEL: z.string().default('text-embedding-3-small'),
   AI_TTS_MODEL: z.string().default('gpt-4o-mini-tts'),
   AI_IMAGE_MODEL: z.string().default('gpt-image-2'),
+  // Bản demo: bỏ màn đăng nhập, đổi vai bằng một cú bấm. Mặc định bật khi không phải production
+  DEMO_MODE: z.enum(['true', 'false']).optional(),
 })
 
 export type Env = z.infer<typeof schema>
@@ -27,3 +29,5 @@ export function loadEnv(): Env {
 }
 
 export const env: Env = loadEnv()
+
+export const demoMode = (e: Env = env): boolean => (e.DEMO_MODE ? e.DEMO_MODE === 'true' : e.NODE_ENV !== 'production')

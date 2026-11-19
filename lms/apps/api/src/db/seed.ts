@@ -8,10 +8,10 @@ import { db, schema, sqlClient } from './client.js'
 import { hashPassword } from '../lib/auth.js'
 import { fold } from '../lib/text.js'
 import { chunkExisting } from '../modules/sources/service.js'
+import { AUTHOR_EMAIL, LEARNER_EMAIL } from './demo-accounts.js'
+export { AUTHOR_EMAIL, LEARNER_EMAIL }
 
 export const DEMO_PASSWORD = 'demo1234'
-export const AUTHOR_EMAIL = 'an@demo.local'
-export const LEARNER_EMAIL = 'ha@demo.local'
 
 type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 const here = path.dirname(fileURLToPath(import.meta.url))
