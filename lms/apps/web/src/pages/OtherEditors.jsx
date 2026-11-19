@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { SlidersHorizontal, X, Plus, ChevronDown, Home, User, ListChecks, Type, Pencil, ZoomIn, ZoomOut, Trophy, CheckCircle2, XCircle, MinusCircle, ChevronRight, RotateCcw, Play, Pause, Trash2, StickyNote, Sparkles, AudioLines, RefreshCw, Flag, Film, FileText, ChevronLeft, Captions } from 'lucide-react'
+import { SlidersHorizontal, Maximize2, X, Plus, ChevronDown, Home, User, ListChecks, Type, Pencil, ZoomIn, ZoomOut, Trophy, CheckCircle2, XCircle, MinusCircle, ChevronRight, RotateCcw, Play, Pause, Trash2, StickyNote, Sparkles, AudioLines, RefreshCw, Flag, Film, FileText, ChevronLeft, Captions } from 'lucide-react'
 import { useStore, uid } from '../store'
 import { fmtTime } from '../data'
 import { Avatar, Modal, Tip, Thumb } from '../ui'
@@ -11,6 +11,7 @@ import { post } from '../api'
 const artSet = (art, up) => (fn) => up((a) => fn({ artifacts: { [art.id]: a } }))
 import { Editable, MiniBtn } from '../edit'
 import { Slide, SlideCanvas } from './SlideKit'
+import { useCanvas, ZOOM_MIN, ZOOM_MAX } from '../useCanvas'
 
 /* ================= TÌNH HUỐNG ================= */
 
@@ -85,8 +86,8 @@ export function ScenarioEditor({ art, kit, up, saveText, onRestored }) {
   const [addMenu, setAddMenu] = useState(false)
   const [exp, setExp] = useState(false)
   const [share, setShare] = useState(false)
-  const [zoom, setZoom] = useState(80)
   const [picked, setPicked] = useState('c1')
+  const cv = useCanvas(80, open && mode === 'edit', 190) // chừa phía trên cho thẻ tên cảnh nổi
   const sc = art.scenes.find((s) => s.id === sel) || art.scenes[0]
   const si = art.scenes.indexOf(sc)
   const upSc = (fn) => set((d) => fn(d.artifacts[art.id].scenes[si]))
@@ -144,10 +145,17 @@ export function ScenarioEditor({ art, kit, up, saveText, onRestored }) {
                 {[['char', 'Nhân vật', User, 'bg-sky-500'], ['text', 'Văn bản', Type, 'bg-emerald-500'], ['decision', 'Lựa chọn', ListChecks, 'bg-violet-500']].map(([k, l, I, c]) => <button key={k} onClick={() => { upSc((s) => s.cards.push(k === 'decision' ? { id: uid('c'), kind: 'decision', choices: [{ t: '', ok: 'good', reply: '' }, { t: '', ok: 'bad', reply: '' }] } : { id: uid('c'), kind: k, text: '' })); setAddMenu(false) }} className="flex w-full items-center gap-2.5 px-3 py-2 text-[14px] hover:bg-neutral-50"><span className={`grid h-5 w-5 place-items-center rounded ${c} text-white`}><I size={12} /></span>{l}</button>)}
               </div>}
             </div>
-            <div className="absolute right-4 top-4 z-10 flex gap-1"><button className="icon-btn bg-white shadow-card" onClick={() => setZoom((z) => Math.max(50, z - 10))}><ZoomOut size={17} /></button><button className="icon-btn bg-white shadow-card" onClick={() => setZoom((z) => Math.min(150, z + 10))}><ZoomIn size={17} /></button></div>
-            <div className="absolute inset-0 origin-top-left" style={{ transform: `scale(${zoom / 100})` }}>
+            <div className="absolute right-4 top-4 z-10 flex gap-1">
+              <Tip label="Thu nhỏ (⌘ + lăn chuột)" className="bg-white shadow-card" onClick={cv.zoomOut}><ZoomOut size={17} /></Tip>
+              <Tip label="Phóng to (⌘ + lăn chuột)" className="bg-white shadow-card" onClick={cv.zoomIn}><ZoomIn size={17} /></Tip>
+              <Tip label="Vừa khung" className="bg-white shadow-card" onClick={cv.fit}><Maximize2 size={16} /></Tip>
+            </div>
+            <div {...cv.viewProps} className="scroll-thin absolute inset-0 cursor-grab overflow-auto">
+            <div style={cv.sizerStyle}>
+            <div {...cv.layerProps}>
               {(() => {
-                const X = (i) => 300 + i * 400, Y = 170
+                // colX: vị trí cột thẻ thứ i (không đặt tên X để khỏi che biểu tượng X ở nút xóa); Y: hàng thẻ
+                const colX = (i) => 300 + i * 400, Y = 20
                 // Xếp như lúc người học chơi: lời thoại, lời dẫn trước; lựa chọn cuối cùng
                 const order = [...sc.cards.filter((c) => c.kind !== 'decision'), ...sc.cards.filter((c) => c.kind === 'decision')]
                 const di = order.findIndex((c) => c.kind === 'decision')
@@ -155,14 +163,14 @@ export function ScenarioEditor({ art, kit, up, saveText, onRestored }) {
                 return <>
                   <svg className="pointer-events-none absolute inset-0 h-full w-full" style={{ overflow: 'visible' }}>
                     <path d={`M 250 ${Y + 40} L 300 ${Y + 40}`} stroke="#c4b5fd" strokeWidth="2" fill="none" />
-                    {order.slice(1).map((_, i) => <path key={i} d={`M ${X(i) + 350} ${Y + 40} L ${X(i + 1)} ${Y + 40}`} stroke="#c4b5fd" strokeWidth="2" fill="none" />)}
-                    {di >= 0 && order[di].choices.map((_, i) => <path key={i} d={`M ${X(di) + 350} ${Y + 80 + i * 110} C ${X(di) + 380} ${Y + 80 + i * 110}, ${X(di) + 380} ${Y + 40 + i * 70}, ${X(di) + 410} ${Y + 40 + i * 70}`} stroke="#c4b5fd" strokeWidth="2" fill="none" />)}
+                    {order.slice(1).map((_, i) => <path key={i} d={`M ${colX(i) + 350} ${Y + 40} L ${colX(i + 1)} ${Y + 40}`} stroke="#c4b5fd" strokeWidth="2" fill="none" />)}
+                    {di >= 0 && order[di].choices.map((_, i) => <path key={i} d={`M ${colX(di) + 350} ${Y + 80 + i * 110} C ${colX(di) + 380} ${Y + 80 + i * 110}, ${colX(di) + 380} ${Y + 40 + i * 70}, ${colX(di) + 410} ${Y + 40 + i * 70}`} stroke="#c4b5fd" strokeWidth="2" fill="none" />)}
                   </svg>
-                  <div className="absolute flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-[15px] font-semibold shadow-card" style={{ left: 30, top: Y + 18 }}><Home size={16} />Bắt đầu cảnh<span className="ml-2 h-3 w-3 rounded-full border-2 border-violet-500 bg-violet-200" /></div>
+                  <div data-node className="absolute flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-[15px] font-semibold shadow-card" style={{ left: 30, top: Y + 18 }}><Home size={16} />Bắt đầu cảnh<span className="ml-2 h-3 w-3 rounded-full border-2 border-violet-500 bg-violet-200" /></div>
                   {order.map((c, idx) => {
                     const [bg, I, label] = c.kind === 'char' ? ['bg-sky-500', User, 'Nhân vật nói'] : c.kind === 'text' ? ['bg-emerald-500', Type, 'Lời dẫn'] : ['bg-violet-500', ListChecks, 'Người học chọn']
                     return (
-                      <div key={c.id} onClick={() => setPicked(c.id)} className={`group/k absolute w-[350px] rounded-2xl border bg-white shadow-card ${picked === c.id ? 'border-violet-500' : 'border-line'}`} style={{ left: X(idx), top: Y }}>
+                      <div key={c.id} data-node onClick={() => setPicked(c.id)} className={`group/k absolute w-[350px] cursor-default rounded-2xl border bg-white shadow-card ${picked === c.id ? 'border-violet-500' : 'border-line'}`} style={{ left: colX(idx), top: Y }}>
                         <div className="flex items-center gap-2 border-b border-line px-4 py-3 text-[14px] font-semibold"><span className={`grid h-6 w-6 place-items-center rounded text-white ${bg}`}><I size={14} /></span>{idx + 1}. {label}<div className="flex-1" />
                           {sc.cards.length > 1 && <button title="Xóa thẻ" onClick={(e) => { e.stopPropagation(); upSc((x) => { x.cards = x.cards.filter((k) => k.id !== c.id) }) }} className="text-neutral-400 opacity-0 hover:text-red-600 group-hover/k:opacity-100"><Trash2 size={14} /></button>}</div>
                         {c.kind === 'char' && <div className="flex gap-3 p-4"><Avatar text={(art.character.name.split(' ').pop() || 'A')[0]} size={40} color="#475569" /><div className="min-w-0 flex-1"><div className="text-[13px] font-semibold">{art.character.name}</div><div className="mt-1 rounded-lg bg-neutral-100 p-2.5 text-[13px] font-medium"><Editable value={c.text} multiline className="block" placeholder="Nhân vật nói gì?" onChange={(v) => upCard(c.id, (k) => { k.text = v })} /></div></div></div>}
@@ -180,11 +188,16 @@ export function ScenarioEditor({ art, kit, up, saveText, onRestored }) {
                       </div>
                     )
                   })}
-                  {di >= 0 && order[di].choices.map((ch, i) => <div key={i} className="absolute flex items-center gap-2 whitespace-nowrap rounded-xl border border-line bg-white px-3 py-2 text-[13px] font-semibold shadow-card" style={{ left: X(di) + 410, top: Y + 22 + i * 70 }}>{ch.ok === 'good' ? (si + 1 < art.scenes.length ? `→ Cảnh ${si + 2}` : '→ Kết thúc') : '→ Phản hồi rồi sang cảnh tiếp'}</div>)}
+                  {di >= 0 && order[di].choices.map((ch, i) => <div key={i} data-node className="absolute flex items-center gap-2 whitespace-nowrap rounded-xl border border-line bg-white px-3 py-2 text-[13px] font-semibold shadow-card" style={{ left: colX(di) + 410, top: Y + 22 + i * 70 }}>{ch.ok === 'good' ? (si + 1 < art.scenes.length ? `→ Cảnh ${si + 2}` : '→ Kết thúc') : '→ Phản hồi rồi sang cảnh tiếp'}</div>)}
                 </>
               })()}
             </div>
-            <div className="absolute bottom-4 left-4 flex items-center gap-2"><span className="rounded-lg border border-line bg-white px-3 py-1.5 text-[13px]">{zoom}%</span></div>
+            </div>
+            </div>
+            <div className="absolute bottom-4 left-4 z-10 flex items-center gap-2">
+              <button onClick={cv.reset} title="Về 100%" className="rounded-lg border border-line bg-white px-3 py-1.5 text-[13px] tabular-nums hover:bg-neutral-50">{cv.zoom}%</button>
+              <span className="text-[12px] text-neutral-500">Kéo vùng trống để di chuyển · ⌘/Ctrl + lăn chuột để phóng ({ZOOM_MIN}–{ZOOM_MAX}%)</span>
+            </div>
           </div>
         </div>
       )}
