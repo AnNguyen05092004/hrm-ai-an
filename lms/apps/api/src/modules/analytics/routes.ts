@@ -18,7 +18,7 @@ export const analyticsRoutes: FastifyPluginAsyncZod = async (app) => {
       db.select({ artifactId: schema.assignments.artifactId, n: sql<number>`count(*)::int`, late: sql<number>`count(*) filter (where ${schema.assignments.due} < now())::int` }).from(schema.assignments).where(eq(schema.assignments.orgId, u.orgId)).groupBy(schema.assignments.artifactId),
       db.select({ artifactId: schema.progress.artifactId, started: sql<number>`count(*)::int`, done: sql<number>`count(*) filter (where ${schema.progress.percent} >= 100)::int`, sessions: sql<number>`sum(${schema.progress.sessions})::int` })
         .from(schema.progress).innerJoin(schema.users, eq(schema.users.id, schema.progress.userId)).where(and(eq(schema.users.orgId, u.orgId), eq(schema.users.role, 'learner'))).groupBy(schema.progress.artifactId),
-      db.select({ artifactId: schema.attempts.artifactId, n: sql<number>`count(*)::int`, passed: sql<number>`count(*) filter (where ${schema.attempts.status} = 'passed')::int`, avg: sql<number>`avg(${schema.attempts.score}) filter (where ${schema.attempts.status} in ('passed','failed'))` })
+      db.select({ artifactId: schema.attempts.artifactId, n: sql<number>`count(*)::int`, passed: sql<number>`count(*) filter (where ${schema.attempts.status} = 'passed')::int`, grading: sql<number>`count(*) filter (where ${schema.attempts.status} = 'grading')::int`, avg: sql<number>`avg(${schema.attempts.score}) filter (where ${schema.attempts.status} in ('passed','failed'))` })
         .from(schema.attempts).where(and(eq(schema.attempts.orgId, u.orgId), sql`${schema.attempts.status} <> 'in_progress'`)).groupBy(schema.attempts.artifactId),
       db.select({ artifactId: schema.tutorMessages.artifactId, n: sql<number>`count(*)::int`, missed: sql<number>`count(*) filter (where not ${schema.tutorMessages.found})::int` }).from(schema.tutorMessages).where(eq(schema.tutorMessages.orgId, u.orgId)).groupBy(schema.tutorMessages.artifactId),
       // Câu bị sai nhiều bất thường (biên #4): tỷ lệ sai ≥ 60% với ít nhất 3 lượt
@@ -32,7 +32,7 @@ export const analyticsRoutes: FastifyPluginAsyncZod = async (app) => {
     const by = <T extends { artifactId: string }>(xs: T[], id: string) => xs.find((x) => x.artifactId === id)
     const rows = arts.map((a) => {
       const p = by(prog, a.id), t = by(atts, a.id), g = by(asg, a.id), m = by(tq, a.id)
-      return { ...artifactMeta(a), assigned: g?.n ?? 0, started: p?.started ?? 0, completed: p?.done ?? 0, sessions: p?.sessions ?? 0, attempts: t?.n ?? 0, passed: t?.passed ?? 0, avgScore: t?.avg == null ? null : Math.round(Number(t.avg)), tutorAsked: m?.n ?? 0, tutorMissed: m?.missed ?? 0 }
+      return { ...artifactMeta(a), assigned: g?.n ?? 0, started: p?.started ?? 0, completed: p?.done ?? 0, sessions: p?.sessions ?? 0, attempts: t?.n ?? 0, passed: t?.passed ?? 0, grading: t?.grading ?? 0, avgScore: t?.avg == null ? null : Math.round(Number(t.avg)), tutorAsked: m?.n ?? 0, tutorMissed: m?.missed ?? 0 }
     })
     const hard = qStats.filter((x) => x.wrong / x.n >= 0.6).map((x) => ({ artifactId: x.artifact_id, title: arts.find((a) => a.id === x.artifact_id)?.title, q: x.q, n: x.n, wrong: x.wrong }))
     return { rows, unanswered: await unanswered(u.orgId), hardQuestions: hard }

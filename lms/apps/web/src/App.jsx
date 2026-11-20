@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { useEffect, Component } from 'react'
+import { useEffect, useSyncExternalStore, Component } from 'react'
+import { Monitor } from 'lucide-react'
 import { StoreProvider, queryClient, useMe } from './store'
 import { Toast, Spinner } from './ui'
 import Shell from './Shell'
@@ -39,6 +40,25 @@ function ScrollTop() {
 function HomeRedirect() { const { me } = useMe(); return me?.role === 'learner' ? <Navigate to="/learn" replace /> : <Dashboard /> }
 function Keyed({ C }) { const p = useParams(); return <C key={Object.values(p).join('/')} /> }
 
+// Trình soạn và xem trước cần màn rộng: trên điện thoại hiện lời nhắn thay vì để khung bị vỡ
+const WIDE = '(min-width: 768px)'
+const subscribeWide = (cb) => { const m = window.matchMedia(WIDE); m.addEventListener('change', cb); return () => m.removeEventListener('change', cb) }
+function Wide({ what, children }) {
+  const wide = useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE).matches)
+  const nav = useNavigate()
+  if (wide) return children
+  return (
+    <div className="grid h-full place-items-center px-6 text-center">
+      <div className="max-w-[340px]">
+        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-neutral-100"><Monitor size={26} strokeWidth={1.8} /></div>
+        <div className="mt-4 text-[20px] font-semibold">Mở trên máy tính để {what}</div>
+        <p className="mt-2 text-[14px] leading-relaxed text-neutral-600">Màn này cần màn hình rộng từ 768px. Trên điện thoại bạn vẫn xem được thư viện, kế hoạch đào tạo và phân tích.</p>
+        <div className="mt-5 flex justify-center gap-3"><button className="btn-line h-11" onClick={() => (history.length > 1 ? nav(-1) : nav('/'))}>Quay lại</button><button className="btn-dark" onClick={() => nav('/')}>Trang chủ</button></div>
+      </div>
+    </div>
+  )
+}
+
 // Lỗi bất ngờ: hiện thông báo và cách thoát thay vì màn trắng
 class Boundary extends Component {
   constructor(p) { super(p); this.state = { err: null } }
@@ -49,7 +69,7 @@ class Boundary extends Component {
       <div className="grid h-full place-items-center p-10 text-center">
         <div><div className="text-[20px] font-semibold">Màn này gặp lỗi khi hiển thị</div>
           <p className="mt-2 text-[14px] text-neutral-600">Dữ liệu đã lưu vẫn còn. Thử quay lại màn trước hoặc tải lại trang.</p>
-          <div className="mt-5 flex justify-center gap-3"><button className="btn-line" onClick={() => { this.setState({ err: null }); history.back() }}>Quay lại</button><button className="btn-dark" onClick={() => location.reload()}>Tải lại trang</button></div></div>
+          <div className="mt-5 flex justify-center gap-3"><button className="btn-line h-11" onClick={() => { this.setState({ err: null }); history.back() }}>Quay lại</button><button className="btn-dark" onClick={() => location.reload()}>Tải lại trang</button></div></div>
       </div>
     )
   }
@@ -77,8 +97,8 @@ export default function App() {
               <Route path="/kit/:id/details" element={<Gate allow={A}><KitDetails /></Gate>} />
               <Route path="/kit/:id/outline" element={<Gate allow={A}><KitOutline /></Gate>} />
               <Route path="/kit/:id" element={<Gate allow={A}><Keyed C={KitPage} /></Gate>} />
-              <Route path="/edit/:aid" element={<Gate allow={A}><Keyed C={Editor} /></Gate>} />
-              <Route path="/preview/:aid" element={<Gate allow={A}><Keyed C={AuthorPreview} /></Gate>} />
+              <Route path="/edit/:aid" element={<Gate allow={A}><Wide what="soạn"><Keyed C={Editor} /></Wide></Gate>} />
+              <Route path="/preview/:aid" element={<Gate allow={A}><Wide what="xem trước"><Keyed C={AuthorPreview} /></Wide></Gate>} />
               <Route path="/learn/:aid" element={<Gate><Keyed C={LearnerPlayer} /></Gate>} />
               <Route path="/s/:slug" element={<Gate><Keyed C={LearnerPlayer} /></Gate>} />
               <Route path="/course/:id" element={<Gate><Keyed C={CoursePage} /></Gate>} />

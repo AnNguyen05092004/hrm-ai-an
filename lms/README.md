@@ -25,7 +25,8 @@ Mở http://localhost:5190. Dừng bằng Ctrl+C.
 |---|---|
 | `npm start` | Chạy hằng ngày |
 | `npm run reset` | Xóa hết dữ liệu, tạo lại dữ liệu mẫu rồi chạy |
-| `npm test` | Chạy 59 test API (AI giả lập, DB `lms_test` riêng) |
+| `npm run db:seed-grading -w apps/api` | Thêm đề mẫu An toàn thông tin và 2 bài chờ chấm vào DB đang dùng, không xóa dữ liệu (bản `reset` đã có sẵn) |
+| `npm test` | Chạy 65 test API (AI giả lập, DB `lms_test` riêng) |
 | `npm run typecheck` · `npm run build` | Kiểm tra kiểu · build bản production (gồm cả trình học cho gói SCORM) |
 
 Muốn chạy không cần key: đặt `AI_PROVIDER=mock` trong `.env`.

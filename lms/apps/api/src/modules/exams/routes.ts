@@ -231,7 +231,8 @@ export const gradingRoutes: FastifyPluginAsyncZod = async (app) => {
     const [who] = await db.select({ name: schema.users.name, title: schema.users.title }).from(schema.users).where(eq(schema.users.id, a.userId))
     const [art] = await db.select({ title: schema.artifacts.title }).from(schema.artifacts).where(eq(schema.artifacts.id, a.artifactId))
     await audit(u, 'grading.view', a.id, { flags: a.flags.length })
-    return { ...a, who, artifactTitle: art?.title }
+    const passScore = Number((await versionContent(a)).quiz?.passScore ?? 80)
+    return { ...a, who, artifactTitle: art?.title, passScore }
   })
 
   // Người chấm xác nhận điểm từng câu và xử lý cờ; hệ thống không tự cho đạt (BR09, BR12)

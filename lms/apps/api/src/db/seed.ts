@@ -9,6 +9,7 @@ import { hashPassword } from '../lib/auth.js'
 import { fold } from '../lib/text.js'
 import { chunkExisting } from '../modules/sources/service.js'
 import { AUTHOR_EMAIL, LEARNER_EMAIL } from './demo-accounts.js'
+import { seedGrading } from './seed-grading.js'
 export { AUTHOR_EMAIL, LEARNER_EMAIL }
 
 export const DEMO_PASSWORD = 'demo1234'
@@ -163,6 +164,7 @@ export async function seed(): Promise<{ orgId: string; authorId: string; learner
     if (!artIds[aid]) continue
     await db.insert(schema.assignments).values({ orgId, artifactId: artIds[aid], userId: learnerId, due: vnDate(due), reason, assignedBy: author.id })
   }
+  await seedGrading(orgId, author.id)
   return { orgId, authorId: author.id, learnerId }
 }
 

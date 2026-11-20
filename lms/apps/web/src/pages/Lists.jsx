@@ -98,16 +98,17 @@ export function Analytics() {
   const [tab, setTab] = useState('arts')
   if (q.isLoading) return <Page title="Phân tích"><div className="mt-6"><Spinner /></div></Page>
   const rows = (q.data.rows ?? []).filter((r) => r.status === 'published' || r.id === focus).sort((a, b) => (b.id === focus) - (a.id === focus) || b.assigned - a.assigned)
-  const tot = rows.reduce((s, r) => ({ assigned: s.assigned + r.assigned, started: s.started + r.started, completed: s.completed + r.completed, attempts: s.attempts + r.attempts, passed: s.passed + r.passed }), { assigned: 0, started: 0, completed: 0, attempts: 0, passed: 0 })
+  const tot = rows.reduce((s, r) => ({ assigned: s.assigned + r.assigned, started: s.started + r.started, completed: s.completed + r.completed, attempts: s.attempts + r.attempts, passed: s.passed + r.passed, grading: s.grading + (r.grading ?? 0), docs: s.docs + (r.assigned ? 1 : 0) }), { assigned: 0, started: 0, completed: 0, attempts: 0, passed: 0, grading: 0, docs: 0 })
+  const graded = tot.attempts - tot.grading
   const resolve = async (id) => { await post(`/tutor/unanswered/${id}/resolve`); qc.invalidateQueries({ queryKey: ['analytics'] }) }
   const stat = (label, value, sub) => <div className="card p-5"><div className="text-[13px] text-neutral-500">{label}</div><div className="mt-1 font-display text-[30px] font-semibold">{value}</div>{sub && <div className="text-[12px] text-neutral-500">{sub}</div>}</div>
   return (
     <Page title="Phân tích" sub="Số liệu thật từ lượt học, lượt thi và câu hỏi AI Tutor.">
       <div className="mt-6 grid grid-cols-4 gap-4">
-        {stat('Lượt giao khóa', tot.assigned)}
-        {stat('Đã bắt đầu học', tot.started, tot.assigned ? `${Math.round((100 * tot.started) / tot.assigned)}% số lượt giao` : null)}
-        {stat('Học xong', tot.completed, tot.started ? `${Math.round((100 * tot.completed) / tot.started)}% người đã bắt đầu` : null)}
-        {stat('Lượt thi đạt', `${tot.passed}/${tot.attempts}`)}
+        {stat('Lượt giao khóa', tot.assigned, tot.docs ? `trên ${tot.docs} tài liệu` : 'Chưa giao tài liệu nào')}
+        {stat('Đã bắt đầu học', tot.started, tot.assigned ? `${Math.round((100 * tot.started) / tot.assigned)}% số lượt giao` : 'Chưa có lượt giao')}
+        {stat('Học xong', tot.completed, tot.started ? `${Math.round((100 * tot.completed) / tot.started)}% người đã bắt đầu` : 'Chưa có ai bắt đầu')}
+        {stat('Lượt thi đạt', `${tot.passed}/${tot.attempts}`, tot.attempts ? [graded ? `${Math.round((100 * tot.passed) / graded)}% lượt đã chấm` : null, tot.grading ? `${tot.grading} chờ chấm` : null].filter(Boolean).join(' · ') : 'Chưa có lượt thi nào')}
       </div>
       <Tabs value={tab} onChange={setTab} items={[['arts', 'Theo khóa'], ['tutor', 'Câu Tutor chưa trả lời được', q.data.unanswered.length], ['hard', 'Câu hỏi bị sai nhiều', q.data.hardQuestions.length]]} />
       {tab === 'arts' && <table className="mt-4 w-full text-[14px]"><thead><tr className="border-b border-line text-left text-[13px] text-neutral-500"><th className="py-2 font-medium">Khóa · tài liệu</th><th className="font-medium">Được giao</th><th className="font-medium">Bắt đầu</th><th className="font-medium">Học xong</th><th className="font-medium">Lượt thi · đạt</th><th className="font-medium">Điểm TB</th><th className="font-medium">Hỏi Tutor · chưa trả lời</th></tr></thead>
@@ -139,7 +140,7 @@ function GradeDetail({ id, onDone }) {
   const [rub, setRub] = useState({})
   const [busy, setBusy] = useState(false)
   const a = q.data
-  const passScore = 80
+  const passScore = a?.passScore ?? 80
   const finalOf = (qid) => scores[qid] ?? a.grades[qid]?.final ?? a.grades[qid]?.score ?? 0
   const total = useMemo(() => (a ? Math.round((100 * a.questions.reduce((s, x) => s + finalOf(x.id), 0)) / Math.max(1, a.questions.length)) : 0), [a, scores]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!a) return <div className="grid flex-1 place-items-center"><Spinner /></div>
@@ -194,8 +195,8 @@ function GradeDetail({ id, onDone }) {
             {g.ai?.comment && <p className="mt-2 flex gap-2 text-[13px] text-neutral-600"><Code2 size={14} className="mt-0.5 shrink-0" />Nhận xét chất lượng code (không tính điểm): {g.ai.comment}</p>}
           </>}
         </div>) })}
-      {grading && <div className="sticky bottom-0 mt-6 flex items-center gap-3 border-t border-line bg-white py-4">
-        <span className="flex-1 text-[14px] text-neutral-600">{openFlags ? `Còn ${openFlags} cờ giám sát chưa xử lý` : `Điểm sau khi xác nhận: ${total}%. Kết quả đạt chính thức sẽ cập nhật mức kỹ năng.`}</span>
+      {grading && <div className="sticky -bottom-8 -mb-8 mt-6 flex items-center gap-3 border-t border-line bg-white pb-8 pt-4">
+        <span className="flex-1 text-[14px] text-neutral-600">{openFlags ? `Còn ${openFlags} cờ giám sát chưa xử lý` : `Điểm sau khi xác nhận: ${total}% (đạt từ ${passScore}%). Kết quả đạt chính thức sẽ cập nhật mức kỹ năng.`}</span>
         <button className="btn-dark" disabled={busy || openFlags > 0} onClick={confirm}>{busy ? <Spinner size={18} w={2} /> : 'Xác nhận kết quả'}</button>
       </div>}
     </div>

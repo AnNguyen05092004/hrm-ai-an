@@ -1,10 +1,23 @@
 import { describe, it, expect } from 'vitest'
 import { setupApp } from './helpers.js'
+import { seedGrading } from '../src/db/seed-grading.js'
 
 describe('exams and grading', () => {
   const ctx = setupApp()
   let aid = ''
   let attemptId = ''
+
+  it('seeds two demo attempts waiting for a grader, once', async () => {
+    const list = (await ctx.author('GET', '/api/grading')).body as { id: string; who: string; essays: number; flags: number }[]
+    const demo = list.filter((x) => ['Hoàng Gia Khánh', 'Nguyễn Hải Yến'].includes(x.who))
+    expect(demo).toHaveLength(2)
+    expect(demo.every((x) => x.essays === 2)).toBe(true)
+    expect(demo.find((x) => x.who === 'Nguyễn Hải Yến')!.flags).toBe(2)
+    const g = (await ctx.author('GET', `/api/grading/${demo[0].id}`)).body
+    expect(g.passScore).toBe(80)
+    expect(g.grades['sec-q5'].ai.criteria).toHaveLength(4)
+    expect(await seedGrading(ctx.ids.orgId, ctx.ids.authorId)).toBe(0)
+  })
 
   it('requires consent for proctored official exams', async () => {
     const items = (await ctx.learner('GET', '/api/learn/my')).body.items as { id: string; title: string; type: string }[]
@@ -40,10 +53,11 @@ describe('exams and grading', () => {
     const answers: Record<string, unknown> = {}
     for (const q of a.questions) answers[q.id] = q.type === 'essay' ? 'Dùng named volume cho cơ sở dữ liệu vì lưu bền, bind mount cho web app khi phát triển vì sửa là thấy ngay' : 0
     expect((await ctx.learner('PATCH', `/api/exams/attempts/${attemptId}`, { answers })).status).toBe(200)
+    const before = (await ctx.author('GET', '/api/grading/count')).body.n
     const s = await ctx.learner('POST', `/api/exams/attempts/${attemptId}/submit`)
     expect(s.body.status).toBe('grading')
     expect(s.body.score).toBeNull()
-    expect((await ctx.author('GET', '/api/grading/count')).body.n).toBe(1)
+    expect((await ctx.author('GET', '/api/grading/count')).body.n).toBe(before + 1)
   })
 
   it('grader must resolve flags, then the official pass raises the skill level', async () => {

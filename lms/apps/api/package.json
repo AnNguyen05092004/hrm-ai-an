@@ -10,7 +10,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file=../../.env src/db/migrate.ts",
-    "db:seed": "tsx --env-file=../../.env src/db/seed.ts"
+    "db:seed": "tsx --env-file=../../.env src/db/seed.ts",
+    "db:seed-grading": "tsx --env-file=../../.env src/db/seed-grading.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",
