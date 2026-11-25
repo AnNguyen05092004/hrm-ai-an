@@ -1,4 +1,4 @@
-// Dữ liệu mẫu cho trang Chấm bài: đề kiểm tra "An toàn thông tin" (có tự luận) và 2 bài đang chờ chấm,
+// Dữ liệu mẫu cho trang Chấm bài: đề kiểm tra "An toàn thông tin" (có tự luận), giao cho 2 người và 2 bài họ đang chờ chấm,
 // kèm điểm nháp AI soạn sẵn (không gọi AI khi seed). Chạy lại nhiều lần không tạo trùng.
 import { fileURLToPath } from 'node:url'
 import { and, eq, inArray } from 'drizzle-orm'
@@ -141,6 +141,12 @@ export async function seedGrading(orgId: string, authorId: string): Promise<numb
   }
   const people = await db.select({ id: schema.users.id, email: schema.users.email }).from(schema.users)
     .where(and(eq(schema.users.orgId, orgId), inArray(schema.users.email, SAMPLES.map((s) => s.email))))
+  // người thi phải là người được giao đề, để Phân tích (theo người) khớp với số lượt thi
+  const due = new Date(Date.now() + 10 * 86_400_000)
+  if (people.length) {
+    await db.insert(schema.assignments).values(people.map((u) => ({ orgId, artifactId: exam.id, userId: u.id, due, reason: 'Bắt buộc hằng năm · An toàn thông tin', assignedBy: authorId })))
+      .onConflictDoNothing()
+  }
   const done = new Set((await db.select({ userId: schema.attempts.userId }).from(schema.attempts).where(eq(schema.attempts.artifactId, exam.id))).map((x) => x.userId))
   let n = 0
   for (const s of SAMPLES) {

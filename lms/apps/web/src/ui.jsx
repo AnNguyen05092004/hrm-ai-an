@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X, BookOpen, Presentation, ListChecks, Network, Video, ClipboardCheck } from 'lucide-react'
 import { FORMATS, IMG } from './data'
@@ -57,13 +58,19 @@ export function Modal({ open, onClose, title, sub, children, footer, w = 560, pa
 }
 
 export function Drawer({ open, onClose, title, children, side = 'left', w = 420 }) {
+  useEffect(() => {
+    if (!open) return
+    const esc = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [open, onClose])
   if (!open) return null
   return (
     <div className="fixed inset-0 z-40" onMouseDown={onClose}>
-      <div className={`fade absolute top-0 bottom-0 ${side === 'left' ? 'left-0 border-r' : 'right-0 border-l'} flex flex-col border-line bg-white shadow-pop`} style={{ width: w }} onMouseDown={(e) => e.stopPropagation()}>
+      <div className={`fade absolute top-0 bottom-0 ${side === 'left' ? 'left-0 border-r' : 'right-0 border-l'} flex flex-col border-line bg-white shadow-pop`} style={{ width: `min(${w}px, 100vw)` }} onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-5">
           <h3 className="text-[18px] font-semibold">{title}</h3>
-          <button className="icon-btn" onClick={onClose}><X size={18} /></button>
+          <button className="icon-btn" onClick={onClose} aria-label="Đóng"><X size={18} /></button>
         </div>
         <div className="scroll-thin flex-1 overflow-y-auto px-6 pb-6">{children}</div>
       </div>

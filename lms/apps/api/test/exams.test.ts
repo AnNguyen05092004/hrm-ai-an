@@ -17,6 +17,10 @@ describe('exams and grading', () => {
     expect(g.passScore).toBe(80)
     expect(g.grades['sec-q5'].ai.criteria).toHaveLength(4)
     expect(await seedGrading(ctx.ids.orgId, ctx.ids.authorId)).toBe(0)
+    // hai người thi mẫu cũng là người được giao đề
+    const kits = (await ctx.author('GET', '/api/analytics')).body.kits as Record<string, { people: { name: string }[] }>
+    const names = Object.values(kits).flatMap((k) => k.people.map((p) => p.name))
+    expect(names).toEqual(expect.arrayContaining(['Hoàng Gia Khánh', 'Nguyễn Hải Yến']))
   })
 
   it('requires consent for proctored official exams', async () => {

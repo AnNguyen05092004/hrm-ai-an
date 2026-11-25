@@ -1,10 +1,10 @@
-import { Fragment, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Search, FileText, Box, Flag, ShieldCheck, Check, X, Upload, Trash2, RefreshCw, AlertTriangle, MessageSquareWarning, CheckCircle2, Hourglass, Code2 } from 'lucide-react'
 import { useStore, useMe } from '../store'
-import { TYPE_ORDER } from '../data'
 import { IntegrationsTab } from './Integrations'
+import { CourseTable } from './AnalyticsCourses'
 import { Thumb, FormatGlyph, Status, Avatar, Spinner, Modal } from '../ui'
 import { TopOrg } from '../Shell'
 import { api, get, post, patch, del } from '../api'
@@ -82,12 +82,6 @@ export function Library() {
 
 /* ---------- Phân tích ---------- */
 /** Gom số liệu tài liệu theo khóa (khóa học), mục con theo thứ tự học */
-function byKit(rows, kits) {
-  const m = new Map()
-  for (const r of rows) m.set(r.kitId, [...(m.get(r.kitId) ?? []), r])
-  return [...m.entries()].map(([id, list]) => [{ id, title: kits.find((k) => k.id === id)?.title ?? 'Khóa học' }, list.sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type))])
-}
-
 export function Analytics() {
   const nav = useNavigate()
   const qc = useQueryClient()
@@ -111,11 +105,7 @@ export function Analytics() {
         {stat('Lượt thi đạt', `${tot.passed}/${tot.attempts}`, tot.attempts ? [graded ? `${Math.round((100 * tot.passed) / graded)}% lượt đã chấm` : null, tot.grading ? `${tot.grading} chờ chấm` : null].filter(Boolean).join(' · ') : 'Chưa có lượt thi nào')}
       </div>
       <Tabs value={tab} onChange={setTab} items={[['arts', 'Theo khóa'], ['tutor', 'Câu Tutor chưa trả lời được', q.data.unanswered.length], ['hard', 'Câu hỏi bị sai nhiều', q.data.hardQuestions.length]]} />
-      {tab === 'arts' && <table className="mt-4 w-full text-[14px]"><thead><tr className="border-b border-line text-left text-[13px] text-neutral-500"><th className="py-2 font-medium">Khóa · tài liệu</th><th className="font-medium">Được giao</th><th className="font-medium">Bắt đầu</th><th className="font-medium">Học xong</th><th className="font-medium">Lượt thi · đạt</th><th className="font-medium">Điểm TB</th><th className="font-medium">Hỏi Tutor · chưa trả lời</th></tr></thead>
-        <tbody>{byKit(rows, kits.data ?? []).map(([k, list]) => <Fragment key={k.id}>
-          <tr className="border-b border-line bg-neutral-50"><td className="py-2.5 pl-2"><button onClick={() => nav(`/kit/${k.id}`)} className="font-semibold hover:underline">{k.title}</button><span className="ml-2 text-[12px] text-neutral-500">{list.length} tài liệu</span></td><td className="font-semibold">{Math.max(...list.map((r) => r.assigned))} người</td><td /><td /><td>{list.reduce((n, r) => n + r.attempts, 0)} · {list.reduce((n, r) => n + r.passed, 0)}</td><td /><td>{list.reduce((n, r) => n + r.tutorAsked, 0)} · {list.reduce((n, r) => n + r.tutorMissed, 0)}</td></tr>
-          {list.map((r) => <tr key={r.id} className={`border-b border-line ${r.id === focus ? 'bg-sky-50' : ''}`}><td className="py-3 pl-6"><button onClick={() => nav(`/edit/${r.id}`)} className="flex items-center gap-2 font-medium hover:underline"><FormatGlyph type={r.type} size={15} />{r.title}</button></td><td>{r.assigned}</td><td>{r.started}</td><td>{r.completed}</td><td>{r.attempts} · {r.passed}</td><td>{r.avgScore == null ? '—' : `${r.avgScore}%`}</td><td>{r.tutorAsked} · <span className={r.tutorMissed ? 'font-semibold text-amber-700' : ''}>{r.tutorMissed}</span></td></tr>)}
-        </Fragment>)}</tbody></table>}
+      {tab === 'arts' && <CourseTable rows={rows} kits={q.data.kits ?? {}} kitList={kits.data ?? []} focus={focus} />}
       {tab === 'tutor' && <div className="mt-4">{q.data.unanswered.length === 0 ? <p className="text-[14px] text-neutral-500">Chưa có câu nào.</p> : <>
         <p className="text-[14px] text-neutral-600">Câu người học hỏi mà khóa chưa có nội dung. Đây là dấu hiệu khóa đang thiếu; bổ sung nội dung rồi đánh dấu đã xử lý.</p>
         {q.data.unanswered.map((x) => <div key={x.id} className="mt-2 flex items-center gap-3 rounded-xl border border-line px-4 py-3 text-[14px]"><MessageSquareWarning size={16} className="shrink-0 text-amber-600" /><div className="flex-1"><div className="font-medium">"{x.question}"</div><div className="text-[12px] text-neutral-500">{x.title} · {x.by} · {fmtDate(x.at)}</div></div><button onClick={() => nav(`/edit/${x.artifactId}`)} className="btn-line btn-sm">Bổ sung nội dung</button><button onClick={() => resolve(x.id)} className="btn-ghost h-8 text-[13px]"><Check size={14} />Đã xử lý</button></div>)}
@@ -205,9 +195,11 @@ function GradeDetail({ id, onDone }) {
 
 export function Grading() {
   const qc = useQueryClient()
-  const [status, setStatus] = useState('grading')
+  const [params] = useSearchParams()
+  const wanted = params.get('attempt') // mở từ Phân tích: chọn sẵn lượt thi đó, xem ở danh sách Tất cả
+  const [status, setStatus] = useState(wanted ? 'all' : 'grading')
   const list = useQuery({ queryKey: ['grading', status], queryFn: () => get(`/grading?status=${status}`) })
-  const [sel, setSel] = useState(null)
+  const [sel, setSel] = useState(wanted)
   const cur = sel ?? list.data?.[0]?.id
   return (
     <div className="flex h-full">
@@ -238,7 +230,7 @@ const ACTION = {
   'kit.share': 'Bật đường dẫn cả khóa', 'kit.unshare': 'Tắt đường dẫn cả khóa', 'kit.export_scorm': 'Xuất gói SCORM',
   'artifact.publish': 'Xuất bản tài liệu', 'artifact.unpublish': 'Ngừng xuất bản', 'artifact.delete': 'Xóa tài liệu', 'assignment.create': 'Giao tài liệu',
   'exam.create': 'Tạo đề kiểm tra', 'exam.start': 'Bắt đầu thi', 'exam.submit': 'Nộp bài thi', 'grading.view': 'Mở bài để chấm', 'grading.confirm': 'Xác nhận kết quả chấm',
-  'image.upload': 'Tải ảnh lên', 'image.generate': 'AI tạo ảnh', 'kpi.create': 'Thêm KPI', 'kpi.update': 'Sửa KPI', 'member.create': 'Thêm thành viên', 'plan.assign': 'Giao khóa theo kế hoạch',
+  'image.upload': 'Tải ảnh lên', 'image.generate': 'AI tạo ảnh', 'kpi.create': 'Thêm KPI', 'kpi.update': 'Sửa KPI', 'analytics.person_view': 'Xem chi tiết học viên', 'member.create': 'Thêm thành viên', 'plan.assign': 'Giao khóa theo kế hoạch',
   'settings.ai_quota': 'Đổi hạn mức AI', 'settings.integrations': 'Đổi cài đặt tích hợp', 'settings.webhook_secret': 'Tạo khóa ký webhook mới',
 }
 const META = { version: 'phiên bản', users: 'số người', artifacts: 'số tài liệu', created: 'đã tạo', published: 'đã xuất bản', skipped: 'bỏ qua', items: 'số phần', size: 'dung lượng (byte)', score: 'điểm', passed: 'đạt', status: 'trạng thái', title: 'tên', quota: 'hạn mức', xapi: 'xAPI', webhook: 'webhook', note: 'ghi chú', violation: 'vi phạm' }

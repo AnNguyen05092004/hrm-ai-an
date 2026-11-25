@@ -7,13 +7,14 @@ import { monthUsage } from '../../lib/ai/index.js'
 import { audit } from '../../lib/audit.js'
 import { artifactMeta } from '../kits/service.js'
 import { unanswered } from '../tutor/tutor.js'
+import { kitPeople, kitSummary, personInKit } from './people.js'
 
 export const analyticsRoutes: FastifyPluginAsyncZod = async (app) => {
   app.addHook('preHandler', requireAuthor)
 
   app.get('/analytics', async (req) => {
     const u = me(req)
-    const [arts, asg, prog, atts, tq, qStats] = await Promise.all([
+    const [arts, asg, prog, atts, tq, qStats, people] = await Promise.all([
       db.select().from(schema.artifacts).where(eq(schema.artifacts.orgId, u.orgId)),
       db.select({ artifactId: schema.assignments.artifactId, n: sql<number>`count(*)::int`, late: sql<number>`count(*) filter (where ${schema.assignments.due} < now())::int` }).from(schema.assignments).where(eq(schema.assignments.orgId, u.orgId)).groupBy(schema.assignments.artifactId),
       db.select({ artifactId: schema.progress.artifactId, started: sql<number>`count(*)::int`, done: sql<number>`count(*) filter (where ${schema.progress.percent} >= 100)::int`, sessions: sql<number>`sum(${schema.progress.sessions})::int` })
@@ -28,6 +29,7 @@ export const analyticsRoutes: FastifyPluginAsyncZod = async (app) => {
         from attempts a, jsonb_array_elements(a.questions) q
         where a.org_id = ${u.orgId} and a.status in ('passed','failed','grading')
         group by 1, 2, 3 having count(*) >= 3`),
+      kitPeople(u.orgId),
     ])
     const by = <T extends { artifactId: string }>(xs: T[], id: string) => xs.find((x) => x.artifactId === id)
     const rows = arts.map((a) => {
@@ -35,7 +37,17 @@ export const analyticsRoutes: FastifyPluginAsyncZod = async (app) => {
       return { ...artifactMeta(a), assigned: g?.n ?? 0, started: p?.started ?? 0, completed: p?.done ?? 0, sessions: p?.sessions ?? 0, attempts: t?.n ?? 0, passed: t?.passed ?? 0, grading: t?.grading ?? 0, avgScore: t?.avg == null ? null : Math.round(Number(t.avg)), tutorAsked: m?.n ?? 0, tutorMissed: m?.missed ?? 0 }
     })
     const hard = qStats.filter((x) => x.wrong / x.n >= 0.6).map((x) => ({ artifactId: x.artifact_id, title: arts.find((a) => a.id === x.artifact_id)?.title, q: x.q, n: x.n, wrong: x.wrong }))
-    return { rows, unanswered: await unanswered(u.orgId), hardQuestions: hard }
+    // theo khóa: số người (không phải số lượt giao), ai được giao và tiến độ từng người
+    const kits = Object.fromEntries([...people].map(([k, list]) => [k, { ...kitSummary(k, list), people: list }]))
+    return { rows, kits, unanswered: await unanswered(u.orgId), hardQuestions: hard }
+  })
+
+  // Chi tiết một người trong một khóa: tiến độ từng tài liệu, lượt thi, câu hỏi Tutor, mức kỹ năng
+  app.get('/analytics/kits/:kitId/people/:userId', { schema: { params: z.object({ kitId: z.string().max(64), userId: z.string().max(64) }) } }, async (req) => {
+    const u = me(req)
+    const r = await personInKit(u.orgId, req.params.kitId, req.params.userId)
+    await audit(u, 'analytics.person_view', req.params.userId, { kitId: req.params.kitId })
+    return r
   })
 
   app.get('/settings/ai', async (req) => {

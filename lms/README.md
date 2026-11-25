@@ -26,7 +26,7 @@ Mở http://localhost:5190. Dừng bằng Ctrl+C.
 | `npm start` | Chạy hằng ngày |
 | `npm run reset` | Xóa hết dữ liệu, tạo lại dữ liệu mẫu rồi chạy |
 | `npm run db:seed-grading -w apps/api` | Thêm đề mẫu An toàn thông tin và 2 bài chờ chấm vào DB đang dùng, không xóa dữ liệu (bản `reset` đã có sẵn) |
-| `npm test` | Chạy 67 test API (AI giả lập, DB `lms_test` riêng) |
+| `npm test` | Chạy 71 test API (AI giả lập, DB `lms_test` riêng) |
 | `npm run typecheck` · `npm run build` | Kiểm tra kiểu · build bản production (gồm cả trình học cho gói SCORM) |
 
 Muốn chạy không cần key: đặt `AI_PROVIDER=mock` trong `.env`.
@@ -77,7 +77,8 @@ Muốn chạy không cần key: đặt `AI_PROVIDER=mock` trong `.env`.
 | Giám sát | Bật theo bài, người thi phải đồng ý. Gắn cờ khi chuyển tab, rời cửa sổ, dán từ ngoài. Người chấm quyết định. Tự xóa sau 30 ngày |
 | Kế hoạch đào tạo | Chọn KPI, bộ phận, thời hạn rồi phân tích: từ KPI ra kỹ năng cần và khoảng cách của từng người, sơ đồ KPI → kỹ năng → khóa → người học, lộ trình chia đợt. Gợi ý khóa có sẵn, hoặc tạo khóa bằng AI cho kỹ năng chưa có. Có sơ đồ đội ngũ và đánh giá mức từ bằng chứng. Thi chính thức đạt thì nâng mức (tối đa 3). Trợ lý AI trả lời trên dữ liệu đội |
 | Kết nối LMS công ty | Xuất khóa thành gói SCORM 1.2 (cùng giao diện học, ghi hoàn thành, điểm, học dở); gửi kết quả học sang LRS qua xAPI; webhook có chữ ký cho hệ thống nội bộ |
-| Vận hành | Hạn mức AI theo tháng, thống kê token theo tính năng, nhật ký thao tác. Phân tích câu Tutor chưa trả lời được và câu hỏi bị sai nhiều |
+| Phân tích | Theo khóa, từ trên xuống: mỗi khóa một dòng (số người được giao, đã bắt đầu, đã xong, tiến độ trung bình, thi, điểm, Tutor); bung ra tài liệu trong khóa; bấm số người để xem ai được giao, lọc quá hạn / chưa bắt đầu / đang học / đã xong; mở chi tiết một người: tiến độ từng tài liệu, lượt thi (mở thẳng bài chấm), mức kỹ năng, câu đã hỏi Tutor. Lần xem chi tiết được ghi nhật ký. Câu Tutor chưa trả lời được, câu hỏi bị sai nhiều |
+| Vận hành | Hạn mức AI theo tháng, thống kê token theo tính năng, nhật ký thao tác |
 
 ## Kịch bản demo nhanh
 
