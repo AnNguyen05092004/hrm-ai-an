@@ -25,12 +25,12 @@ export const saveRecord = (pkgId, userId, rec) => update((d) => ({ ...d, records
 export const resetRecord = (pkgId, userId) => update((d) => ({ ...d, records: Object.fromEntries(Object.entries(d.records).filter(([k]) => k !== recKey(pkgId, userId))) }))
 
 export const STATUS = {
-  'not attempted': { label: 'Chưa học', cls: 'bg-slate-100 text-slate-600' },
-  incomplete: { label: 'Đang học', cls: 'bg-sky-100 text-sky-800' },
-  completed: { label: 'Hoàn thành', cls: 'bg-emerald-100 text-emerald-800' },
-  passed: { label: 'Đạt', cls: 'bg-emerald-100 text-emerald-800' },
-  failed: { label: 'Chưa đạt', cls: 'bg-red-100 text-red-700' },
-  browsed: { label: 'Đã xem thử', cls: 'bg-slate-100 text-slate-600' },
+  'not attempted': { label: 'Chưa học', cls: 'bg-muted text-ink-muted' },
+  incomplete: { label: 'Đang học', cls: 'bg-info-surface text-ink', dot: 'bg-info' },
+  completed: { label: 'Hoàn thành', cls: 'bg-success-surface text-success-text' },
+  passed: { label: 'Đạt', cls: 'bg-success-surface text-success-text' },
+  failed: { label: 'Chưa đạt', cls: 'bg-danger-surface text-danger-text' },
+  browsed: { label: 'Đã xem thử', cls: 'bg-muted text-ink-muted' },
 }
 export const statusOf = (rec) => rec.lesson_status ?? 'not attempted'
 export const isDone = (s) => s === 'passed' || s === 'completed'

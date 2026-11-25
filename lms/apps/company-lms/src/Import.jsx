@@ -59,30 +59,30 @@ export default function ImportModal({ open, onClose }) {
       {(step === 'pick' || step === 'reading') && (<>
         <button type="button" onClick={() => input.current?.click()} disabled={step === 'reading'}
           onDragOver={(e) => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={(e) => { e.preventDefault(); setOver(false); pick(e.dataTransfer.files[0]) }}
-          className={`flex w-full flex-col items-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition ${over ? 'border-co-600 bg-co-50' : 'border-slate-300 hover:border-co-600 hover:bg-slate-50'}`}>
-          {step === 'reading' ? <Loader2 size={30} className="spin text-co-700" /> : <Upload size={30} className="text-co-700" />}
+          className={`flex w-full flex-col items-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition ${over ? 'border-ink-subtle bg-muted' : 'border-line-strong hover:border-ink-subtle hover:bg-canvas'}`}>
+          {step === 'reading' ? <Loader2 size={30} className="spin text-ink" /> : <Upload size={30} className="text-ink" />}
           <div className="mt-3 text-[15px] font-semibold">{step === 'reading' ? 'Đang giải nén và đọc manifest…' : 'Kéo tệp .zip vào đây hoặc bấm để chọn'}</div>
-          <div className="mt-1 text-[13px] text-slate-500">Gói SCORM 1.2, ví dụ tệp tải từ LMS: Chia sẻ cả khóa → Xuất SCORM</div>
+          <div className="mt-1 text-[13px] text-ink-subtle">Gói SCORM 1.2, ví dụ tệp tải từ LMS: Chia sẻ cả khóa → Xuất SCORM</div>
         </button>
         <input ref={input} type="file" accept=".zip,application/zip" className="hidden" onChange={(e) => { pick(e.target.files[0]); e.target.value = '' }} />
-        {err && <p role="alert" className="mt-3 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-[14px] text-red-700"><XCircle size={16} className="mt-0.5 shrink-0" />{err}</p>}
+        {err && <p role="alert" className="mt-3 flex items-start gap-2 rounded-lg bg-danger-surface px-3 py-2.5 text-[14px] text-danger-text"><XCircle size={16} className="mt-0.5 shrink-0" />{err}</p>}
       </>)}
 
       {(step === 'review' || step === 'saving') && res && (<>
-        <div className="flex items-center gap-3 rounded-lg bg-slate-50 px-4 py-3"><FileArchive size={20} className="shrink-0 text-co-700" /><div className="min-w-0"><div className="truncate text-[14px] font-semibold">{res.info?.fileName ?? 'Gói'}</div><div className="text-[12px] text-slate-500">{Object.keys(res.files).length} tệp · {fmtSize(res.size)}</div></div></div>
-        <h3 className="mt-5 text-[13px] font-semibold uppercase tracking-wide text-slate-500">Cổng kiểm tra gói</h3>
+        <div className="flex items-center gap-3 rounded-lg bg-canvas px-4 py-3"><FileArchive size={20} className="shrink-0 text-ink" /><div className="min-w-0"><div className="truncate text-[14px] font-semibold">{res.info?.fileName ?? 'Gói'}</div><div className="text-[12px] text-ink-subtle">{Object.keys(res.files).length} tệp · {fmtSize(res.size)}</div></div></div>
+        <h3 className="mt-5 overline">Cổng kiểm tra gói</h3>
         <ul className="mt-2 divide-y divide-line rounded-lg border border-line">
           {res.checks.map((c) => (
             <li key={c.label} className="flex gap-3 px-4 py-2.5">
-              {c.ok === true ? <CheckCircle2 size={17} className="mt-0.5 shrink-0 text-emerald-600" /> : c.ok === 'warn' ? <AlertTriangle size={17} className="mt-0.5 shrink-0 text-amber-500" /> : <XCircle size={17} className="mt-0.5 shrink-0 text-red-600" />}
-              <div className="min-w-0"><div className="text-[14px] font-medium">{c.label}</div>{c.detail && <div className="break-words text-[13px] text-slate-500">{c.detail}</div>}</div>
+              {c.ok === true ? <CheckCircle2 size={17} className="mt-0.5 shrink-0 text-success" /> : c.ok === 'warn' ? <AlertTriangle size={17} className="mt-0.5 shrink-0 text-warning" /> : <XCircle size={17} className="mt-0.5 shrink-0 text-danger-text" />}
+              <div className="min-w-0"><div className="text-[14px] font-medium">{c.label}</div>{c.detail && <div className="break-words text-[13px] text-ink-subtle">{c.detail}</div>}</div>
             </li>
           ))}
         </ul>
-        {blocked ? <p role="alert" className="mt-4 rounded-lg bg-red-50 px-3 py-2.5 text-[14px] text-red-700">Gói chưa đạt yêu cầu nên chưa đưa lên được. Sửa gói rồi nhập lại.</p> : (<>
+        {blocked ? <p role="alert" className="mt-4 rounded-lg bg-danger-surface px-3 py-2.5 text-[14px] text-danger-text">Gói chưa đạt yêu cầu nên chưa đưa lên được. Sửa gói rồi nhập lại.</p> : (<>
           {form.sameId && (
-            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[14px]">
-              <div className="font-semibold text-amber-900">Đã có khóa cùng mã gói ({res.info.identifier})</div>
+            <div className="mt-5 rounded-lg border border-warning/40 bg-warning-surface px-4 py-3 text-[14px]">
+              <div className="font-semibold text-warning-text">Đã có khóa cùng mã gói ({res.info.identifier})</div>
               <label className="mt-2 flex items-center gap-2"><input type="radio" name="imp-mode" checked={!!form.replace} onChange={() => setForm((f) => ({ ...f, replace: f.sameId }))} />Cập nhật khóa đó, giữ kết quả học viên</label>
               <label className="mt-1 flex items-center gap-2"><input type="radio" name="imp-mode" checked={!form.replace} onChange={() => setForm((f) => ({ ...f, replace: null }))} />Thêm thành khóa mới</label>
             </div>
@@ -92,15 +92,15 @@ export default function ImportModal({ open, onClose }) {
           {!form.replace && (
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <fieldset><legend className="text-[14px] font-semibold">Giao cho</legend>
-                {LEARNERS.map((l) => <label key={l.id} className="mt-1.5 flex items-center gap-2 text-[14px]"><input type="checkbox" checked={form.assign.includes(l.id)} onChange={(e) => setForm((f) => ({ ...f, assign: e.target.checked ? [...f.assign, l.id] : f.assign.filter((x) => x !== l.id) }))} />{l.name} <span className="text-slate-500">· {l.id}</span></label>)}
+                {LEARNERS.map((l) => <label key={l.id} className="mt-1.5 flex items-center gap-2 text-[14px]"><input type="checkbox" checked={form.assign.includes(l.id)} onChange={(e) => setForm((f) => ({ ...f, assign: e.target.checked ? [...f.assign, l.id] : f.assign.filter((x) => x !== l.id) }))} />{l.name} <span className="text-ink-subtle">· {l.id}</span></label>)}
               </fieldset>
-              <div><label className="text-[14px] font-semibold" htmlFor="imp-due">Hạn hoàn thành <span className="font-normal text-slate-500">(không bắt buộc)</span></label><input id="imp-due" type="date" className="field mt-1.5" value={form.due} onChange={(e) => setForm((f) => ({ ...f, due: e.target.value }))} /></div>
+              <div><label className="text-[14px] font-semibold" htmlFor="imp-due">Hạn hoàn thành <span className="font-normal text-ink-subtle">(không bắt buộc)</span></label><input id="imp-due" type="date" className="field mt-1.5" value={form.due} onChange={(e) => setForm((f) => ({ ...f, due: e.target.value }))} /></div>
             </div>
           )}
         </>)}
-        {err && <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2.5 text-[14px] text-red-700">{err}</p>}
+        {err && <p role="alert" className="mt-3 rounded-lg bg-danger-surface px-3 py-2.5 text-[14px] text-danger-text">{err}</p>}
         <div className="mt-6 flex items-center justify-end gap-2 border-t border-line pt-4">
-          {step === 'saving' && <span className="mr-auto flex items-center gap-2 text-[13px] text-slate-600"><Loader2 size={15} className="spin" />Đang lưu tệp {prog[0]}/{prog[1]}</span>}
+          {step === 'saving' && <span className="mr-auto flex items-center gap-2 text-[13px] text-ink-muted"><Loader2 size={15} className="spin" />Đang lưu tệp {prog[0]}/{prog[1]}</span>}
           <button className="btn-line" onClick={reset} disabled={step === 'saving'}>Chọn tệp khác</button>
           {!blocked && <button className="btn-primary" onClick={save} disabled={step === 'saving' || !form.title.trim()}>{form.replace ? 'Cập nhật khóa' : 'Đưa lên cổng đào tạo'}</button>}
         </div>
