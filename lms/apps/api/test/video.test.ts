@@ -51,6 +51,32 @@ describe('AI video from slides', () => {
     expect(slideSvg({ layout: 'bullets', title: 'x', items: [], bg: '"/><script>' }, 1, 1)).not.toContain('<script>')
   })
 
+  it('draws background images, inserted images, shapes and element opacity in the rendered frame', () => {
+    const pic = 'data:image/png;base64,AAAA'
+    const s = {
+      layout: 'bullets', title: 'Tiêu đề', items: ['Ý một'], bgImg: 'desk', bgTone: 'dark', st: { title: { u: true } },
+      boxes: [
+        { id: 'p', kind: 'img', img: 'desk', x: 10, y: 10, w: 20, h: 30, r: true },
+        { id: 'r', kind: 'shape', shape: 'round', x: 40, y: 10, w: 20, h: 20, fill: '#fde68a', stroke: '#111827', sw: 4, op: 0.5 },
+        { id: 'c', kind: 'shape', shape: 'circle', x: 70, y: 10, w: 10, h: 18, fill: '#bbf7d0' },
+        { id: 'a', kind: 'shape', shape: 'arrow', x: 10, y: 70, w: 40, stroke: '#2563eb', sw: 3 },
+        { id: 'x', kind: 'shape', shape: 'rect', x: 0, y: 0, w: 5, h: 5, fill: '"/><script>' },
+      ],
+    }
+    const svg = slideSvg(s, 1, 1, '#ff6119', null, { bg: pic, 'el:p': pic })
+    expect(svg.match(/<image /g)).toHaveLength(2) // ảnh nền + ảnh chèn
+    expect(svg).toContain('fill="#0f172a" fill-opacity="0.6"') // lớp phủ tối
+    expect(svg).toContain('fill="#f8fafc"') // chữ mặc định chuyển sáng trên nền tối
+    expect(svg).toContain('text-decoration="underline"')
+    expect(svg).toContain('<g opacity="0.5">')
+    expect(svg).toContain('<ellipse')
+    expect(svg).toContain('<polygon') // đầu mũi tên
+    expect(svg).not.toContain('<script>')
+    // ảnh chưa tải được thì bỏ qua phần tử, không làm hỏng khung hình; slide cũ không có phần tử mới vẫn dựng như trước
+    expect(slideSvg({ ...s, boxes: [s.boxes[0]] }, 1, 1).match(/<image /g)).toBeNull()
+    expect(slideSvg({ layout: 'bullets', title: 'x', items: ['a'] }, 1, 1)).not.toContain('fill-opacity')
+  })
+
   it('voice preview needs real AI and an author', async () => {
     expect((await ctx.author('POST', '/api/tts', { text: 'Xin chào' })).status).toBe(400)
     expect((await ctx.learner('POST', '/api/tts', { text: 'Xin chào' })).status).toBe(403)

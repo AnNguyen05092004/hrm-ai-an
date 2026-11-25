@@ -82,9 +82,9 @@ export function Segmented({ value, onChange, options }) {
   )
 }
 
-export function Tip({ label, children, onClick, active, className = '', below = true }) {
+export function Tip({ label, children, onClick, active, className = '', below = true, disabled }) {
   return (
-    <button onClick={onClick} className={`group/tip relative icon-btn ${active ? 'bg-neutral-100' : ''} ${className}`} aria-label={label}>
+    <button onClick={onClick} disabled={disabled} className={`group/tip relative icon-btn disabled:cursor-not-allowed disabled:opacity-35 ${active ? 'bg-neutral-100' : ''} ${className}`} aria-label={label}>
       {children}
       <span className={`tip group-hover/tip:opacity-100 left-1/2 -translate-x-1/2 ${below ? 'top-11' : 'bottom-11'}`}>{label}</span>
     </button>

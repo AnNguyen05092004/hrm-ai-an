@@ -36,8 +36,9 @@ function wrap(text: string, max: number, lines = 3): string[] {
 const tspans = (lines: string[], x: number, y: number, lh: number, size: number, weight = 400, fill = '#111'): string =>
   lines.map((l, i) => `<text x="${x}" y="${y + i * lh}" font-size="${size}" font-weight="${weight}" fill="${fill}">${esc(l)}</text>`).join('')
 
-// Định dạng người soạn đặt trên slide (SlideKit): st[phần] = { x, y (% khung), size (hệ số), color, b, i }, boxes[], bg
-type St = { x?: number; y?: number; size?: number; color?: string; b?: boolean; i?: boolean }
+// Định dạng người soạn đặt trên slide (xem đầu SlideKit.jsx): st[phần] = { x, y (% khung), size (hệ số), color, b, i, u },
+// bg, bgImg + bgTone, boxes[] gồm hộp chữ, ảnh (kind: 'img') và hình khối (kind: 'shape')
+type St = { x?: number; y?: number; size?: number; color?: string; b?: boolean; i?: boolean; u?: boolean }
 const HEX = /^#[0-9a-f]{3,8}$/i
 const color = (c: unknown): string | null => (typeof c === 'string' && HEX.test(c) ? c : null)
 const px = W / 960 // slide trên web thiết kế theo bề ngang 960
@@ -50,13 +51,14 @@ function restyle(frag: string, st: St | undefined, ax: number, ay: number): stri
   if (c) f = f.replace(/(<text\b[^>]*?) fill="[^"]*"/g, `$1 fill="${c}"`)
   if (typeof st.b === 'boolean') f = f.replace(/(<text\b[^>]*?) font-weight="[^"]*"/g, `$1 font-weight="${st.b ? 700 : 400}"`)
   if (st.i) f = f.replace(/<text\b/g, '<text font-style="italic"')
+  if (st.u) f = f.replace(/<text\b/g, '<text text-decoration="underline"')
   const k = Number(st.size) > 0 ? Number(st.size) : 1
   const dx = ((Number(st.x) || 0) / 100) * W, dy = ((Number(st.y) || 0) / 100) * H
   if (k === 1 && !dx && !dy) return f
   return `<g transform="translate(${(ax + dx).toFixed(1)} ${(ay + dy).toFixed(1)}) scale(${k}) translate(${-ax} ${-ay})">${f}</g>`
 }
 
-function boxSvg(b: Json): string {
+function textBoxSvg(b: Json): string {
   const k = Number(b.size) > 0 ? Number(b.size) : 1
   const fs = 22 * k * px, lh = fs * 1.3
   const x = (Number(b.x) / 100) * W, y = (Number(b.y) / 100) * H, w = (Number(b.w) / 100) * W
@@ -66,18 +68,55 @@ function boxSvg(b: Json): string {
   const rect = fill ? `<rect x="${x}" y="${y}" width="${w}" height="${lines.length * lh + pad * 2}" rx="${6 * px}" fill="${fill}"/>` : ''
   let text = tspans(lines, x + pad, y + pad + fs, lh, fs, b.b ? 700 : 400, color(b.color) ?? '#262626')
   if (b.i) text = text.replace(/<text\b/g, '<text font-style="italic"')
+  if (b.u) text = text.replace(/<text\b/g, '<text text-decoration="underline"')
   return rect + text
 }
 
-export function slideSvg(s: Json, n: number, total: number, accent = '#ff6119', pic: string | null = null): string {
-  return slideSvgRaw(s, n, total, pic).replaceAll('#ff6119', color(accent) ?? '#ff6119')
+/** Hình khối: chữ nhật, bo góc, tròn (nét vẽ nằm trong khung như trên web); đường thẳng, mũi tên nằm giữa khung cao 28 */
+function shapeSvg(b: Json, x: number, y: number, w: number, h: number): string {
+  const sw = Math.max(1, Number(b.sw) || 3) * px
+  if (b.shape === 'line' || b.shape === 'arrow') {
+    const c = color(b.stroke) ?? color(b.fill) ?? '#111827', cy = y + 14 * px
+    const hw = b.shape === 'arrow' ? ((Number(b.sw) || 3) * 2.6 + 9) * px : 0, hh = ((Number(b.sw) || 3) * 1.6 + 5) * px
+    const head = hw ? `<polygon points="${x + w - hw},${cy - hh} ${x + w},${cy} ${x + w - hw},${cy + hh}" fill="${c}"/>` : ''
+    return `<line x1="${x}" y1="${cy}" x2="${x + w - hw * 0.9}" y2="${cy}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>${head}`
+  }
+  const fill = color(b.fill) ?? 'none', stroke = color(b.stroke)
+  const st = stroke ? ` stroke="${stroke}" stroke-width="${sw}"` : '', i = stroke ? sw / 2 : 0
+  if (b.shape === 'circle') return `<ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${Math.max(0, w / 2 - i)}" ry="${Math.max(0, h / 2 - i)}" fill="${fill}"${st}/>`
+  return `<rect x="${x + i}" y="${y + i}" width="${Math.max(0, w - 2 * i)}" height="${Math.max(0, h - 2 * i)}" rx="${b.shape === 'round' ? 18 * px : 0}" fill="${fill}"${st}/>`
 }
 
-function slideSvgRaw(s: Json, n: number, total: number, pic: string | null): string {
+/** Phần tử đặt tự do (hộp chữ, ảnh, hình) theo thứ tự lớp; pics: ảnh đã tải dạng data URI theo id phần tử */
+function elSvg(b: Json, idx: number, pics: Record<string, string>): string {
+  if (!b || typeof b !== 'object') return ''
+  const x = (Number(b.x) / 100) * W, y = (Number(b.y) / 100) * H, w = (Number(b.w) / 100) * W, h = ((Number(b.h) || 20) / 100) * H
+  let out = ''
+  if (b.kind === 'img') {
+    const pic = pics[`el:${b.id}`]
+    if (!pic) return ''
+    out = `<defs><clipPath id="el${idx}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${b.r ? 14 * px : 0}"/></clipPath></defs><image href="${pic}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice" clip-path="url(#el${idx})"/>`
+  } else if (b.kind === 'shape') out = shapeSvg(b, x, y, w, h)
+  else out = textBoxSvg(b)
+  const op = Number(b.op)
+  return op > 0 && op < 1 ? `<g opacity="${op}">${out}</g>` : out
+}
+
+const TONE_FILL: Record<string, string> = { light: '<rect width="1280" height="720" fill="#ffffff" fill-opacity="0.78"/>', dark: '<rect width="1280" height="720" fill="#0f172a" fill-opacity="0.6"/>', none: '' }
+/** Phủ tối: chữ mặc định chuyển sang sáng (chữ người soạn đã chọn màu giữ nguyên vì restyle chạy sau) */
+const onDark = (f: string): string => f.replace(/fill="#111"/g, 'fill="#f8fafc"').replace(/fill="#555"/g, 'fill="#cbd5e1"')
+
+export function slideSvg(s: Json, n: number, total: number, accent = '#ff6119', pic: string | null = null, pics: Record<string, string> = {}): string {
+  return slideSvgRaw(s, n, total, pic, pics).replaceAll('#ff6119', color(accent) ?? '#ff6119')
+}
+
+function slideSvgRaw(s: Json, n: number, total: number, pic: string | null, pics: Record<string, string>): string {
   const st = (k: string): St | undefined => s.st?.[k]
+  const dark = s.layout !== 'cover' && !!pics.bg && s.bgTone === 'dark'
+  const tone = (f: string, keep = false): string => (dark && !keep ? onDark(f) : f)
   const ky = s.layout === 'cover' ? 236 : 74
-  const kicker = s.kicker ? restyle(tspans([String(s.kicker).toUpperCase()], s.layout === 'cover' ? 90 : 80, ky, 0, 18, 700, s.layout === 'cover' ? '#e2e8f0' : '#ff6119'), st('kicker'), 80, ky - 18) : ''
-  const head = s.layout === 'cover' ? '' : restyle(tspans(wrap(s.title, 40, 2), 80, 120, 58, 48, 700), st('title'), 80, 80)
+  const kicker = s.kicker ? restyle(tone(tspans([String(s.kicker).toUpperCase()], s.layout === 'cover' ? 90 : 80, ky, 0, 18, 700, s.layout === 'cover' ? '#e2e8f0' : '#ff6119')), st('kicker'), 80, ky - 18) : ''
+  const head = s.layout === 'cover' ? '' : restyle(tone(tspans(wrap(s.title, 40, 2), 80, 120, 58, 48, 700)), st('title'), 80, 80)
   let body = ''
   const items: string[] = (s.items ?? []).filter(Boolean)
   if (s.layout === 'cover') {
@@ -100,8 +139,10 @@ function slideSvgRaw(s: Json, n: number, total: number, pic: string | null): str
   } else {
     body = items.slice(0, 5).map((x, i) => `${s.layout === 'steps' ? `<circle cx="104" cy="${262 + i * 86}" r="22" fill="#ff6119"/><text x="104" y="${271 + i * 86}" font-size="24" font-weight="700" fill="#fff" text-anchor="middle">${i + 1}</text>` : `<circle cx="100" cy="${258 + i * 86}" r="8" fill="#ff6119"/>`}${tspans(wrap(x, 54, 2), 145, 268 + i * 86, 34, 30)}`).join('')
   }
-  if (s.layout !== 'cover') body = `<rect width="11" height="${H}" fill="#ff6119"/>${restyle(body, st('body'), 80, 230)}`
-  const boxes = ((s.boxes ?? []) as Json[]).map(boxSvg).join('')
+  // nền ảnh của slide thường; cột và bảng có nền sáng riêng nên giữ chữ tối
+  const back = s.layout !== 'cover' && pics.bg ? `<image href="${pics.bg}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>${TONE_FILL[s.bgTone ?? 'light'] ?? TONE_FILL.light}` : ''
+  if (s.layout !== 'cover') body = `${back}<rect width="11" height="${H}" fill="#ff6119"/>${restyle(tone(body, ['two', 'table'].includes(s.layout)), st('body'), 80, 230)}`
+  const boxes = ((s.boxes ?? []) as Json[]).map((b, i) => elSvg(b, i, pics)).join('')
   const foot = `<text x="80" y="${H - 34}" font-size="18" fill="#888">Nội dung do AI tạo, đã được chuyên gia duyệt</text><text x="${W - 80}" y="${H - 34}" font-size="18" fill="#888" text-anchor="end">${n}/${total}</text>`
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" font-family="Arial, Helvetica, sans-serif"><rect width="${W}" height="${H}" fill="${color(s.bg) ?? '#fff'}"/>${body}${kicker}${head}${boxes}${foot}</svg>`
 }
@@ -115,12 +156,12 @@ async function duration(file: string): Promise<number> {
 const exists = (p: string): Promise<boolean> => access(p).then(() => true, () => false)
 
 /** Dựng một đoạn: ảnh slide + lời đọc (không có TTS thì im lặng theo độ dài lời) */
-async function segment(orgId: string, dir: string, s: Json, n: number, total: number, accent: string, pic: string | null): Promise<{ file: string; seconds: number; reused: boolean }> {
+async function segment(orgId: string, dir: string, s: Json, n: number, total: number, accent: string, pic: string | null, pics: Record<string, string>): Promise<{ file: string; seconds: number; reused: boolean }> {
   const key = crypto.createHash('sha1').update(JSON.stringify({ ...s, id: undefined, t: undefined, n, total, accent, v: RENDER_VERSION })).digest('hex').slice(0, 16)
   const file = path.join(dir, `seg-${key}.mp4`)
   if (await exists(file)) return { file, seconds: await duration(file), reused: true }
   const png = path.join(dir, `seg-${key}.png`), mp3 = path.join(dir, `seg-${key}.mp3`)
-  await writeFile(png, pngOf(slideSvg(s, n, total, accent, pic)))
+  await writeFile(png, pngOf(slideSvg(s, n, total, accent, pic, pics)))
   const voice = s.notes?.trim() ? await tts(orgId, s.notes) : null
   if (voice) {
     await writeFile(mp3, voice)
@@ -144,6 +185,18 @@ async function picture(orgId: string, img: unknown): Promise<string | null> {
   return jpg ? `data:image/jpeg;base64,${jpg.toString('base64')}` : null // không tải được ảnh thì slide vẫn dựng, chỉ thiếu ảnh
 }
 
+/** Ảnh nền và ảnh chèn của slide, tải trước khi dựng */
+async function slidePictures(orgId: string, s: Json): Promise<Record<string, string>> {
+  const out: Record<string, string> = {}
+  if (s.layout !== 'cover' && s.bgImg) { const p = await picture(orgId, s.bgImg); if (p) out.bg = p }
+  for (const b of (s.boxes ?? []) as Json[]) {
+    if (b?.kind !== 'img') continue
+    const p = await picture(orgId, b.img || 'desk')
+    if (p) out[`el:${b.id}`] = p
+  }
+  return out
+}
+
 const vttTime = (t: number): string => { const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${s.toFixed(3).padStart(6, '0')}` }
 
 export async function renderVideo(artifactId: string, report: (p: number, m: string) => Promise<void>): Promise<Json> {
@@ -158,7 +211,7 @@ export async function renderVideo(artifactId: string, report: (p: number, m: str
   const segs: { file: string; seconds: number; reused: boolean }[] = []
   for (const [i, s] of slides.entries()) {
     await report(5 + Math.round((80 * i) / slides.length), `Đang dựng đoạn ${i + 1}/${slides.length}${isMock() ? '' : ' (giọng đọc AI)'}`)
-    segs.push(await segment(a.orgId, dir, s, i + 1, slides.length, accent, s.layout === 'cover' || s.layout === 'image' ? await picture(a.orgId, s.img) : null))
+    segs.push(await segment(a.orgId, dir, s, i + 1, slides.length, accent, s.layout === 'cover' || s.layout === 'image' ? await picture(a.orgId, s.img) : null, await slidePictures(a.orgId, s)))
   }
   await report(90, 'Đang ghép video và chép lời')
   const list = path.join(dir, 'list.txt')

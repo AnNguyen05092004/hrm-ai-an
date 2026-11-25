@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { SlidersHorizontal, Maximize2, X, Plus, ChevronDown, Home, User, ListChecks, Type, Pencil, ZoomIn, ZoomOut, Trophy, CheckCircle2, XCircle, MinusCircle, ChevronRight, RotateCcw, Play, Pause, Trash2, StickyNote, Sparkles, AudioLines, RefreshCw, Flag, Film, FileText, ChevronLeft, Captions } from 'lucide-react'
+import { SlidersHorizontal, Maximize2, X, Plus, ChevronDown, Home, User, ListChecks, Type, Pencil, ZoomIn, ZoomOut, Trophy, CheckCircle2, XCircle, MinusCircle, ChevronRight, RotateCcw, Play, Pause, Trash2, StickyNote, Sparkles, AudioLines, RefreshCw, Flag, Film, FileText, ChevronLeft, ChevronUp, Captions } from 'lucide-react'
 import { useStore, uid } from '../store'
 import { fmtTime } from '../data'
 import { Avatar, Modal, Tip, Thumb } from '../ui'
@@ -10,7 +10,8 @@ import { post } from '../api'
 // Cho phép mã soạn cũ dạng set(d => d.artifacts[art.id]...) ghi vào bản nháp đang mở
 const artSet = (art, up) => (fn) => up((a) => fn({ artifacts: { [art.id]: a } }))
 import { Editable, MiniBtn } from '../edit'
-import { Slide, SlideCanvas } from './SlideKit'
+import { Slide } from './SlideKit'
+import { SlideCanvas } from './SlideTools'
 import { useCanvas, ZOOM_MIN, ZOOM_MAX } from '../useCanvas'
 
 /* ================= TÌNH HUỐNG ================= */
@@ -244,6 +245,32 @@ function VoicePreview({ text }) {
   return <button onClick={play} disabled={state === 'loading'} className="flex items-center gap-1 text-[13px] font-medium text-violet-700 disabled:opacity-50">{state === 'loading' ? <RefreshCw size={14} className="spin" /> : state === 'playing' ? <Pause size={14} /> : <AudioLines size={14} />}{state === 'playing' ? 'Dừng' : 'Nghe thử giọng AI'}</button>
 }
 
+const NOTES_KEY = 'deck-notes-open'
+const readNotes = () => { try { return localStorage.getItem(NOTES_KEY) !== '0' } catch { return true } }
+const isTyping = (t) => t?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName ?? '')
+
+/** Hoàn tác / làm lại cho cả bộ slide. Gõ chữ liên tục (nghỉ dưới 0,8 giây) gộp thành một bước; mỗi thao tác khác là một bước */
+function useSlideHistory(slides, write) {
+  const h = useRef({ past: [], future: [], at: 0 })
+  const now = useRef(slides); now.current = slides
+  const [, bump] = useState(0)
+  const record = () => {
+    const x = h.current, t = Date.now()
+    const typingNow = isTyping(document.activeElement)
+    if (!typingNow || t - x.at > 800) { x.past = [...x.past.slice(-49), structuredClone(now.current)]; x.future = []; bump((v) => v + 1) }
+    x.at = typingNow ? t : 0
+  }
+  const go = (from, to) => {
+    const x = h.current
+    if (!x[from].length) return null
+    const snap = x[from][x[from].length - 1]
+    x[from] = x[from].slice(0, -1); x[to] = [...x[to], structuredClone(now.current)]; x.at = 0
+    write(snap); bump((v) => v + 1)
+    return snap
+  }
+  return { record, undo: () => go('past', 'future'), redo: () => go('future', 'past'), canUndo: h.current.past.length > 0, canRedo: h.current.future.length > 0 }
+}
+
 export function DeckEditor({ art, kit, up, saveText, onRestored }) {
   const { say } = useStore()
   const set = artSet(art, up)
@@ -252,9 +279,39 @@ export function DeckEditor({ art, kit, up, saveText, onRestored }) {
   const [share, setShare] = useState(false)
   const [present, setPresent] = useState(false)
   const [vid, setVid] = useState(false)
+  const [notesOpen, setNotesOpen] = useState(readNotes)
+  const [drag, setDrag] = useState(null) // { from, over }: kéo thả để đổi thứ tự slide
+  const hist = useSlideHistory(art.slides, (snap) => set((d) => { d.artifacts[art.id].slides = snap }))
+  const change = (fn) => { hist.record(); set(fn) }
   const s = art.slides[cur]
-  const upS = (fn) => set((d) => fn(d.artifacts[art.id].slides[cur]))
+  const upS = (fn) => change((d) => fn(d.artifacts[art.id].slides[cur]))
+  const undo = () => { const snap = hist.undo(); if (snap) setCur((c) => Math.min(c, snap.length - 1)) }
+  const redo = () => { const snap = hist.redo(); if (snap) setCur((c) => Math.min(c, snap.length - 1)) }
+  const toggleNotes = () => setNotesOpen((o) => { try { localStorage.setItem(NOTES_KEY, o ? '0' : '1') } catch { /* chỉ là tiện ích, không lưu được thì thôi */ } return !o })
+  const move = (from, to) => {
+    if (from === to) return
+    change((d) => { const sl = d.artifacts[art.id].slides; const [x] = sl.splice(from, 1); sl.splice(to, 0, x) })
+    setCur(to)
+  }
+  const bgAll = (bg) => {
+    const n = art.slides.filter((x) => x.layout !== 'cover').length
+    change((d) => d.artifacts[art.id].slides.forEach((x) => { if (x.layout === 'cover') return; for (const [k, v] of Object.entries(bg)) { if (v === undefined) delete x[k]; else x[k] = v } }))
+    say(`Đã áp nền cho ${n} slide (trừ slide bìa)`)
+  }
+  // ⌘Z / ⇧⌘Z (hoặc Ctrl+Y) khi không đang gõ chữ; đang gõ thì để trình duyệt hoàn tác chữ
+  const keys = useRef(); keys.current = { undo, redo, present }
+  useEffect(() => {
+    const h = (e) => {
+      if (!(e.metaKey || e.ctrlKey) || keys.current.present || isTyping(e.target)) return
+      const k = e.key.toLowerCase()
+      if (k === 'z') { e.preventDefault(); if (e.shiftKey) keys.current.redo(); else keys.current.undo() }
+      else if (k === 'y') { e.preventDefault(); keys.current.redo() }
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [])
   useEffect(() => { if (!present) return; const h = (e) => { if (e.key === 'ArrowRight') setCur((c) => Math.min(art.slides.length - 1, c + 1)); if (e.key === 'ArrowLeft') setCur((c) => Math.max(0, c - 1)); if (e.key === 'Escape') setPresent(false) }; window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h) }, [present])
+  const notePeek = s.notes?.trim().split('\n')[0]
   return (
     <div className="flex h-full flex-col">
       <ArtifactTop art={art} kit={kit} saveText={saveText} onRestored={onRestored} onShare={() => setShare(true)} onPreview={() => setPresent(true)}
@@ -262,23 +319,37 @@ export function DeckEditor({ art, kit, up, saveText, onRestored }) {
       <DraftBar art={art} />
       <div className="flex flex-1 overflow-hidden">
         <aside className="scroll-thin w-[240px] shrink-0 overflow-y-auto border-r border-line px-4 py-4">
-          <div className="mb-3 flex items-center text-[16px] font-semibold">Slide <span className="ml-2 font-normal text-neutral-500">{art.slides.length}</span><div className="flex-1" /><button onClick={() => { set((d) => d.artifacts[art.id].slides.splice(cur + 1, 0, { id: uid('s'), layout: 'bullets', title: 'Slide mới', items: ['Ý 1', 'Ý 2'], notes: '' })); setCur(cur + 1) }}><Plus size={18} /></button></div>
-          {art.slides.map((x, i) => (
-            <button key={x.id} onClick={() => setCur(i)} className="mb-3 flex w-full gap-2 text-left">
-              <span className="w-5 pt-1 text-[13px] text-neutral-500">{i + 1}</span>
-              <div className={`aspect-video flex-1 overflow-hidden rounded-lg border-2 ${cur === i ? 'border-neutral-700' : 'border-line'}`}><Slide s={x} n={i + 1} /></div>
-            </button>
-          ))}
+          <div className="mb-3 flex items-center text-[16px] font-semibold">Slide <span className="ml-2 font-normal text-neutral-500">{art.slides.length}</span><div className="flex-1" /><Tip label="Thêm slide" className="h-8 w-8" onClick={() => { change((d) => d.artifacts[art.id].slides.splice(cur + 1, 0, { id: uid('s'), layout: 'bullets', title: 'Slide mới', items: ['Ý 1', 'Ý 2'], notes: '' })); setCur(cur + 1) }}><Plus size={18} /></Tip></div>
+          {art.slides.map((x, i) => {
+            const mark = drag && drag.over === i && drag.from !== i ? (drag.from > i ? 'before' : 'after') : null
+            return (
+              <button key={x.id} draggable title="Kéo để đổi thứ tự" onClick={() => setCur(i)}
+                onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); setDrag({ from: i, over: i }) }}
+                onDragOver={(e) => { if (!drag) return; e.preventDefault(); if (drag.over !== i) setDrag({ ...drag, over: i }) }}
+                onDrop={(e) => { e.preventDefault(); if (drag) move(drag.from, i); setDrag(null) }}
+                onDragEnd={() => setDrag(null)}
+                className={`relative mb-3 flex w-full gap-2 text-left ${drag?.from === i ? 'opacity-40' : ''}`}>
+                {mark && <span className={`absolute left-6 right-0 h-0.5 rounded bg-sky-500 ${mark === 'before' ? '-top-2' : '-bottom-2'}`} />}
+                <span className="w-5 pt-1 text-[13px] text-neutral-500">{i + 1}</span>
+                <div className={`aspect-video flex-1 overflow-hidden rounded-lg border-2 ${cur === i ? 'border-neutral-700' : 'border-line'}`}><Slide s={x} n={i + 1} /></div>
+              </button>
+            )
+          })}
         </aside>
-        <div className="flex flex-1 flex-col bg-neutral-50">
+        <div className="flex min-w-0 flex-1 flex-col bg-neutral-50">
           <div className="scroll-thin flex min-h-0 flex-1 justify-center overflow-y-auto p-8">
-            <SlideCanvas key={cur} artId={art.id} s={s} n={cur + 1} total={art.slides.length} upS={upS}
-              onDuplicate={() => { set((d) => { const sl = d.artifacts[art.id].slides; sl.splice(cur + 1, 0, { ...structuredClone(sl[cur]), id: uid('s') }) }); setCur(cur + 1); say('Đã nhân đôi slide') }}
-              onDelete={art.slides.length > 1 ? () => { set((d) => d.artifacts[art.id].slides.splice(cur, 1)); setCur(Math.max(0, cur - 1)) } : undefined} />
+            <SlideCanvas key={cur} artId={art.id} s={s} n={cur + 1} total={art.slides.length} upS={upS} roomy={!notesOpen}
+              onUndo={undo} onRedo={redo} canUndo={hist.canUndo} canRedo={hist.canRedo} onBgAll={bgAll}
+              onDuplicate={() => { change((d) => { const sl = d.artifacts[art.id].slides; sl.splice(cur + 1, 0, { ...structuredClone(sl[cur]), id: uid('s') }) }); setCur(cur + 1); say('Đã nhân đôi slide') }}
+              onDelete={art.slides.length > 1 ? () => { change((d) => d.artifacts[art.id].slides.splice(cur, 1)); setCur(Math.max(0, cur - 1)) } : undefined} />
           </div>
-          <div className="border-t border-line bg-white px-6 py-4">
-            <div className="flex items-center gap-2 text-[14px] font-semibold"><StickyNote size={15} />Ghi chú người trình bày<span className="font-normal text-neutral-500">Slide {cur + 1}</span><div className="flex-1" /><VoicePreview text={s.notes} /></div>
-            <div className="mt-2 min-h-[56px] text-[15px]"><Editable value={s.notes} multiline className="block min-h-[44px]" placeholder="Ghi chú cho người trình bày, cũng là lời đọc khi tạo video" onChange={(v) => upS((x) => { x.notes = v })} /></div>
+          <div className={`border-t border-line bg-white px-6 ${notesOpen ? 'py-4' : 'py-2.5'}`}>
+            <div className="flex items-center gap-2 text-[14px] font-semibold"><StickyNote size={15} className="shrink-0" /><span className="whitespace-nowrap">Ghi chú người trình bày</span><span className="whitespace-nowrap font-normal text-neutral-500">Slide {cur + 1}</span>
+              {!notesOpen && <span className="min-w-0 truncate font-normal text-neutral-400">{notePeek ? `· ${notePeek}` : '· chưa có ghi chú'}</span>}
+              <div className="flex-1" />{notesOpen && <VoicePreview text={s.notes} />}
+              <button onClick={toggleNotes} aria-expanded={notesOpen} className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[13px] font-medium text-neutral-600 hover:bg-neutral-100">{notesOpen ? <><ChevronDown size={15} />Ẩn ghi chú</> : <><ChevronUp size={15} />Hiện ghi chú</>}</button>
+            </div>
+            {notesOpen && <div className="mt-2 min-h-[56px] text-[15px]"><Editable value={s.notes} multiline className="block min-h-[44px]" placeholder="Ghi chú cho người trình bày, cũng là lời đọc khi tạo video" onChange={(v) => upS((x) => { x.notes = v })} /></div>}
           </div>
         </div>
       </div>

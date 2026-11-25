@@ -83,7 +83,7 @@ export async function buildScorm(orgId: string, kitId: string): Promise<{ name: 
       return s
     }) as Json
     for (const f of vids) media[`media/${a.id}-${f}`] = new Uint8Array(await getFile(`videos/${a.id}/${f}`))
-    JSON.stringify(mapped, (key, v) => { if ((key === 'img') && typeof v === 'string' && PRESET_IMAGES[v]) presets.add(v); return v })
+    JSON.stringify(mapped, (key, v) => { if ((key === 'img' || key === 'bgImg') && typeof v === 'string' && PRESET_IMAGES[v]) presets.add(v); return v })
     items.push(mapped)
   }
   if (PRESET_IMAGES[k.img]) presets.add(k.img)

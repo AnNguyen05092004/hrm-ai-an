@@ -66,6 +66,9 @@ h1, h2, h3, h4 { @apply font-display; }
 .fx-bold, .fx-bold * { font-weight: 700 !important; }
 .fx-normal, .fx-normal * { font-weight: 400 !important; }
 .fx-italic, .fx-italic * { font-style: italic !important; }
+.fx-underline, .fx-underline * { text-decoration: underline; text-underline-offset: 0.12em; }
+/* slide có ảnh nền phủ tối: chữ mặc định chuyển sang sáng (màu người soạn chọn vẫn giữ nhờ fx-color) */
+.slide-on-dark :is(.text-ink, .text-neutral-800, .text-neutral-600, .text-neutral-500, .text-slate-700):not(.slide-on-dark :is(.bg-white, .bg-slate-50, .bg-neutral-50) *) { color: #f8fafc; }
 .fx-left, .fx-left * { text-align: left; }
 .fx-center, .fx-center * { text-align: center; justify-content: center; }
 .fx-right, .fx-right * { text-align: right; justify-content: flex-end; }
