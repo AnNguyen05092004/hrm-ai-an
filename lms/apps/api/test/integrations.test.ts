@@ -7,6 +7,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { unzipSync, strFromU8 } from 'fflate'
 import { setupApp } from './helpers.js'
 import { deliverOutbox } from '../src/lib/integrations.js'
+import { quizSkipReason } from '../src/modules/kits/scorm.js'
 
 type Hit = { url: string; headers: http.IncomingHttpHeaders; body: string }
 
@@ -106,5 +107,11 @@ describe('Tích hợp: xAPI, webhook, SCORM', () => {
     expect(course.items.length).toBe(info.included.length)
     expect(course.items.some((x: { type: string }) => x.type === 'exam')).toBe(false)
     delete process.env.SCORM_PLAYER_DIR
+  })
+
+  it('nói đúng lý do bài kiểm tra trong Tài liệu nhanh không vào gói SCORM', () => {
+    expect(quizSkipReason({ mode: 'official', questions: [] })).toMatch(/chính thức/)
+    expect(quizSkipReason({ mode: 'practice', questions: [{ type: 'mc', approved: false }] })).toMatch(/Chưa duyệt/)
+    expect(quizSkipReason({ mode: 'practice', questions: [{ type: 'essay', approved: true }] })).toMatch(/tự luận/)
   })
 })

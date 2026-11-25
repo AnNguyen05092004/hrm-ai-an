@@ -35,6 +35,14 @@ function offlineQuiz(quiz: Json | undefined): Json | null {
   return questions.length ? { passScore: quiz.passScore ?? 80, questions } : null
 }
 
+/** Vì sao bài kiểm tra trong Tài liệu nhanh không vào gói: nói đúng nguyên nhân để người soạn biết cần làm gì */
+export function quizSkipReason(quiz: Json): string {
+  if (quiz.mode !== 'practice') return 'Bài thi chính thức chỉ làm trên LMS này'
+  const approved = (quiz.questions ?? []).filter((q: Json) => q.approved)
+  if (!approved.length) return 'Chưa duyệt câu hỏi nào. Duyệt câu trong trình soạn rồi xuất bản lại'
+  return 'Các câu đã duyệt đều là tự luận hoặc bài code, cần người hoặc máy chủ chấm'
+}
+
 /** Duyệt toàn bộ cây nội dung, thay đường dẫn ảnh/video của máy chủ bằng tệp trong gói */
 function rewrite(x: unknown, map: (s: string) => string): unknown {
   if (typeof x === 'string') return map(x)
@@ -69,7 +77,7 @@ export async function buildScorm(orgId: string, kitId: string): Promise<{ name: 
   for (const a of learn) {
     const { content, title, summary, version } = await publishedContent(a)
     const quiz = offlineQuiz(content.quiz)
-    if (a.type === 'qr' && content.quiz && !quiz) skipped.push({ title: `Bài kiểm tra trong "${title}"`, reason: content.quiz.mode === 'official' ? 'Bài thi chính thức chỉ làm trên LMS này' : 'Không có câu chấm tự động được' })
+    if (a.type === 'qr' && content.quiz && !quiz) skipped.push({ title: `Bài kiểm tra trong "${title}"`, reason: quizSkipReason(content.quiz) })
     const view = learnerView(content)
     if (a.type === 'qr' && !quiz) view.lessons = (view.lessons ?? []).filter((l: Json) => l.kind !== 'quiz')
     const raw = { id: a.id, type: a.type, img: a.img, kitId: k.id, kitTitle: k.title, title, summary, version, draft: false, offline: true, ...view, offlineQuiz: quiz, progress: { done: [], percent: 0 } }
