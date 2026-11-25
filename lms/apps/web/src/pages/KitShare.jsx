@@ -95,6 +95,7 @@ function ScormExport({ kit }) {
     </div>
     {exc.length > 0 && <div className="mt-3 rounded-xl bg-neutral-50 px-4 py-3 text-[13px] text-neutral-600"><div className="mb-1 font-semibold">Không đưa vào gói</div>{exc.map((x) => <div key={x.id}>{x.title}: {x.reason}</div>)}</div>}
     <p className="mt-3 text-[12px] text-neutral-500">AI Tutor và đề kiểm tra chính thức cần máy chủ LMS này nên không có trong gói. Muốn kết quả học trên LMS này tự sang hệ thống công ty, dùng Cài đặt → Tích hợp (xAPI hoặc webhook).</p>
+    {import.meta.env.DEV && <p className="mt-2 text-[12px] text-neutral-500">Thử ngay: tải gói rồi nhập vào <a className="font-semibold text-ink underline" href={`${location.protocol}//${location.hostname}:5192`} target="_blank" rel="noopener noreferrer">LMS công ty (demo)</a> để xem LMS khác nhận gói, chạy và ghi kết quả thế nào.</p>}
     <div className="mt-4 flex justify-end border-t border-line pt-4"><a href={inc.length ? `/api/kits/${kit.id}/export/scorm` : undefined} aria-disabled={!inc.length} className={`btn-dark ${inc.length ? '' : 'pointer-events-none opacity-40'}`}><Download size={16} />Tải gói SCORM (.zip)</a></div>
   </>)
 }

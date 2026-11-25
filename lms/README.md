@@ -19,7 +19,7 @@ Mở http://localhost:5190. Dừng bằng Ctrl+C.
 2. Chạy `npm install` nếu chưa cài.
 3. Bật Postgres trong Docker.
 4. Tạo bảng và dữ liệu mẫu, chỉ ở lần chạy đầu. Các lần sau giữ nguyên dữ liệu.
-5. Chạy API (cổng 4000) và web (cổng 5190).
+5. Chạy API (cổng 4000), web (cổng 5190) và trang demo LMS công ty nhận gói SCORM (cổng 5192).
 
 | Lệnh | Dùng khi |
 |---|---|
@@ -76,7 +76,7 @@ Muốn chạy không cần key: đặt `AI_PROVIDER=mock` trong `.env`.
 | Thi và chấm | Mỗi người một đề riêng, rút từ ngân hàng câu đã duyệt. Có giờ thi, số lượt, lưu liên tục, làm tiếp được khi mất mạng. Trắc nghiệm và bài code JavaScript chấm tự động. AI chấm nháp tự luận theo rubric, người chấm xác nhận |
 | Giám sát | Bật theo bài, người thi phải đồng ý. Gắn cờ khi chuyển tab, rời cửa sổ, dán từ ngoài. Người chấm quyết định. Tự xóa sau 30 ngày |
 | Kế hoạch đào tạo | Chọn KPI, bộ phận, thời hạn rồi phân tích: từ KPI ra kỹ năng cần và khoảng cách của từng người, sơ đồ KPI → kỹ năng → khóa → người học, lộ trình chia đợt. Gợi ý khóa có sẵn, hoặc tạo khóa bằng AI cho kỹ năng chưa có. Có sơ đồ đội ngũ và đánh giá mức từ bằng chứng. Thi chính thức đạt thì nâng mức (tối đa 3). Trợ lý AI trả lời trên dữ liệu đội |
-| Kết nối LMS công ty | Xuất khóa thành gói SCORM 1.2 (cùng giao diện học, ghi hoàn thành, điểm, học dở); gửi kết quả học sang LRS qua xAPI; webhook có chữ ký cho hệ thống nội bộ |
+| Kết nối LMS công ty | Xuất khóa thành gói SCORM 1.2 (cùng giao diện học, ghi hoàn thành, điểm, học dở); gửi kết quả học sang LRS qua xAPI; webhook có chữ ký cho hệ thống nội bộ. Trang demo LMS công ty (http://localhost:5192, `apps/company-lms`): nhập gói .zip, kiểm tra manifest, giao cho nhân viên, chạy gói và xem từng lệnh SCORM gói gửi về, báo cáo kết quả, tải CSV |
 | Phân tích | Theo khóa, từ trên xuống: mỗi khóa một dòng (số người được giao, đã bắt đầu, đã xong, tiến độ trung bình, thi, điểm, Tutor); bung ra tài liệu trong khóa; bấm số người để xem ai được giao, lọc quá hạn / chưa bắt đầu / đang học / đã xong; mở chi tiết một người: tiến độ từng tài liệu, lượt thi (mở thẳng bài chấm), mức kỹ năng, câu đã hỏi Tutor. Lần xem chi tiết được ghi nhật ký. Câu Tutor chưa trả lời được, câu hỏi bị sai nhiều |
 | Vận hành | Hạn mức AI theo tháng, thống kê token theo tính năng, nhật ký thao tác |
 

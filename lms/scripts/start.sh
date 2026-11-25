@@ -34,8 +34,9 @@ if [ "${1:-}" = "--reset" ] || [ "${users// /}" = "0" ]; then
   npm run db:seed -w apps/api --silent
 fi
 
-echo "→ API http://localhost:4000 · Web http://localhost:5190 (Ctrl+C để dừng)"
+echo "→ API http://localhost:4000 · Web http://localhost:5190 · LMS công ty (demo SCORM) http://localhost:5192 (Ctrl+C để dừng)"
 trap 'kill 0' EXIT
 npm run dev -w apps/api --silent &
 npm run dev -w apps/web --silent &
+npm run dev -w apps/company-lms --silent &
 wait

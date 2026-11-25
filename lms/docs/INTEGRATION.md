@@ -27,6 +27,19 @@ Không có trong gói:
 
 Gói lấy bản đã xuất bản tại thời điểm xuất. Sửa khóa xong thì xuất bản lại rồi xuất gói mới.
 
+### Thử trên LMS công ty (demo)
+
+`apps/company-lms` là một LMS mô phỏng của công ty, chạy riêng ở http://localhost:5192 (`npm start` tự bật). Dùng để xem gói xuất ra được LMS khác nhận và dùng thế nào, không cần cài Moodle.
+
+1. Ở LMS: mở khóa → Chia sẻ cả khóa → Xuất SCORM → Tải gói.
+2. Ở cổng đào tạo (vai Quản trị đào tạo): Nhập gói SCORM, chọn tệp .zip. Cổng giải nén, đọc `imsmanifest.xml` và kiểm tra: có manifest ở gốc gói, đúng SCORM 1.2, có mục học, tệp khởi chạy tồn tại và là SCO, đủ tệp khai báo, điểm đạt (`masteryscore`). Gói lỗi thì báo rõ lý do và không cho nhập.
+3. Đặt tên hiển thị, giao cho nhân viên, đặt hạn. Nhập lại gói cùng mã (`identifier`) thì cổng đề nghị cập nhật khóa cũ và giữ kết quả học viên.
+4. Đổi sang vai Nhân viên → Bắt đầu học. Gói chạy trong khung cùng nguồn với cổng và gọi `window.API` của cổng. Bảng **Dữ liệu SCORM** bên phải cho thấy giá trị gói đang ghi (trạng thái, điểm, `suspend_data`…) và nhật ký từng lệnh API, kể cả lỗi theo mã chuẩn.
+5. Thoát giữa chừng: gói gọi `LMSFinish` với `exit = suspend`, lần sau cổng trả `entry = resume` và gói học tiếp đúng chỗ. Gói báo `completed` kèm điểm mà manifest có điểm đạt thì cổng tự xếp `passed` / `failed`.
+6. Quản trị xem kết quả ở Báo cáo học tập (trạng thái, điểm, thời gian, số phiên, hạn), tải CSV, hoặc mở chi tiết khóa để xem từng phiên học. **Xem thử** chạy gói với `credit = no-credit`, không ghi kết quả.
+
+Cổng demo cài phần lõi của SCORM 1.2 (`cmi.core.*`, `suspend_data`, `launch_data`, `comments`, `student_data`) và kiểm tra quyền đọc/ghi, kiểu dữ liệu theo chuẩn. Các phần tùy chọn (`objectives`, `interactions`, `student_preference`) trả lỗi 401. Gói lưu ở Cache Storage và kết quả lưu ở localStorage của trình duyệt đang mở cổng.
+
 ## 2. xAPI (Experience API 1.0.3)
 
 Nhập địa chỉ LRS, khóa và mật khẩu (Basic auth) ở Cài đặt → Tích hợp, bấm **Gửi thử**, rồi bật. Mỗi sự kiện gửi một statement tới `POST {endpoint}/statements`:
