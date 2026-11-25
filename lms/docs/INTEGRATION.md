@@ -40,6 +40,24 @@ Gói lấy bản đã xuất bản tại thời điểm xuất. Sửa khóa xong
 
 Cổng demo cài phần lõi của SCORM 1.2 (`cmi.core.*`, `suspend_data`, `launch_data`, `comments`, `student_data`) và kiểm tra quyền đọc/ghi, kiểu dữ liệu theo chuẩn. Các phần tùy chọn (`objectives`, `interactions`, `student_preference`) trả lỗi 401. Gói lưu ở Cache Storage và kết quả lưu ở localStorage của trình duyệt đang mở cổng.
 
+### Đề kiểm tra cho LMS công ty tự quản lý và chấm
+
+Đề chính thức không vào gói SCORM. Khi công ty muốn tự tổ chức thi trên LMS của họ: Chia sẻ cả khóa → Xuất SCORM → mục **Đề kiểm tra cho LMS công ty tự chấm**, tích xác nhận rồi **Tải đề kèm đáp án**. Mỗi lần tải ghi nhật ký (`kit.export_exam`).
+
+Gói `.zip` theo **IMS QTI 2.1** (Canvas, Blackboard, D2L, TAO nhập được; Moodle qua plugin QTI), chỉ gồm câu đã duyệt:
+
+| Tệp | Nội dung |
+|---|---|
+| `imsmanifest.xml`, `test.xml` | Đề: rút ngẫu nhiên `pick` câu, xáo thứ tự, giới hạn thời gian, số lượt, điểm đạt (`PASS_SCORE`) |
+| `items/<mã câu>.xml` | Từng câu kèm đáp án (`correctResponse`). Ghép cặp, phân loại, sắp thứ tự chấm từng phần giống LMS này. Điền chỗ trống nhận nhiều đáp án, không phân biệt hoa thường |
+| | Tự luận: `externalScored="human"`, tiêu chí trong `rubricBlock view="scorer"`. Bài code: `externalScored="externalMachine"`, test case trong `rubricBlock` |
+| `exam.json` | Toàn bộ đề theo cấu trúc gốc: đáp án, giải thích từng lựa chọn, rubric, test case, cách tính điểm từng dạng câu, lời nhắc mẫu cho AI chấm |
+| `huong-dan-cham.md` | Hướng dẫn cho người quản trị LMS công ty và lời nhắc mẫu để AI của họ chấm nháp tự luận theo tiêu chí |
+
+Thi trên LMS công ty thì LMS này không giám sát, không chấm và không nâng mức kỹ năng. Gói có đáp án nên chỉ gửi cho người quản trị.
+
+Trang demo LMS công ty nhận được gói này: đọc QTI, kiểm tra có đáp án và tiêu chí, cho nhân viên làm bài có giờ, tự chấm câu khách quan; câu tự luận/code vào **Chấm bài**, người chấm tích tiêu chí đạt (hoặc sao chép lời nhắc cho AI chấm nháp) rồi xác nhận điểm.
+
 ## 2. xAPI (Experience API 1.0.3)
 
 Nhập địa chỉ LRS, khóa và mật khẩu (Basic auth) ở Cài đặt → Tích hợp, bấm **Gửi thử**, rồi bật. Mỗi sự kiện gửi một statement tới `POST {endpoint}/statements`:

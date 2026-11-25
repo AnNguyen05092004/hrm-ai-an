@@ -6,6 +6,13 @@ import { Badge } from './ui'
 import { fmtDate, fmtDateTime } from './format'
 
 const actionOf = (s) => (s === 'not attempted' ? 'Bắt đầu học' : isDone(s) ? 'Xem lại' : 'Học tiếp')
+/** Nút của thẻ đề kiểm tra: theo lượt đã dùng */
+const examAction = (p, rec) => {
+  const used = (rec.attempts ?? []).filter((a) => a.status !== 'in_progress').length
+  if ((rec.attempts ?? []).some((a) => a.status === 'in_progress')) return 'Làm tiếp bài thi'
+  if (statusOf(rec) === 'passed') return 'Xem kết quả'
+  return used >= p.exam.attempts ? 'Xem kết quả' : used ? `Làm lại (còn ${p.exam.attempts - used} lượt)` : 'Làm bài'
+}
 
 export default function MyCourses({ learner, onOpen }) {
   const { packages, records } = useData()
@@ -29,14 +36,14 @@ export default function MyCourses({ learner, onOpen }) {
           <article key={p.id} className="card flex flex-col p-5">
             <div className="flex items-start justify-between gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted font-display text-[18px] font-semibold text-ink">{p.title.trim()[0]?.toUpperCase()}</span><Badge status={s} /></div>
             <h3 className="mt-3 text-[16px] leading-6">{p.title}</h3>
-            <div className="mt-1 text-[13px] text-ink-subtle">Khóa học trực tuyến · SCORM {p.version}</div>
+            <div className="mt-1 text-[13px] text-ink-subtle">{p.kind === 'qti' ? `Đề kiểm tra · ${p.exam.pick} câu · ${p.exam.minutes} phút` : `Khóa học trực tuyến · SCORM ${p.version}`}</div>
             <dl className="mt-4 grid grid-cols-2 gap-y-2 text-[13px]">
               <dt className="text-ink-subtle">Hạn hoàn thành</dt><dd className="text-right font-medium">{a.due ? fmtDate(a.due) : 'Không đặt'}</dd>
               <dt className="text-ink-subtle">Điểm</dt><dd className="text-right font-medium">{rec.score?.raw || '—'}{p.mastery != null ? <span className="font-normal text-ink-subtle"> / đạt từ {p.mastery}</span> : ''}</dd>
-              <dt className="text-ink-subtle">Thời gian đã học</dt><dd className="text-right font-medium">{rec.total_time ? humanTime(rec.total_time) : '—'}</dd>
+              {p.kind === 'qti' ? <><dt className="text-ink-subtle">Lượt đã dùng</dt><dd className="text-right font-medium">{(rec.attempts ?? []).filter((a) => a.status !== 'in_progress').length}/{p.exam.attempts}</dd></> : <><dt className="text-ink-subtle">Thời gian đã học</dt><dd className="text-right font-medium">{rec.total_time ? humanTime(rec.total_time) : '—'}</dd></>}
               <dt className="text-ink-subtle">Học gần nhất</dt><dd className="text-right font-medium">{fmtDateTime(rec.lastAt)}</dd>
             </dl>
-            <button className="btn-dark mt-5 w-full" onClick={() => onOpen(p)}><PlayCircle size={17} />{actionOf(s)}</button>
+            <button className="btn-dark mt-5 w-full" onClick={() => onOpen(p)}><PlayCircle size={17} />{p.kind === 'qti' ? examAction(p, rec) : actionOf(s)}</button>
           </article>
         )
       })}

@@ -1,6 +1,7 @@
 // Nhập gói SCORM: giải nén, đọc imsmanifest.xml, kiểm tra như LMS thật làm trước khi đưa lên danh mục,
 // rồi lưu các tệp vào Cache Storage để Service Worker phục vụ ở /pkg/<mã gói>/...
 import { unzipSync, strFromU8 } from 'fflate'
+import { readQti } from './qti'
 
 const CACHE = 'scorm-packages'
 const ADLCP = 'http://www.adlnet.org/xsd/adlcp_rootv1p2'
@@ -41,6 +42,12 @@ export async function readPackage(file) {
   }
   add(true, 'Có imsmanifest.xml ở gốc gói')
 
+  // gói đề IMS QTI (đề kiểm tra kèm đáp án): cổng tự quản lý và chấm, không chạy như SCO
+  if (byTag(doc, 'resource').some((r) => (r.getAttribute('type') ?? '').startsWith('imsqti'))) {
+    const q = readQti(files, doc)
+    return { checks: [...checks, ...q.checks], files, size, info: q.info && { ...q.info, fileCount: Object.keys(files).length, fileName: file.name } }
+  }
+
   const ver = text(byTag(doc, 'schemaversion')[0])
   if (ver === '1.2') add(true, 'Chuẩn SCORM 1.2', `schemaversion = ${ver}`)
   else add(false, 'Chuẩn SCORM 1.2', ver ? `Gói khai báo "${ver}" (SCORM 2004). Cổng đào tạo demo nhận SCORM 1.2, đúng định dạng LMS xuất` : 'Manifest không ghi schemaversion')
@@ -69,7 +76,7 @@ export async function readPackage(file) {
 
   return {
     checks, files, size,
-    info: { title: title || file.name.replace(/\.zip$/i, ''), identifier: doc.documentElement.getAttribute('identifier') ?? '', version: ver, launch: href, mastery: Number.isFinite(mastery) ? mastery : null, fileCount: Object.keys(files).length, fileName: file.name },
+    info: { kind: 'scorm', title: title || file.name.replace(/\.zip$/i, ''), identifier: doc.documentElement.getAttribute('identifier') ?? '', version: ver, launch: href, mastery: Number.isFinite(mastery) ? mastery : null, fileCount: Object.keys(files).length, fileName: file.name },
   }
 }
 

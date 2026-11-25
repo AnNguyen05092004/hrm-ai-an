@@ -227,7 +227,7 @@ const FEATURE = { kit_details: 'Soạn chi tiết khóa học', outline_qr: 'Dà
 
 const ACTION = {
   'kit.create': 'Tạo khóa học', 'kit.generate': 'AI soạn khóa học', 'kit.delete': 'Xóa khóa học', 'kit.publish_all': 'Xuất bản cả khóa', 'kit.assign': 'Giao cả khóa',
-  'kit.share': 'Bật đường dẫn cả khóa', 'kit.unshare': 'Tắt đường dẫn cả khóa', 'kit.export_scorm': 'Xuất gói SCORM',
+  'kit.share': 'Bật đường dẫn cả khóa', 'kit.unshare': 'Tắt đường dẫn cả khóa', 'kit.export_scorm': 'Xuất gói SCORM', 'kit.export_exam': 'Tải đề kèm đáp án (QTI)',
   'artifact.publish': 'Xuất bản tài liệu', 'artifact.unpublish': 'Ngừng xuất bản', 'artifact.delete': 'Xóa tài liệu', 'assignment.create': 'Giao tài liệu',
   'exam.create': 'Tạo đề kiểm tra', 'exam.start': 'Bắt đầu thi', 'exam.submit': 'Nộp bài thi', 'grading.view': 'Mở bài để chấm', 'grading.confirm': 'Xác nhận kết quả chấm',
   'image.upload': 'Tải ảnh lên', 'image.generate': 'AI tạo ảnh', 'kpi.create': 'Thêm KPI', 'kpi.update': 'Sửa KPI', 'analytics.person_view': 'Xem chi tiết học viên', 'member.create': 'Thêm thành viên', 'plan.assign': 'Giao khóa theo kế hoạch',

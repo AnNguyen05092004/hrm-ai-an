@@ -10,6 +10,7 @@ import { GEN_TYPES, suggestPlanItem } from './ai.js'
 import { sourceChanges } from './source-changes.js'
 import { kitShareRoutes } from './share.js'
 import { scormRoutes } from './scorm.js'
+import { examExportRoutes } from './qti.js'
 import { briefOf, createArtifact, getKit, kitDto, listKits, patchKit, type PlanItem } from './service.js'
 
 const P = z.object({ id: z.string() })
@@ -26,6 +27,7 @@ export const kitRoutes: FastifyPluginAsyncZod = async (app) => {
   app.addHook('preHandler', requireAuthor)
   await app.register(kitShareRoutes)
   await app.register(scormRoutes)
+  await app.register(examExportRoutes)
 
   app.get('/', async (req) => listKits(me(req).orgId))
   app.get('/:id', { schema: { params: P } }, async (req) => kitDto(await getKit(me(req).orgId, req.params.id)))

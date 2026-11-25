@@ -31,6 +31,21 @@ export const STATUS = {
   passed: { label: 'Đạt', cls: 'bg-success-surface text-success-text' },
   failed: { label: 'Chưa đạt', cls: 'bg-danger-surface text-danger-text' },
   browsed: { label: 'Đã xem thử', cls: 'bg-muted text-ink-muted' },
+  grading: { label: 'Chờ chấm', cls: 'bg-warning-surface text-warning-text', dot: 'bg-warning' },
+  in_progress: { label: 'Đang làm bài', cls: 'bg-info-surface text-ink', dot: 'bg-info' },
 }
 export const statusOf = (rec) => rec.lesson_status ?? 'not attempted'
 export const isDone = (s) => s === 'passed' || s === 'completed'
+
+/** Lượt thi đề QTI của một học viên; lượt đang làm cũng tính là đã dùng */
+export const attemptsOf = (rec) => rec.attempts ?? []
+/** Cập nhật một lượt thi rồi tính lại trạng thái chung: lấy lượt có kết quả tốt nhất, chưa có thì lượt mới nhất */
+export function saveAttempt(pkg, userId, attempt) {
+  const rec = getRecord(pkg.id, userId)
+  const attempts = [...attemptsOf(rec).filter((a) => a.id !== attempt.id), attempt].sort((a, b) => a.start - b.start)
+  const graded = attempts.filter((a) => a.status === 'passed' || a.status === 'failed')
+  const best = graded.sort((a, b) => b.score - a.score)[0]
+  const latest = attempts[attempts.length - 1]
+  const status = best?.status === 'passed' ? 'passed' : attempts.some((a) => a.status === 'grading') ? 'grading' : best?.status ?? latest.status
+  saveRecord(pkg.id, userId, { ...rec, attempts, lesson_status: status, score: { raw: best ? String(best.score) : '' }, firstAt: rec.firstAt ?? attempt.start, lastAt: Date.now() })
+}

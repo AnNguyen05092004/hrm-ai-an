@@ -141,11 +141,16 @@ export const scormRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get('/:id/export/scorm/info', { schema: { params: z.object({ id: z.string() }) } }, async (req) => {
     const u = me(req)
     const k = await getKit(u.orgId, req.params.id)
-    const arts = (await db.select({ id: schema.artifacts.id, type: schema.artifacts.type, title: schema.artifacts.title, publishedVersion: schema.artifacts.publishedVersion })
-      .from(schema.artifacts).where(eq(schema.artifacts.kitId, k.id)))
+    const arts = (await db.select().from(schema.artifacts).where(eq(schema.artifacts.kitId, k.id)))
+    // đề kiểm tra xuất riêng (QTI 2.1 kèm đáp án) để LMS công ty tự quản lý và chấm
+    const exams = await Promise.all(arts.filter((a) => a.type === 'exam' && a.publishedVersion).map(async (a) => {
+      const qs = (((await publishedContent(a)).content.quiz?.questions ?? []) as Json[]).filter((q) => q.approved)
+      return { id: a.id, title: a.title, questions: qs.length, manual: qs.filter((q) => q.type === 'essay' || q.type === 'code').length }
+    }))
     return {
+      exams,
       included: arts.filter((a) => a.publishedVersion && a.type !== 'exam').map((a) => ({ id: a.id, type: a.type, title: a.title })),
-      excluded: arts.filter((a) => !a.publishedVersion || a.type === 'exam').map((a) => ({ id: a.id, type: a.type, title: a.title, reason: a.type === 'exam' ? 'Đề kiểm tra chính thức chỉ làm trên LMS này' : 'Chưa xuất bản' })),
+      excluded: arts.filter((a) => !a.publishedVersion || a.type === 'exam').map((a) => ({ id: a.id, type: a.type, title: a.title, reason: !a.publishedVersion ? 'Chưa xuất bản' : 'Không vào gói SCORM để giữ bảo mật đề. Thi trên LMS này, hoặc tải riêng đề kèm đáp án ở mục dưới để LMS công ty tự chấm' })),
     }
   })
 

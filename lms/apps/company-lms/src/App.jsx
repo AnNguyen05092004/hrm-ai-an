@@ -1,11 +1,13 @@
 // Cổng đào tạo của Công ty demo: mô phỏng LMS có sẵn của công ty nhận gói SCORM 1.2 xuất từ LMS.
 // Bố cục theo design system Workforce AI: sidebar trắng, nền xám nhạt, topbar có breadcrumb; đỏ dùng tiết kiệm.
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, BarChart3, BookOpen, Info, LibraryBig, Menu, Upload, X } from 'lucide-react'
+import { ArrowUpRight, BarChart3, BookOpen, ClipboardCheck, Info, LibraryBig, Menu, Upload, X } from 'lucide-react'
 import { Courses, Reports } from './Admin'
 import ImportModal from './Import'
 import MyCourses from './Learner'
 import Player from './Player'
+import ExamPlayer from './Exam'
+import { ExamPreview, GradingQueue, useAttempts } from './Grading'
 import { ensureWorker } from './pkg'
 import { ADMIN, LEARNERS, statusOf, useData } from './store'
 import { Avatar, Toaster } from './ui'
@@ -18,7 +20,8 @@ const learner = LEARNERS[0]
 const STATUS_TEXT = { 'not attempted': 'chưa học', incomplete: 'đang học', completed: 'hoàn thành', passed: 'đạt', failed: 'chưa đạt', browsed: 'đã xem thử' }
 const statusText = (rec) => `${STATUS_TEXT[statusOf(rec)]}${rec.score?.raw ? ` · điểm ${rec.score.raw}` : ''}`
 const PAGE_DESC = {
-  courses: 'Khóa học nhập từ gói SCORM, giao cho nhân viên và theo dõi kết quả gói gửi về.',
+  courses: 'Khóa học (gói SCORM) và đề kiểm tra (gói QTI) nhập từ LMS, giao cho nhân viên và theo dõi kết quả.',
+  grading: 'Bài thi có câu tự luận hoặc code, chấm theo tiêu chí đi kèm đề.',
   reports: 'Kết quả học của từng nhân viên theo từng khóa.',
   mine: `Xin chào ${learner.name}. Kết quả học được ghi về cổng đào tạo của công ty.`,
 }
@@ -28,6 +31,7 @@ export default function App() {
   const [page, setPage] = useState(() => (readRole() === 'admin' ? 'courses' : 'mine'))
   const [importing, setImporting] = useState(false)
   const [play, setPlay] = useState(null) // { pkg, browse }
+  const [exam, setExam] = useState(null) // { pkg, preview }
   const [menu, setMenu] = useState(false)
   const [workerErr, setWorkerErr] = useState('')
   const { packages } = useData()
@@ -39,12 +43,15 @@ export default function App() {
   }
   const go = (p) => { setPage(p); setMenu(false) }
   const open = async (pkg, browse) => {
+    // đề QTI: cổng tự hiển thị và chấm; khóa SCORM: chạy gói trong khung
+    if (pkg.kind === 'qti') return setExam({ pkg, preview: browse })
     try { await ensureWorker(); setPlay({ pkg, browse }) } catch (e) { toast(e.message) }
   }
+  const pending = useAttempts().filter((r) => r.t.status === 'grading').length
   const closed = (rec) => { setPlay(null); if (rec) toast(`Cổng đã ghi: ${statusText(rec)}`) }
 
   const nav = role === 'admin'
-    ? { group: 'Quản trị đào tạo', items: [['courses', 'Khóa học', LibraryBig, packages.length], ['reports', 'Báo cáo học tập', BarChart3]] }
+    ? { group: 'Quản trị đào tạo', items: [['courses', 'Khóa học và đề', LibraryBig, packages.length], ['grading', 'Chấm bài', ClipboardCheck, pending], ['reports', 'Báo cáo học tập', BarChart3]] }
     : { group: 'Học tập', items: [['mine', 'Khóa học của tôi', BookOpen, packages.filter((p) => p.assigned.some((a) => a.userId === learner.id)).length]] }
   const current = nav.items.find((x) => x[0] === page) ?? nav.items[0]
   const who = role === 'admin' ? ADMIN : learner
@@ -76,7 +83,7 @@ export default function App() {
               <h1 className="text-[24px] leading-8 md:text-[28px] md:leading-9">{current[1]}</h1>
               <p className="mt-1 text-ink-muted">{PAGE_DESC[current[0]]}</p>
             </div>
-            {role === 'admin' && <button className="btn-primary" onClick={() => setImporting(true)}><Upload size={16} />Nhập gói SCORM</button>}
+            {role === 'admin' && <button className="btn-primary" onClick={() => setImporting(true)}><Upload size={16} />Nhập gói</button>}
           </div>
           <div className="flex gap-2 rounded-lg border border-info/30 bg-info-surface px-3 py-2.5 text-[13px] leading-5">
             <Info size={16} className="mt-0.5 shrink-0 text-info" />
@@ -85,11 +92,13 @@ export default function App() {
           {workerErr && <p role="alert" className="rounded-lg border border-danger-line bg-danger-surface px-3 py-2.5 text-[13px] text-danger-text">Không mở được gói: {workerErr}</p>}
           {current[0] === 'courses' && <><Flow onImport={() => setImporting(true)} /><Courses onImport={() => setImporting(true)} onPreview={(p) => open(p, true)} /></>}
           {current[0] === 'reports' && <Reports />}
+          {current[0] === 'grading' && <GradingQueue />}
           {current[0] === 'mine' && <MyCourses learner={learner} onOpen={(p) => open(p, false)} />}
         </main>
       </div>
 
       <ImportModal open={importing} onClose={() => setImporting(false)} />
+      {exam && (exam.preview ? <ExamPreview pkg={exam.pkg} onClose={() => setExam(null)} /> : <ExamPlayer pkg={exam.pkg} learner={learner} onClose={() => setExam(null)} />)}
       {play && <Player pkg={play.pkg} browse={play.browse} learner={learner} onClose={closed} />}
       <Toaster />
     </div>
@@ -134,8 +143,8 @@ function Sidebar({ nav, page, go, role, switchRole }) {
 function Flow({ onImport }) {
   const { packages, records } = useData()
   const steps = [
-    { t: 'Xuất gói ở LMS', d: 'Mở khóa → Chia sẻ cả khóa → Xuất SCORM → Tải gói (.zip)', done: packages.length > 0, act: <a className="text-link inline-flex items-center gap-1" href={LMS_URL} target="_blank" rel="noopener noreferrer">Mở LMS<ArrowUpRight size={14} /></a> },
-    { t: 'Nhập vào cổng đào tạo', d: 'Cổng kiểm tra manifest, tệp khởi chạy, điểm đạt rồi lưu gói', done: packages.length > 0, act: <button className="text-link" onClick={onImport}>Nhập gói</button> },
+    { t: 'Xuất gói ở LMS', d: 'Mở khóa → Chia sẻ cả khóa → Xuất SCORM: tải gói khóa học, hoặc tải đề kèm đáp án (QTI)', done: packages.length > 0, act: <a className="text-link inline-flex items-center gap-1" href={LMS_URL} target="_blank" rel="noopener noreferrer">Mở LMS<ArrowUpRight size={14} /></a> },
+    { t: 'Nhập vào cổng đào tạo', d: 'Cổng kiểm tra gói: manifest, tệp khởi chạy hoặc câu hỏi, đáp án, điểm đạt', done: packages.length > 0, act: <button className="text-link" onClick={onImport}>Nhập gói</button> },
     { t: 'Giao cho nhân viên', d: 'Chọn người học và hạn ngay khi nhập', done: packages.some((p) => p.assigned.length) },
     { t: 'Nhân viên học, cổng ghi kết quả', d: 'Gói gọi API SCORM: trạng thái, điểm, thời gian, học dở', done: Object.values(records).some((r) => r.lastAt) },
   ]

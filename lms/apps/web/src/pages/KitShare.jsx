@@ -94,10 +94,33 @@ function ScormExport({ kit }) {
       {!inc.length && <div className="px-4 py-3 text-[14px] text-neutral-500">Chưa có tài liệu nào đã xuất bản.</div>}
     </div>
     {exc.length > 0 && <div className="mt-3 rounded-xl bg-neutral-50 px-4 py-3 text-[13px] text-neutral-600"><div className="mb-1 font-semibold">Không đưa vào gói</div>{exc.map((x) => <div key={x.id}>{x.title}: {x.reason}</div>)}</div>}
-    <p className="mt-3 text-[12px] text-neutral-500">AI Tutor và đề kiểm tra chính thức cần máy chủ LMS này nên không có trong gói. Muốn kết quả học trên LMS này tự sang hệ thống công ty, dùng Cài đặt → Tích hợp (xAPI hoặc webhook).</p>
+    <p className="mt-3 text-[12px] text-neutral-500">AI Tutor và đề kiểm tra chính thức cần máy chủ LMS này nên không có trong gói SCORM. Muốn LMS công ty tự quản lý và chấm đề, tải riêng đề kèm đáp án ở mục dưới. Muốn kết quả học trên LMS này tự sang hệ thống công ty, dùng Cài đặt → Tích hợp (xAPI hoặc webhook).</p>
     {import.meta.env.DEV && <p className="mt-2 text-[12px] text-neutral-500">Thử ngay: tải gói rồi nhập vào <a className="font-semibold text-ink underline" href={`${location.protocol}//${location.hostname}:5192`} target="_blank" rel="noopener noreferrer">LMS công ty (demo)</a> để xem LMS khác nhận gói, chạy và ghi kết quả thế nào.</p>}
     <div className="mt-4 flex justify-end border-t border-line pt-4"><a href={inc.length ? `/api/kits/${kit.id}/export/scorm` : undefined} aria-disabled={!inc.length} className={`btn-dark ${inc.length ? '' : 'pointer-events-none opacity-40'}`}><Download size={16} />Tải gói SCORM (.zip)</a></div>
+    {info.data?.exams?.length > 0 && <ExamExport kit={kit} exams={info.data.exams} />}
   </>)
+}
+
+/** Đề kiểm tra kèm đáp án và tiêu chí chấm (QTI 2.1 + exam.json): LMS công ty tự quản lý, tự chấm, kể cả bằng AI của họ */
+function ExamExport({ kit, exams }) {
+  const [ok, setOk] = useState(false)
+  return (
+    <div className="mt-6 border-t border-line pt-5">
+      <div className="text-[15px] font-semibold">Đề kiểm tra cho LMS công ty tự chấm</div>
+      <p className="mt-1 text-[14px] text-neutral-600">Gói đề chuẩn IMS QTI 2.1 (Canvas, Blackboard, D2L, Moodle qua plugin nhập được) kèm <b>đáp án</b>, cách tính điểm từng dạng câu, <b>tiêu chí chấm tự luận</b>, test case bài code và lời nhắc mẫu để AI của LMS công ty chấm nháp theo tiêu chí. Chỉ câu đã duyệt.</p>
+      <div className="mt-3 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900"><AlertTriangle size={16} className="mt-0.5 shrink-0" /><div>Gói có đáp án: chỉ gửi cho người quản trị LMS công ty, không gửi người thi. Thi trên LMS công ty thì LMS này không giám sát, không chấm và không nâng mức kỹ năng. Mỗi lần tải được ghi nhật ký.</div></div>
+      <label className="mt-3 flex items-center gap-2 text-[14px]"><input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} />Tôi hiểu gói có đáp án và sẽ chỉ gửi cho người quản trị</label>
+      <div className="mt-3 rounded-xl border border-line">
+        {exams.map((e) => (
+          <div key={e.id} className="flex items-center gap-3 border-b border-line px-4 py-2.5 text-[14px] last:border-0">
+            <FormatGlyph type="exam" size={15} />
+            <div className="min-w-0 flex-1"><div className="truncate">{e.title}</div><div className="text-[12px] text-neutral-500">{e.questions} câu đã duyệt{e.manual ? ` · ${e.manual} câu tự luận/code chấm theo tiêu chí` : ''}</div></div>
+            <a href={ok && e.questions ? `/api/kits/${kit.id}/export/exam/${e.id}` : undefined} aria-disabled={!ok || !e.questions} className={`btn-line btn-sm ${ok && e.questions ? '' : 'pointer-events-none opacity-40'}`}><Download size={14} />Tải đề kèm đáp án</a>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 /** Đề kiểm tra riêng: AI soạn ngân hàng câu theo mức, mỗi người thi một đề rút ngẫu nhiên */
