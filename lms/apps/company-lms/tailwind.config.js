@@ -15,7 +15,7 @@ export default {
         line: { DEFAULT: '#eceef1', strong: '#cbd0d9' },
         canvas: '#f7f8fa',
         muted: '#f1f3f6',
-        primary: { DEFAULT: '#ea0029', hover: '#c60023', pressed: '#9f102b', soft: '#fff0f2', line: '#fac2cd', ink: '#c60023' },
+        primary: { DEFAULT: '#ea0029', hover: '#c60023', pressed: '#9f102b', deep: '#6e1024', soft: '#fff0f2', line: '#fac2cd', ink: '#c60023' },
         success: { DEFAULT: '#268463', text: '#216c52', surface: '#ecf7f2' },
         warning: { DEFAULT: '#b87a20', text: '#8b5d17', surface: '#fff6e6' },
         danger: { text: '#a91f3b', surface: '#fff0f3', line: '#f1b8c5' },
