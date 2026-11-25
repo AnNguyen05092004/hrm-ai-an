@@ -4,14 +4,14 @@ import { useEffect, useRef, useState } from 'react'
 import {
   Move, Plus, Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Minus, RotateCcw, Trash2, Copy, Sparkles,
   PaintBucket, X, Image as ImageIcon, Undo2, Redo2, ChevronDown, Square, RectangleHorizontal, Circle, MoveRight, Slash,
-  BringToFront, SendToBack, AlignCenterHorizontal, AlignCenterVertical, Shapes, Replace,
+  BringToFront, SendToBack, AlignCenterHorizontal, AlignCenterVertical, Shapes, Replace, RotateCw, CaseSensitive, Check,
 } from 'lucide-react'
 import { ImagePicker } from '../ImagePicker'
 import { uid, useStore } from '../store'
 import { Tip, Spinner } from '../ui'
 import { post } from '../api'
 import { Slide } from './SlideKit'
-import { BOLD_DEFAULT, clamp, elKind, isLine } from '../slideModel'
+import { BOLD_DEFAULT, clamp, elKind, isLine, SLIDE_FONTS, fontStack, fontName, normRot } from '../slideModel'
 
 const TEXT_COLORS = ['#111827', '#ffffff', '#ff6119', '#dc2626', '#16a34a', '#2563eb', '#7c3aed', '#6b7280']
 const BG_COLORS = ['#ffffff', '#fff7ed', '#f1f5f9', '#ecfeff', '#fef9c3', '#111827', '#1e3a8a', '#ff6119']
@@ -90,10 +90,10 @@ function Pop({ label, icon: I, open, setOpen, children, extra, w = 260 }) {
 }
 
 /** Khung sửa một slide: thanh công cụ, thanh định dạng theo phần đang chọn, slide lớn sửa tại chỗ */
-export function SlideCanvas({ artId, s, n, total, upS, onDuplicate, onDelete, onUndo, onRedo, canUndo, canRedo, onBgAll, roomy }) {
+export function SlideCanvas({ artId, s, n, total, upS, onDuplicate, onDelete, onUndo, onRedo, canUndo, canRedo, onBgAll, onFontAll, roomy }) {
   const { say } = useStore()
   const [sel, setSel] = useState(null)
-  const [menu, setMenu] = useState(null) // 'insert' | 'bg'
+  const [menu, setMenu] = useState(null) // 'insert' | 'bg' | 'font'
   const [ai, setAi] = useState(false)
   const [pick, setPick] = useState(null) // 'illus' | 'bg' | 'insert' | 'replace'
   const stage = useRef(null)
@@ -135,7 +135,7 @@ export function SlideCanvas({ artId, s, n, total, upS, onDuplicate, onDelete, on
     else setSt(sel, { x: clamp((st.x ?? 0) + dx, -100, 100), y: clamp((st.y ?? 0) + dy, -100, 100) })
   }
   const reset = () => upS((x) => {
-    if (isBox) { const b = x.boxes[boxIndex(x, sel)]; Object.assign(b, { size: 1, color: undefined, b: undefined, i: undefined, u: undefined, align: undefined, fill: undefined, op: undefined }); return }
+    if (isBox) { const b = x.boxes[boxIndex(x, sel)]; Object.assign(b, { size: 1, color: undefined, b: undefined, i: undefined, u: undefined, align: undefined, fill: undefined, op: undefined, font: undefined, rot: undefined }); return }
     if (x.st) delete x.st[sel]
   })
 
@@ -166,7 +166,13 @@ export function SlideCanvas({ artId, s, n, total, upS, onDuplicate, onDelete, on
   const hasBgImg = cover ? !s.bg : !!s.bgImg
 
   // các nút dùng chung cho phần tử đặt tự do
+  const rot = st.rot ?? 0
+  const setRot = (a) => setSt(sel, { rot: normRot(a) || undefined })
   const elActions = <>
+    <Sep /><Label>Xoay</Label>
+    <span className="flex items-center rounded-md border border-line bg-white pr-1.5"><input type="number" min={-180} max={180} step={1} value={rot} aria-label="Góc xoay (độ)"
+      onChange={(e) => { const v = Number(e.target.value); if (Number.isFinite(v)) setRot(clamp(v, -360, 360)) }} className="w-12 rounded-md bg-transparent px-1.5 py-0.5 text-right tabular-nums outline-none" />°</span>
+    <Tip label="Xoay 90°" className="h-7 w-7" onClick={() => setRot(rot + 90)}><RotateCw size={14} /></Tip>
     <Sep /><Label>Độ đậm</Label>
     <select value={st.op ?? 1} onChange={(e) => setSt(sel, { op: Number(e.target.value) === 1 ? undefined : Number(e.target.value) })} className="rounded-md border border-line bg-white px-1 py-0.5 text-[13px] outline-none">{OPACITY.map((o) => <option key={o} value={o}>{o * 100}%</option>)}</select>
     <Sep />
@@ -177,6 +183,11 @@ export function SlideCanvas({ artId, s, n, total, upS, onDuplicate, onDelete, on
     <Tip label="Nhân đôi (⌘D)" className="h-7 w-7" onClick={duplicateEl}><Copy size={14} /></Tip>
   </>
   const textFormat = <>
+    <select value={st.font ?? ''} onChange={(e) => setSt(sel, { font: e.target.value || undefined })} aria-label="Font chữ" title="Font chữ"
+      className="max-w-[150px] rounded-md border border-line bg-white px-1.5 py-0.5 text-[13px] outline-none" style={{ fontFamily: fontStack(st.font) }}>
+      <option value="">{s.font ? `Theo slide (${fontName(s.font)})` : 'Theo khóa'}</option>
+      {SLIDE_FONTS.map(([k, name, g]) => <option key={k} value={k} style={{ fontFamily: `'${name}', ${g}` }}>{name}</option>)}
+    </select><Sep />
     <Tip label="Chữ nhỏ hơn" className="h-7 w-7" onClick={() => setSt(sel, { size: +clamp(size - 0.1, 0.5, 2.5).toFixed(2) })}><Minus size={14} /></Tip>
     <span className="w-10 text-center tabular-nums">{Math.round(size * 100)}%</span>
     <Tip label="Chữ lớn hơn" className="h-7 w-7" onClick={() => setSt(sel, { size: +clamp(size + 0.1, 0.5, 2.5).toFixed(2) })}><Plus size={14} /></Tip><Sep />
@@ -233,6 +244,16 @@ export function SlideCanvas({ artId, s, n, total, upS, onDuplicate, onDelete, on
             <button onClick={() => upS((x) => { delete x.bg; delete x.bgImg; delete x.bgTone })} className="text-sky-700 hover:underline">{cover ? 'Dùng ảnh bìa' : 'Về mặc định'}</button>
             {onBgAll && !cover && <button onClick={() => { onBgAll({ bg: s.bg, bgImg: s.bgImg, bgTone: s.bgTone }); setMenu(null) }} className="font-medium text-sky-700 hover:underline">Áp dụng cho mọi slide</button>}
           </div>
+        </Pop>
+        <Pop label="Font" icon={CaseSensitive} open={menu === 'font'} setOpen={(o) => setMenu(o ? 'font' : null)} w={250}>
+          <div className="text-[12px] font-semibold text-neutral-500">Font cả slide</div>
+          <div className="scroll-thin mt-1.5 max-h-[280px] overflow-y-auto">
+            {[['', 'Theo bộ font của khóa', 'inherit'], ...SLIDE_FONTS].map(([k, name, g]) => { const on = (s.font ?? '') === k; return (
+              <button key={k || 'theme'} onClick={() => upS((x) => { if (k) x.font = k; else delete x.font })} className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[14px] hover:bg-neutral-50 ${on ? 'bg-neutral-100 font-semibold' : ''}`}
+                style={{ fontFamily: k ? `'${name}', ${g}` : undefined }}><span className="flex-1">{name}</span>{on && <Check size={14} className="shrink-0 text-sky-600" />}</button>) })}
+          </div>
+          <p className="mt-2 text-[12px] leading-snug text-neutral-500">Chữ đã chọn font riêng (thanh định dạng) giữ nguyên font đó.</p>
+          {onFontAll && <div className="mt-2 border-t border-line pt-2.5 text-right text-[12px]"><button onClick={() => { onFontAll(s.font); setMenu(null) }} className="font-medium text-sky-700 hover:underline">Áp dụng cho mọi slide</button></div>}
         </Pop>
         {s.layout === 'image' && <button onClick={() => setPick('illus')} className="flex items-center gap-1 rounded-lg border border-line bg-white px-2 py-1 font-medium hover:bg-neutral-50"><ImageIcon size={14} />Ảnh minh họa</button>}
         <button onClick={() => setAi(true)} className="flex items-center gap-1 rounded-lg border border-line bg-white px-2 py-1 font-medium text-violet-700 hover:bg-violet-50"><Sparkles size={14} />Sửa bằng AI</button>

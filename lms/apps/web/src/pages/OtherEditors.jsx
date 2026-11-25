@@ -298,6 +298,10 @@ export function DeckEditor({ art, kit, up, saveText, onRestored }) {
     change((d) => d.artifacts[art.id].slides.forEach((x) => { if (x.layout === 'cover') return; for (const [k, v] of Object.entries(bg)) { if (v === undefined) delete x[k]; else x[k] = v } }))
     say(`Đã áp nền cho ${n} slide (trừ slide bìa)`)
   }
+  const fontAll = (font) => {
+    change((d) => d.artifacts[art.id].slides.forEach((x) => { if (font) x.font = font; else delete x.font }))
+    say(font ? `Đã đổi font cho cả ${art.slides.length} slide` : 'Mọi slide dùng lại bộ font của khóa')
+  }
   // ⌘Z / ⇧⌘Z (hoặc Ctrl+Y) khi không đang gõ chữ; đang gõ thì để trình duyệt hoàn tác chữ
   const keys = useRef(); keys.current = { undo, redo, present }
   useEffect(() => {
@@ -339,7 +343,7 @@ export function DeckEditor({ art, kit, up, saveText, onRestored }) {
         <div className="flex min-w-0 flex-1 flex-col bg-neutral-50">
           <div className="scroll-thin flex min-h-0 flex-1 justify-center overflow-y-auto p-8">
             <SlideCanvas key={cur} artId={art.id} s={s} n={cur + 1} total={art.slides.length} upS={upS} roomy={!notesOpen}
-              onUndo={undo} onRedo={redo} canUndo={hist.canUndo} canRedo={hist.canRedo} onBgAll={bgAll}
+              onUndo={undo} onRedo={redo} canUndo={hist.canUndo} canRedo={hist.canRedo} onBgAll={bgAll} onFontAll={fontAll}
               onDuplicate={() => { change((d) => { const sl = d.artifacts[art.id].slides; sl.splice(cur + 1, 0, { ...structuredClone(sl[cur]), id: uid('s') }) }); setCur(cur + 1); say('Đã nhân đôi slide') }}
               onDelete={art.slides.length > 1 ? () => { change((d) => d.artifacts[art.id].slides.splice(cur, 1)); setCur(Math.max(0, cur - 1)) } : undefined} />
           </div>

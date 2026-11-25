@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { useEffect, useSyncExternalStore, Component } from 'react'
+import { useEffect, Component } from 'react'
 import { Monitor } from 'lucide-react'
+import { useWide } from './hooks'
 import { StoreProvider, queryClient, useMe } from './store'
 import { Toast, Spinner } from './ui'
 import Shell from './Shell'
@@ -41,10 +42,8 @@ function HomeRedirect() { const { me } = useMe(); return me?.role === 'learner' 
 function Keyed({ C }) { const p = useParams(); return <C key={Object.values(p).join('/')} /> }
 
 // Trình soạn và xem trước cần màn rộng: trên điện thoại hiện lời nhắn thay vì để khung bị vỡ
-const WIDE = '(min-width: 768px)'
-const subscribeWide = (cb) => { const m = window.matchMedia(WIDE); m.addEventListener('change', cb); return () => m.removeEventListener('change', cb) }
 function Wide({ what, children }) {
-  const wide = useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE).matches)
+  const wide = useWide()
   const nav = useNavigate()
   if (wide) return children
   return (
@@ -52,7 +51,7 @@ function Wide({ what, children }) {
       <div className="max-w-[340px]">
         <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-neutral-100"><Monitor size={26} strokeWidth={1.8} /></div>
         <div className="mt-4 text-[20px] font-semibold">Mở trên máy tính để {what}</div>
-        <p className="mt-2 text-[14px] leading-relaxed text-neutral-600">Màn này cần màn hình rộng từ 768px. Trên điện thoại bạn vẫn xem được thư viện, kế hoạch đào tạo và phân tích.</p>
+        <p className="mt-2 text-[14px] leading-relaxed text-neutral-600">Màn này cần màn hình rộng từ 768px để soạn và xem đúng bố cục.</p>
         <div className="mt-5 flex justify-center gap-3"><button className="btn-line h-11" onClick={() => (history.length > 1 ? nav(-1) : nav('/'))}>Quay lại</button><button className="btn-dark" onClick={() => nav('/')}>Trang chủ</button></div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 // Hook dùng chung: theo dõi việc AI chạy nền, tài liệu sửa tại chỗ có tự lưu.
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, patch } from './api'
 
@@ -73,3 +73,8 @@ export const saveLabel = (s) => s.state === 'saving' ? 'Đang lưu…' : s.state
 /** Trường nội dung của tài liệu (bỏ phần thông tin chung) để gửi khi lưu */
 const META = ['id', 'kitId', 'type', 'title', 'summary', 'status', 'img', 'publishedVersion', 'updated', 'updatedAt', 'shareSlug']
 export const artifactBody = (a) => ({ title: a.title, summary: a.summary, img: a.img, content: Object.fromEntries(Object.entries(a).filter(([k]) => !META.includes(k))) })
+
+/** Màn hình rộng từ 768px (trình soạn cần màn này; thanh bên mở đầy đủ) */
+export const WIDE_QUERY = '(min-width: 768px)'
+const subscribeWide = (cb) => { const m = window.matchMedia(WIDE_QUERY); m.addEventListener('change', cb); return () => m.removeEventListener('change', cb) }
+export const useWide = () => useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE_QUERY).matches)

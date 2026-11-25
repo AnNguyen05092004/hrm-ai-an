@@ -77,6 +77,20 @@ describe('AI video from slides', () => {
     expect(slideSvg({ layout: 'bullets', title: 'x', items: ['a'] }, 1, 1)).not.toContain('fill-opacity')
   })
 
+  it('rotates elements around their centre and applies chosen fonts', () => {
+    const svg = slideSvg({ layout: 'bullets', title: 'Tiêu đề', items: ['Ý'], font: 'lora', st: { title: { font: 'mono' } },
+      boxes: [{ id: 'r', kind: 'shape', shape: 'rect', x: 10, y: 10, w: 20, h: 20, fill: '#fde68a', rot: 45 }, { id: 't', x: 50, y: 50, w: 30, text: 'Chữ', font: 'script', rot: -30 }, { id: 'z', kind: 'shape', shape: 'rect', x: 0, y: 0, w: 5, h: 5, rot: '1)"/><script>' }] }, 1, 1)
+    expect(svg).toContain('rotate(45 256.0 144.0)') // tâm hình: x 10%+10% của 1280, y 10%+10% của 720
+    expect(svg).toMatch(/rotate\(-30 /)
+    expect(svg).toMatch(/<svg[^>]*font-family="Lora, Georgia, serif"/)
+    expect(svg).toContain(`font-family="'Roboto Mono', 'Courier New', monospace"`)
+    expect(svg).toContain(`font-family="'Dancing Script'`)
+    expect(svg).not.toContain('<script>')
+    // font lạ bị bỏ qua
+    expect(slideSvg({ layout: 'bullets', title: 'x', items: [], font: 'x" onload="' }, 1, 1)).not.toContain('onload')
+    expect(slideSvg({ layout: 'bullets', title: 'x', items: [], font: 'toString' }, 1, 1)).toContain('font-family="Arial, Helvetica, sans-serif"')
+  })
+
   it('voice preview needs real AI and an author', async () => {
     expect((await ctx.author('POST', '/api/tts', { text: 'Xin chào' })).status).toBe(400)
     expect((await ctx.learner('POST', '/api/tts', { text: 'Xin chào' })).status).toBe(403)

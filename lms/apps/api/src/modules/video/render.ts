@@ -38,7 +38,16 @@ const tspans = (lines: string[], x: number, y: number, lh: number, size: number,
 
 // Định dạng người soạn đặt trên slide (xem đầu SlideKit.jsx): st[phần] = { x, y (% khung), size (hệ số), color, b, i, u },
 // bg, bgImg + bgTone, boxes[] gồm hộp chữ, ảnh (kind: 'img') và hình khối (kind: 'shape')
-type St = { x?: number; y?: number; size?: number; color?: string; b?: boolean; i?: boolean; u?: boolean }
+type St = { x?: number; y?: number; size?: number; color?: string; b?: boolean; i?: boolean; u?: boolean; font?: string }
+// font chọn trên slide (cùng khóa với slideModel.js); máy chủ chưa cài font Google thì resvg dùng font dự phòng kế tiếp
+const FONT_STACK: Record<string, string> = {
+  be: "'Be Vietnam Pro', Arial, sans-serif", inter: 'Inter, Arial, sans-serif', roboto: 'Roboto, Arial, sans-serif',
+  montserrat: 'Montserrat, Arial, sans-serif', nunito: "Nunito, 'Arial Rounded MT Bold', Arial, sans-serif", oswald: "Oswald, 'Arial Narrow', Arial, sans-serif",
+  merri: 'Merriweather, Georgia, serif', lora: 'Lora, Georgia, serif', playfair: "'Playfair Display', Georgia, serif",
+  mono: "'Roboto Mono', 'Courier New', monospace", script: "'Dancing Script', 'Snell Roundhand', 'Brush Script MT', Georgia, cursive",
+}
+const fontOf = (key: unknown): string | undefined => (typeof key === 'string' && Object.hasOwn(FONT_STACK, key) ? FONT_STACK[key] : undefined)
+const withFont = (f: string, key: unknown): string => { const ff = fontOf(key); return ff ? f.replace(/<text\b/g, `<text font-family="${ff}"`) : f }
 const HEX = /^#[0-9a-f]{3,8}$/i
 const color = (c: unknown): string | null => (typeof c === 'string' && HEX.test(c) ? c : null)
 const px = W / 960 // slide trên web thiết kế theo bề ngang 960
@@ -52,13 +61,15 @@ function restyle(frag: string, st: St | undefined, ax: number, ay: number): stri
   if (typeof st.b === 'boolean') f = f.replace(/(<text\b[^>]*?) font-weight="[^"]*"/g, `$1 font-weight="${st.b ? 700 : 400}"`)
   if (st.i) f = f.replace(/<text\b/g, '<text font-style="italic"')
   if (st.u) f = f.replace(/<text\b/g, '<text text-decoration="underline"')
+  f = withFont(f, st.font)
   const k = Number(st.size) > 0 ? Number(st.size) : 1
   const dx = ((Number(st.x) || 0) / 100) * W, dy = ((Number(st.y) || 0) / 100) * H
   if (k === 1 && !dx && !dy) return f
   return `<g transform="translate(${(ax + dx).toFixed(1)} ${(ay + dy).toFixed(1)}) scale(${k}) translate(${-ax} ${-ay})">${f}</g>`
 }
 
-function textBoxSvg(b: Json): string {
+/** Hộp chữ; trả cả chiều cao để xoay quanh tâm */
+function textBoxSvg(b: Json): { svg: string; h: number } {
   const k = Number(b.size) > 0 ? Number(b.size) : 1
   const fs = 22 * k * px, lh = fs * 1.3
   const x = (Number(b.x) / 100) * W, y = (Number(b.y) / 100) * H, w = (Number(b.w) / 100) * W
@@ -69,7 +80,7 @@ function textBoxSvg(b: Json): string {
   let text = tspans(lines, x + pad, y + pad + fs, lh, fs, b.b ? 700 : 400, color(b.color) ?? '#262626')
   if (b.i) text = text.replace(/<text\b/g, '<text font-style="italic"')
   if (b.u) text = text.replace(/<text\b/g, '<text text-decoration="underline"')
-  return rect + text
+  return { svg: rect + withFont(text, b.font), h: lines.length * lh + pad * 2 }
 }
 
 /** Hình khối: chữ nhật, bo góc, tròn (nét vẽ nằm trong khung như trên web); đường thẳng, mũi tên nằm giữa khung cao 28 */
@@ -91,13 +102,17 @@ function shapeSvg(b: Json, x: number, y: number, w: number, h: number): string {
 function elSvg(b: Json, idx: number, pics: Record<string, string>): string {
   if (!b || typeof b !== 'object') return ''
   const x = (Number(b.x) / 100) * W, y = (Number(b.y) / 100) * H, w = (Number(b.w) / 100) * W, h = ((Number(b.h) || 20) / 100) * H
-  let out = ''
+  let out = '', cy = y + h / 2
   if (b.kind === 'img') {
     const pic = pics[`el:${b.id}`]
     if (!pic) return ''
     out = `<defs><clipPath id="el${idx}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${b.r ? 14 * px : 0}"/></clipPath></defs><image href="${pic}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice" clip-path="url(#el${idx})"/>`
-  } else if (b.kind === 'shape') out = shapeSvg(b, x, y, w, h)
-  else out = textBoxSvg(b)
+  } else if (b.kind === 'shape') {
+    out = shapeSvg(b, x, y, w, h)
+    if (b.shape === 'line' || b.shape === 'arrow') cy = y + 14 * px
+  } else { const t = textBoxSvg(b); out = t.svg; cy = y + t.h / 2 }
+  const rot = Number(b.rot)
+  if (Number.isFinite(rot) && rot) out = `<g transform="rotate(${Math.max(-360, Math.min(360, rot))} ${(x + w / 2).toFixed(1)} ${cy.toFixed(1)})">${out}</g>`
   const op = Number(b.op)
   return op > 0 && op < 1 ? `<g opacity="${op}">${out}</g>` : out
 }
@@ -144,7 +159,7 @@ function slideSvgRaw(s: Json, n: number, total: number, pic: string | null, pics
   if (s.layout !== 'cover') body = `${back}<rect width="11" height="${H}" fill="#ff6119"/>${restyle(tone(body, ['two', 'table'].includes(s.layout)), st('body'), 80, 230)}`
   const boxes = ((s.boxes ?? []) as Json[]).map((b, i) => elSvg(b, i, pics)).join('')
   const foot = `<text x="80" y="${H - 34}" font-size="18" fill="#888">Nội dung do AI tạo, đã được chuyên gia duyệt</text><text x="${W - 80}" y="${H - 34}" font-size="18" fill="#888" text-anchor="end">${n}/${total}</text>`
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" font-family="Arial, Helvetica, sans-serif"><rect width="${W}" height="${H}" fill="${color(s.bg) ?? '#fff'}"/>${body}${kicker}${head}${boxes}${foot}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" font-family="${fontOf(s.font) ?? 'Arial, Helvetica, sans-serif'}"><rect width="${W}" height="${H}" fill="${color(s.bg) ?? '#fff'}"/>${body}${kicker}${head}${boxes}${foot}</svg>`
 }
 
 const pngOf = (svg: string): Buffer => new Resvg(svg, { font: { loadSystemFonts: true, defaultFontFamily: 'Arial' } }).render().asPng()

@@ -166,12 +166,12 @@ export default function Dashboard() {
           <h3 className="text-[19px] font-semibold">Tiếp tục công việc</h3>
           <button onClick={() => nav('/library')} className="flex items-center gap-2 text-[15px] font-semibold"><FolderOpen size={18} />Xem thư viện</button>
         </div>
-        {kits.isLoading ? <div className="mt-5 grid grid-cols-3 gap-5">{[0, 1, 2].map((i) => <div key={i} className="skel h-72 rounded-2xl" />)}</div> : recent.length === 0 ? (
+        {kits.isLoading ? <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">{[0, 1, 2].map((i) => <div key={i} className="skel h-72 rounded-2xl" />)}</div> : recent.length === 0 ? (
           <div className="mt-5 grid h-56 place-items-center rounded-2xl border-2 border-dashed border-line text-center">
             <div><div className="text-[22px] font-medium text-neutral-500">Chưa có gì đang làm</div><p className="mt-2 text-neutral-500">Khóa học bạn bắt đầu sẽ hiện ở đây.</p></div>
           </div>
         ) : (
-          <div className="mt-5 grid grid-cols-3 gap-5">
+          <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {recent.map(({ a, k }) => {
               const go = () => nav(a ? `/edit/${a.id}` : k.stage === 'details' ? `/kit/${k.id}/details` : k.stage === 'outline' ? `/kit/${k.id}/outline` : `/kit/${k.id}`)
               return (

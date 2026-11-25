@@ -49,23 +49,23 @@ export function CoursePage() {
       <div className="scroll-thin flex-1 overflow-y-auto">
         {err ? <div className="mx-auto max-w-[760px] px-6 py-14"><h1 className="font-lato text-[28px] font-black">Không mở được khóa học</h1><p className="mt-3 text-neutral-600">{err.message}</p></div>
           : !c ? <div className="grid h-full place-items-center"><Spinner /></div> : (
-            <div className="mx-auto max-w-[880px] px-6 pb-20 pt-8">
+            <div className="mx-auto max-w-[880px] px-4 pb-20 pt-6 md:px-6 md:pt-8">
               <Thumb img={c.img} className="h-48 rounded-2xl"><div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                <div className="absolute inset-x-6 bottom-5 text-white"><div className="text-[13px] font-semibold uppercase tracking-wider text-white/80">Khóa học · {c.items.length} phần</div><h1 className="mt-1 font-lato text-[32px] font-black leading-tight">{c.title}</h1></div></Thumb>
+                <div className="absolute inset-x-6 bottom-5 text-white"><div className="text-[13px] font-semibold uppercase tracking-wider text-white/80">Khóa học · {c.items.length} phần</div><h1 className="mt-1 font-lato text-[26px] font-black leading-tight md:text-[32px]">{c.title}</h1></div></Thumb>
               {c.desc && <p className="mt-5 font-serif text-[17px] leading-relaxed text-neutral-800">{c.desc}</p>}
-              <div className="mt-5 flex items-center gap-4 rounded-2xl border border-line px-5 py-4">
-                <div className="flex-1"><div className="flex items-center gap-3"><div className="h-2 flex-1 rounded-full bg-neutral-200"><div className="h-2 rounded-full bg-sky-500" style={{ width: `${c.percent}%` }} /></div><span className="text-[14px] font-semibold">{c.percent}%</span></div>
-                  <div className="mt-2 flex items-center gap-4 text-[13px]"><span>{done}/{c.items.length} phần đã xong</span><span className={`flex items-center gap-1 ${dc}`}><Clock size={13} />{dl}</span></div></div>
-                {next && <button onClick={() => open(next)} className="btn-dark h-10 shrink-0">{itemState(next)[2]}: {FORMATS[next.type].name}<ArrowRight size={16} /></button>}
+              <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border border-line px-5 py-4">
+                <div className="min-w-[220px] flex-1"><div className="flex items-center gap-3"><div className="h-2 flex-1 rounded-full bg-neutral-200"><div className="h-2 rounded-full bg-sky-500" style={{ width: `${c.percent}%` }} /></div><span className="text-[14px] font-semibold">{c.percent}%</span></div>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]"><span>{done}/{c.items.length} phần đã xong</span><span className={`flex items-center gap-1 ${dc}`}><Clock size={13} />{dl}</span></div></div>
+                {next && <button onClick={() => open(next)} className="btn-dark h-10 w-full shrink-0 sm:w-auto">{itemState(next)[2]}: {FORMATS[next.type].name}<ArrowRight size={16} /></button>}
               </div>
               <div className="mt-6 divide-y divide-line rounded-2xl border border-line">
                 {c.items.map((x, i) => { const [st, sc, cta, ok] = itemState(x); return (
-                  <button key={x.id} onClick={() => open(x)} className="group flex w-full items-center gap-4 px-4 py-4 text-left hover:bg-neutral-50">
+                  <button key={x.id} onClick={() => open(x)} className="group flex w-full items-center gap-3 px-3 py-3.5 text-left hover:bg-neutral-50 md:gap-4 md:px-4 md:py-4">
                     <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[13px] font-semibold ${ok ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-100 text-neutral-600'}`}>{ok ? <CheckCircle2 size={16} /> : i + 1}</span>
-                    <Thumb img={x.img} className="h-[72px] w-[128px] shrink-0 rounded-lg"><span className="absolute bottom-1.5 left-1.5 grid h-6 w-6 place-items-center rounded-md bg-white/95 shadow-sm"><FormatGlyph type={x.type} size={14} /></span></Thumb>
-                    <div className="min-w-0 flex-1"><div className="text-[13px] font-medium text-neutral-500">{FORMATS[x.type].name}</div><div className="truncate text-[16px] font-semibold group-hover:underline">{x.title}</div>{x.summary && <div className="truncate text-[13px] text-neutral-500">{x.summary}</div>}</div>
-                    <span className={`flex w-32 shrink-0 items-center justify-end gap-1 text-[13px] ${sc}`}>{x.type === 'exam' && x.grading && <Hourglass size={13} />}{st}</span>
-                    <span className="flex w-28 shrink-0 items-center justify-end gap-1 text-[14px] font-semibold">{cta}<ArrowRight size={14} /></span>
+                    <Thumb img={x.img} className="hidden h-[72px] w-[128px] shrink-0 rounded-lg sm:block"><span className="absolute bottom-1.5 left-1.5 grid h-6 w-6 place-items-center rounded-md bg-white/95 shadow-sm"><FormatGlyph type={x.type} size={14} /></span></Thumb>
+                    <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5 text-[13px] font-medium text-neutral-500"><span className="sm:hidden"><FormatGlyph type={x.type} size={13} /></span>{FORMATS[x.type].name}</div><div className="text-[15px] font-semibold leading-snug group-hover:underline sm:truncate md:text-[16px]">{x.title}</div>{x.summary && <div className="hidden truncate text-[13px] text-neutral-500 sm:block">{x.summary}</div>}<div className={`mt-0.5 flex items-center gap-1 text-[12px] sm:hidden ${sc}`}>{x.type === 'exam' && x.grading && <Hourglass size={12} />}{st}</div></div>
+                    <span className={`hidden w-32 shrink-0 items-center justify-end gap-1 text-[13px] sm:flex ${sc}`}>{x.type === 'exam' && x.grading && <Hourglass size={13} />}{st}</span>
+                    <span className="flex shrink-0 items-center justify-end gap-1 whitespace-nowrap text-[14px] font-semibold sm:w-28">{cta}<ArrowRight size={14} /></span>
                   </button>) })}
               </div>
               {c.items.some((x) => x.type === 'exam') && <p className="mt-3 flex items-center gap-1.5 text-[13px] text-neutral-500"><Lock size={13} />AI Tutor tắt trong lúc thi chính thức. Học hết các phần trước rồi hãy vào thi.</p>}

@@ -26,7 +26,7 @@ Mở http://localhost:5190. Dừng bằng Ctrl+C.
 | `npm start` | Chạy hằng ngày |
 | `npm run reset` | Xóa hết dữ liệu, tạo lại dữ liệu mẫu rồi chạy |
 | `npm run db:seed-grading -w apps/api` | Thêm đề mẫu An toàn thông tin và 2 bài chờ chấm vào DB đang dùng, không xóa dữ liệu (bản `reset` đã có sẵn) |
-| `npm test` | Chạy 66 test API (AI giả lập, DB `lms_test` riêng) |
+| `npm test` | Chạy 67 test API (AI giả lập, DB `lms_test` riêng) |
 | `npm run typecheck` · `npm run build` | Kiểm tra kiểu · build bản production (gồm cả trình học cho gói SCORM) |
 
 Muốn chạy không cần key: đặt `AI_PROVIDER=mock` trong `.env`.
@@ -66,10 +66,10 @@ Muốn chạy không cần key: đặt `AI_PROVIDER=mock` trong `.env`.
 | Ảnh | Ảnh có sẵn, tải ảnh lên (kiểm tra định dạng thật của tệp, tối đa 8 MB), AI tạo ảnh từ mô tả. Dùng cho khối ảnh, slide, ảnh bìa tài liệu và khóa; ảnh vào cả video dựng |
 | Giao diện khóa | Màu nhấn, bộ font, ảnh bìa riêng cho từng khóa; áp cho trình soạn, trang khóa, bài học, slide, video và trang thi |
 | Soạn tại chỗ | Bấm vào chữ là sửa, tự lưu. Bôi đen chữ để in đậm, nghiêng, gạch chân, gạch ngang, đổi màu, tô nền, gắn liên kết (⌘B/I/U/K). Mỗi khối chỉnh được cỡ chữ, căn lề, nền. Sửa từng khối bằng AI, sinh câu hỏi theo mức. Xuất bản có phiên bản, khôi phục được bản cũ |
-| Slide | 8 bố cục, sửa chữ tại chỗ. Soạn như phần mềm trình chiếu: chèn hộp chữ, ảnh, hình khối (chữ nhật, bo góc, tròn, đường thẳng, mũi tên); kéo để di chuyển, kéo góc để đổi cỡ; cỡ chữ, màu (cả màu tùy chọn), đậm/nghiêng/gạch chân, căn lề; độ đậm, sắp lớp, căn giữa slide, nhân đôi; nền màu hoặc ảnh nền có lớp phủ sáng/tối, áp cho mọi slide; hoàn tác/làm lại (⌘Z), phím tắt (Delete, mũi tên, ⌘D); kéo thả đổi thứ tự slide; ẩn/hiện ghi chú. Sửa slide bằng AI, nghe thử lời đọc bằng giọng AI. Video dựng và gói SCORM giữ đúng các định dạng này |
+| Slide | 8 bố cục, sửa chữ tại chỗ. Soạn như phần mềm trình chiếu: chèn hộp chữ, ảnh, hình khối (chữ nhật, bo góc, tròn, đường thẳng, mũi tên); kéo để di chuyển, kéo góc để đổi cỡ; cỡ chữ, font (11 font có đủ dấu tiếng Việt, cho từng phần chữ hoặc cả slide), màu (cả màu tùy chọn), đậm/nghiêng/gạch chân, căn lề; xoay phần tử (tay nắm hoặc nhập độ), độ đậm, sắp lớp, căn giữa slide, nhân đôi; nền màu hoặc ảnh nền có lớp phủ sáng/tối, áp cho mọi slide; hoàn tác/làm lại (⌘Z), phím tắt (Delete, mũi tên, ⌘D); kéo thả đổi thứ tự slide; ẩn/hiện ghi chú. Sửa slide bằng AI, nghe thử lời đọc bằng giọng AI. Video dựng và gói SCORM giữ đúng các định dạng này |
 | Video AI | Slide + lời đọc → giọng AI → MP4 có phụ đề, chương theo thời lượng thật (giữ đúng định dạng slide). Sửa slide ngay trong trang video; sửa slide nào chỉ dựng lại đoạn đó |
 | Khóa học | Một khóa gồm Tài liệu nhanh, Slide, Tình huống, Video, Đề kiểm tra. Chia sẻ cả khóa: xuất bản hàng loạt (bỏ qua tài liệu không đổi, nêu lý do tài liệu bị chặn), giao cả khóa, một đường dẫn cho cả khóa |
-| Học | Khóa học của tôi gom theo khóa; mở khóa thấy các phần theo thứ tự học, tiến độ từng phần và nút học tiếp. Có hạn, theo dõi tiến độ |
+| Học | Khóa học của tôi gom theo khóa; mở khóa thấy các phần theo thứ tự học, tiến độ từng phần và nút học tiếp. Có hạn, theo dõi tiến độ. Màn người học dùng tốt trên điện thoại |
 | AI Tutor | Chỉ trả lời từ nội dung đã xuất bản, kèm nguồn và nút nhảy tới bài hoặc phút video. Tìm sang khóa khác. Không có câu trả lời thì nói rõ và gom câu hỏi cho người soạn. Tự tắt khi người học đang thi |
 | Đề kiểm tra | Tạo đề riêng cho khóa: chọn mức, số câu mỗi mức, số câu mỗi đề, giờ, điểm đạt, lượt, giám sát; AI soạn ngân hàng câu có nguồn, người soạn duyệt (có duyệt tất cả) |
 | Dạng câu hỏi | Một đáp án, nhiều đáp án, điền chỗ trống, ghép cặp, sắp thứ tự, phân loại kéo thả (chấm tự động, cho điểm từng phần), tự luận (AI chấm nháp), bài code JavaScript (chạy cách ly) |

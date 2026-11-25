@@ -1,15 +1,23 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Home, FolderOpen, BarChart3, Settings, PanelLeft, ClipboardCheck, GraduationCap, Target, LogOut, Check, ArrowLeftRight } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Logo, Avatar, Spinner } from './ui'
 import { useMe, initials } from './store'
 import { get, post } from './api'
+import { useWide } from './hooks'
 
 export default function Shell() {
   const nav = useNavigate()
   const qc = useQueryClient()
-  const [mini, setMini] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+  // màn hẹp (điện thoại): thanh bên chỉ còn biểu tượng; bấm mở rộng thì trượt ra đè lên nội dung, chọn mục là đóng
+  const wide = useWide()
+  const [drawer, setDrawer] = useState(false)
+  const { pathname } = useLocation()
+  useEffect(() => { setDrawer(false) }, [pathname, wide])
+  const mini = wide ? collapsed : !drawer
+  const setMini = (v) => (wide ? setCollapsed(v) : setDrawer(!v))
   const { me, role } = useMe()
   const [menu, setMenu] = useState(false)
   const pending = useQuery({ queryKey: ['grading-count'], queryFn: () => get('/grading/count'), enabled: role === 'author', refetchInterval: 30_000 }).data?.n ?? 0
@@ -35,7 +43,9 @@ export default function Shell() {
   }
   return (
     <div className="flex h-full">
-      <aside className={`${mini ? 'w-[76px]' : 'w-[264px]'} scroll-thin flex shrink-0 flex-col overflow-y-auto border-r border-line bg-white px-4 pb-5 transition-all`}>
+      {!wide && <div className="w-[76px] shrink-0" aria-hidden />}
+      {!wide && drawer && <div className="fixed inset-0 z-30 bg-black/20" onClick={() => setDrawer(false)} aria-hidden />}
+      <aside className={`${mini ? 'w-[76px]' : 'w-[264px]'} ${wide ? '' : 'fixed inset-y-0 left-0 z-40'} ${!wide && drawer ? 'shadow-pop' : ''} scroll-thin flex shrink-0 flex-col overflow-y-auto border-r border-line bg-white px-4 pb-5 transition-all`}>
         <div className="flex h-16 items-center gap-3 px-1">
           <button onClick={() => nav(me.home)} aria-label="Trang chính"><Logo /></button>
           {!mini && <><span className="h-7 w-px bg-line" /><span className="flex-1 text-[17px] text-neutral-600">LMS</span></>}
@@ -44,7 +54,7 @@ export default function Shell() {
         {mini && <button className="icon-btn mx-auto mb-2" onClick={() => setMini(false)} aria-label="Mở rộng"><PanelLeft size={20} /></button>}
         <nav className="mt-2 space-y-0.5">
           {items.map(([to, label, I, badge]) => (
-            <NavLink key={to} to={to} end={to === '/'}
+            <NavLink key={to} to={to} end={to === '/'} onClick={() => setDrawer(false)} title={mini ? label : undefined}
               className={({ isActive }) => `flex h-10 items-center gap-3 rounded-xl px-3 text-[15px] transition ${isActive ? 'bg-navsel font-medium text-navtxt' : 'text-ink hover:bg-neutral-50'}`}>
               <I size={20} strokeWidth={1.8} />{!mini && <span className="flex-1">{label}</span>}
               {!mini && badge > 0 && <span className="rounded-full bg-brand px-2 text-[12px] font-semibold text-white">{badge}</span>}
@@ -76,7 +86,7 @@ export default function Shell() {
           )}
         </div>
       </aside>
-      <main className="scroll-thin relative flex-1 overflow-y-auto">
+      <main className="scroll-thin relative min-w-0 flex-1 overflow-y-auto">
         <Outlet />
       </main>
     </div>
@@ -84,7 +94,7 @@ export default function Shell() {
 }
 
 export const TopOrg = ({ children }) => { const { me } = useMe(); return (
-  <div className="sticky top-0 z-20 flex h-16 items-center border-b border-line/70 bg-white/80 px-10 backdrop-blur">
+  <div className="sticky top-0 z-20 flex h-16 items-center border-b border-line/70 bg-white/80 px-4 backdrop-blur md:px-10">
     <span className="text-[16px] font-medium">{me?.orgName}</span>
     <div className="flex-1" />{children}
   </div>
