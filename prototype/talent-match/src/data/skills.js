@@ -1,0 +1,91 @@
+// Danh mục kỹ năng chuẩn hoá. `near` = kỹ năng gần nghĩa và độ tương đồng (0–1),
+// dùng để chấm "đạt một phần" khi hồ sơ không có đúng kỹ năng JD yêu cầu.
+export const SKILLS = {
+  python: { name: 'Python', kind: 'hard' },
+  pytorch: { name: 'PyTorch', kind: 'hard', near: { tensorflow: 0.8 } },
+  tensorflow: { name: 'TensorFlow', kind: 'hard', near: { pytorch: 0.8 } },
+  opencv: { name: 'OpenCV', kind: 'hard' },
+  vision: { name: 'Thị giác máy tính', kind: 'hard' },
+  llm: { name: 'LLM / RAG', kind: 'hard' },
+  mlops: { name: 'MLOps', kind: 'hard', near: { cicd: 0.4 } },
+  docker: { name: 'Docker', kind: 'hard', near: { kubernetes: 0.5 } },
+  kubernetes: { name: 'Kubernetes', kind: 'hard', near: { docker: 0.5 } },
+  java: { name: 'Java', kind: 'hard', near: { kotlin: 0.7 } },
+  kotlin: { name: 'Kotlin', kind: 'hard', near: { java: 0.7 } },
+  spring: { name: 'Spring Boot', kind: 'hard' },
+  go: { name: 'Go', kind: 'hard' },
+  nodejs: { name: 'Node.js', kind: 'hard' },
+  microservices: { name: 'Microservices', kind: 'hard' },
+  sql: { name: 'SQL', kind: 'hard' },
+  postgresql: { name: 'PostgreSQL', kind: 'hard', near: { mysql: 0.75 } },
+  mysql: { name: 'MySQL', kind: 'hard', near: { postgresql: 0.75 } },
+  mongodb: { name: 'MongoDB', kind: 'hard' },
+  redis: { name: 'Redis', kind: 'hard' },
+  kafka: { name: 'Kafka', kind: 'hard', near: { rabbitmq: 0.6 } },
+  rabbitmq: { name: 'RabbitMQ', kind: 'hard', near: { kafka: 0.6 } },
+  spark: { name: 'Apache Spark', kind: 'hard' },
+  airflow: { name: 'Airflow', kind: 'hard' },
+  dbt: { name: 'dbt', kind: 'hard' },
+  aws: { name: 'AWS', kind: 'hard', near: { gcp: 0.75 } },
+  gcp: { name: 'Google Cloud', kind: 'hard', near: { aws: 0.75 } },
+  cicd: { name: 'CI/CD', kind: 'hard' },
+  linux: { name: 'Linux', kind: 'hard' },
+  react: { name: 'React', kind: 'hard', near: { vue: 0.7 } },
+  vue: { name: 'Vue', kind: 'hard', near: { react: 0.7 } },
+  typescript: { name: 'TypeScript', kind: 'hard', near: { javascript: 0.7 } },
+  javascript: { name: 'JavaScript', kind: 'hard', near: { typescript: 0.6 } },
+  nextjs: { name: 'Next.js', kind: 'hard', near: { react: 0.6 } },
+  css: { name: 'HTML/CSS', kind: 'hard' },
+  jest: { name: 'Kiểm thử đơn vị (Jest)', kind: 'hard' },
+  selenium: { name: 'Selenium', kind: 'hard', near: { playwright: 0.75, cypress: 0.7 } },
+  playwright: { name: 'Playwright', kind: 'hard', near: { cypress: 0.8, selenium: 0.75 } },
+  cypress: { name: 'Cypress', kind: 'hard', near: { playwright: 0.8, selenium: 0.7 } },
+  apitest: { name: 'Kiểm thử API', kind: 'hard' },
+  c: { name: 'C', kind: 'hard', near: { cpp: 0.7 } },
+  cpp: { name: 'C++', kind: 'hard', near: { c: 0.7 } },
+  rtos: { name: 'RTOS', kind: 'hard', near: { emblinux: 0.5 } },
+  emblinux: { name: 'Embedded Linux', kind: 'hard', near: { rtos: 0.5, linux: 0.5 } },
+  periph: { name: 'Giao tiếp ngoại vi (UART/I2C/SPI)', kind: 'hard' },
+  scrum: { name: 'Agile / Scrum', kind: 'hard' },
+  backlog: { name: 'Quản lý backlog', kind: 'hard' },
+  discovery: { name: 'Khám phá sản phẩm', kind: 'hard' },
+  analytics: { name: 'Phân tích dữ liệu sản phẩm', kind: 'hard', near: { sql: 0.4 } },
+  figma: { name: 'Figma', kind: 'hard' },
+  sourcing: { name: 'Tìm nguồn ứng viên', kind: 'hard', near: { interviewing: 0.4 } },
+  interviewing: { name: 'Phỏng vấn theo năng lực', kind: 'hard', near: { sourcing: 0.4 } },
+  ats: { name: 'Vận hành hệ thống ATS', kind: 'hard' },
+  branding: { name: 'Thương hiệu nhà tuyển dụng', kind: 'hard' },
+  communication: { name: 'Giao tiếp', kind: 'soft', near: { stakeholder: 0.5 } },
+  teamwork: { name: 'Làm việc nhóm', kind: 'soft' },
+  leadership: { name: 'Dẫn dắt nhóm', kind: 'soft', near: { mentoring: 0.6 } },
+  mentoring: { name: 'Kèm cặp', kind: 'soft', near: { leadership: 0.6 } },
+  problem: { name: 'Giải quyết vấn đề', kind: 'soft' },
+  stakeholder: { name: 'Làm việc với các bên liên quan', kind: 'soft', near: { communication: 0.5 } },
+  negotiation: { name: 'Đàm phán', kind: 'soft' },
+  ownership: { name: 'Chủ động, chịu trách nhiệm', kind: 'soft' },
+}
+
+export const DOMAINS = {
+  ai: 'AI/ML', vision: 'Thị giác máy tính', backend: 'Backend', data: 'Dữ liệu', qa: 'Kiểm thử',
+  embedded: 'Phần mềm nhúng', iot: 'Thiết bị thông minh / IoT', product: 'Quản lý sản phẩm',
+  frontend: 'Frontend', hr: 'Nhân sự', recruit: 'Tuyển dụng', hrtech: 'Phần mềm nhân sự',
+  fintech: 'Tài chính số', ecommerce: 'Thương mại điện tử', manufacturing: 'Sản xuất',
+}
+
+export const ROLES = { lead: 'Trưởng nhóm', mentor: 'Kèm cặp thành viên', owner: 'Chịu trách nhiệm sản phẩm' }
+
+export const DEGREES = { 1: 'Cao đẳng', 2: 'Đại học', 3: 'Thạc sĩ', 4: 'Tiến sĩ' }
+
+export const CERTS = {
+  'aws-saa': 'AWS Solutions Architect – Associate',
+  'gcp-de': 'Google Professional Data Engineer',
+  istqb: 'ISTQB Foundation',
+  cka: 'Certified Kubernetes Administrator',
+  psm: 'Professional Scrum Master I',
+  cspo: 'Certified Scrum Product Owner',
+  shrm: 'Chứng chỉ Quản trị nhân sự (SHRM-CP)',
+}
+
+export const LEVELS = ['', 'Biết', 'Cơ bản', 'Thành thạo', 'Vững', 'Chuyên gia']
+
+export const skillName = (id) => SKILLS[id]?.name ?? id
