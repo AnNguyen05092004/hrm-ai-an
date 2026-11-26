@@ -2,13 +2,13 @@ import { z } from 'zod'
 import { and, eq, inArray } from 'drizzle-orm'
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { db, schema } from '../../db/client.js'
-import { me, requireAuthor } from '../../lib/auth.js'
+import { me, requireEditor } from '../../lib/auth.js'
 import { badRequest, conflict } from '../../lib/errors.js'
 import { enqueue } from '../../lib/jobs.js'
 import { audit } from '../../lib/audit.js'
 import { GEN_TYPES, suggestPlanItem } from './ai.js'
 import { sourceChanges } from './source-changes.js'
-import { kitShareRoutes } from './share.js'
+import { kitPublishRoutes } from './publish.js'
 import { scormRoutes } from './scorm.js'
 import { examExportRoutes } from './qti.js'
 import { briefOf, createArtifact, getKit, kitDto, listKits, patchKit, type PlanItem } from './service.js'
@@ -24,8 +24,8 @@ async function assertSkill(orgId: string, id: string): Promise<void> {
 const planItem = z.object({ type: z.enum(GEN_TYPES), title: z.string().max(200), summary: z.string().max(2000), outline: z.record(z.string(), z.unknown()).optional() })
 
 export const kitRoutes: FastifyPluginAsyncZod = async (app) => {
-  app.addHook('preHandler', requireAuthor)
-  await app.register(kitShareRoutes)
+  app.addHook('preHandler', requireEditor)
+  await app.register(kitPublishRoutes)
   await app.register(scormRoutes)
   await app.register(examExportRoutes)
 
@@ -36,18 +36,17 @@ export const kitRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post('/', {
     schema: { body: z.object({
       goal: z.string().trim().min(5).max(5000), sourceIds: z.array(z.string()).max(20).default([]),
-      fromPlan: z.object({ kpiId: z.string().optional(), skillId: z.string().optional(), people: z.array(z.string()).optional() }).optional(),
-      level: z.number().int().min(1).max(3).optional(),
+      skillId: z.string().optional(), level: z.number().int().min(1).max(3).optional(),
     }) },
   }, async (req) => {
     const u = me(req)
-    if (req.body.fromPlan?.skillId) await assertSkill(u.orgId, req.body.fromPlan.skillId)
+    if (req.body.skillId) await assertSkill(u.orgId, req.body.skillId)
     const ids = req.body.sourceIds.length
       ? (await db.select({ id: schema.sources.id }).from(schema.sources).where(and(eq(schema.sources.orgId, u.orgId), inArray(schema.sources.id, req.body.sourceIds)))).map((s) => s.id)
       : []
     const [k] = await db.insert(schema.kits).values({
       orgId: u.orgId, title: req.body.goal.slice(0, 60), goal: req.body.goal, sourceIds: ids, createdBy: u.id,
-      fromPlan: req.body.fromPlan ?? null, skillId: req.body.fromPlan?.skillId ?? null, level: req.body.level ?? null,
+      skillId: req.body.skillId ?? null, level: req.body.level ?? null,
       details: { goalText: req.body.goal, plan: [] },
     }).returning()
     const job = await enqueue(u.orgId, 'kit.draft', { kitId: k.id }, u.id)

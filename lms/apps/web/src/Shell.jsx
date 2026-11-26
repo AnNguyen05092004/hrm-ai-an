@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Home, FolderOpen, BarChart3, Settings, PanelLeft, ClipboardCheck, GraduationCap, Target, LogOut, Check, ArrowLeftRight } from 'lucide-react'
+import { Home, FolderOpen, Settings, PanelLeft, ClipboardCheck, Users, LogOut, Check, ArrowLeftRight } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Logo, Avatar, Spinner } from './ui'
@@ -20,10 +20,13 @@ export default function Shell() {
   const setMini = (v) => (wide ? setCollapsed(v) : setDrawer(!v))
   const { me, role } = useMe()
   const [menu, setMenu] = useState(false)
-  const pending = useQuery({ queryKey: ['grading-count'], queryFn: () => get('/grading/count'), enabled: role === 'author', refetchInterval: 30_000 }).data?.n ?? 0
+  // reviewer: số khóa đang chờ mình review
+  const pending = useQuery({ queryKey: ['reviews'], queryFn: () => get('/reviews'), enabled: role === 'reviewer', refetchInterval: 60_000 }).data?.filter((x) => x.status === 'pending').length ?? 0
+  const editor = [['/', 'Trang chủ', Home], ['/library', 'Thư viện', FolderOpen]]
   const items = {
-    author: [['/', 'Trang chủ', Home], ['/library', 'Thư viện', FolderOpen], ['/workforce', 'Kế hoạch đào tạo', Target], ['/analytics', 'Phân tích', BarChart3], ['/grading', 'Chấm bài', ClipboardCheck, pending], ['/settings', 'Cài đặt', Settings]],
-    learner: [['/learn', 'Khóa học của tôi', GraduationCap]],
+    admin: [...editor, ['/users', 'Người dùng', Users], ['/settings', 'Cài đặt', Settings]],
+    author: [...editor, ['/settings', 'Cài đặt', Settings]],
+    reviewer: [['/', 'Cần review', ClipboardCheck, pending], ['/settings', 'Cài đặt', Settings]],
   }[role] ?? []
   const logout = async () => { await post('/auth/logout'); qc.clear(); nav('/login', { replace: true }) }
   const demoUsers = useQuery({ queryKey: ['demo-users'], queryFn: () => get('/auth/demo'), enabled: !!me?.demo, staleTime: Infinity }).data ?? []
@@ -39,7 +42,7 @@ export default function Shell() {
   const switchTo = async (u) => {
     if (u.id === me.id) { setMenu(false); return }
     setSwitching(u.id)
-    try { await post('/auth/demo', { email: u.email }); qc.clear(); setMenu(false); nav(u.role === 'learner' ? '/learn' : '/', { replace: true }) } finally { setSwitching('') }
+    try { await post('/auth/demo', { email: u.email }); qc.clear(); setMenu(false); nav('/', { replace: true }) } finally { setSwitching('') }
   }
   return (
     <div className="flex h-full">

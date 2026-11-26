@@ -37,12 +37,12 @@ describe('auth', () => {
 
   it('demo mode switches role without a password, only to the demo accounts', async () => {
     const list = await client(ctx.app)('GET', '/api/auth/demo')
-    expect(list.body.map((u: { role: string }) => u.role)).toEqual(['author', 'learner'])
+    expect(list.body.map((u: { role: string }) => u.role)).toEqual(['author', 'reviewer', 'admin'])
     const r = await ctx.app.inject({ method: 'POST', url: '/api/auth/demo', headers: { 'x-lms': '1' }, payload: { email: 'ha@demo.local' } })
     expect(r.statusCode).toBe(200)
     const c = client(ctx.app, `lms_session=${r.cookies[0].value}`)
-    expect((await c('GET', '/api/auth/me')).body).toMatchObject({ role: 'learner', demo: true })
-    const other = await client(ctx.app)('POST', '/api/auth/demo', { email: 'minh.duc@demo.local' })
+    expect((await c('GET', '/api/auth/me')).body).toMatchObject({ role: 'reviewer', demo: true })
+    const other = await client(ctx.app)('POST', '/api/auth/demo', { email: 'nam.lh@demo.local' })
     expect(other.status).toBe(400)
   })
 

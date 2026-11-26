@@ -5,36 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1795023381952,
-      "tag": "0000_hot_living_lightning",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1795075323934,
-      "tag": "0001_kit_share",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1795077315120,
-      "tag": "0002_images",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1795078274490,
-      "tag": "0003_integrations",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1795084709710,
-      "tag": "0004_scenario_neutral",
+      "when": 1795693564132,
+      "tag": "0000_studio_baseline",
       "breakpoints": true
     }
   ]

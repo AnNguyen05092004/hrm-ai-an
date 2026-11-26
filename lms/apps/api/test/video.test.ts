@@ -35,7 +35,7 @@ describe('AI video from slides', () => {
 
   it('blocks media for users who cannot view the artifact', async () => {
     const v = (await ctx.author('GET', `/api/artifacts/${videoId}`)).body
-    const r = await ctx.learner('GET', v.render.url)
+    const r = await ctx.reviewer('GET', v.render.url)
     expect(r.status).toBe(403)
     const bad = await ctx.author('GET', `/api/media/${videoId}/..%2F..%2Fsecret.mp4`)
     expect(bad.status).toBe(404)
@@ -93,6 +93,6 @@ describe('AI video from slides', () => {
 
   it('voice preview needs real AI and an author', async () => {
     expect((await ctx.author('POST', '/api/tts', { text: 'Xin chào' })).status).toBe(400)
-    expect((await ctx.learner('POST', '/api/tts', { text: 'Xin chào' })).status).toBe(403)
+    expect((await ctx.reviewer('POST', '/api/tts', { text: 'Xin chào' })).status).toBe(403)
   })
 })

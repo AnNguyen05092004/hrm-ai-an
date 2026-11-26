@@ -1,5 +1,7 @@
 # LMS bản chạy thật: phân tích và kế hoạch
 
+> Nhánh `feat/lms-studio` chỉ giữ phần soạn khóa, review và xuất gói (3 vai admin, author, reviewer). Phạm vi và quyết định của nhánh đó ở [STUDIO.md](STUDIO.md); tài liệu dưới đây mô tả bản đầy đủ ở `feat/lms-app`.
+
 > Nhánh `feat/lms-app`. Prototype giữ nguyên ở `prototype/lms` (bản backup: nhánh `backup/lms-prototype`).
 > Đầu vào: [lms-specs.md](../../docs/modules/lms/lms-specs.md), prototype LMS (UI/UX đã chốt qua nhiều vòng góp ý).
 

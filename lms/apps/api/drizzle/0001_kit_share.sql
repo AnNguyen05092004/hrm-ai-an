@@ -1,1 +1,0 @@
-ALTER TABLE "kits" ADD COLUMN "share_slug" text;

@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import {
-  pgTable, text, integer, timestamp, jsonb, boolean, uniqueIndex, index, primaryKey, real, customType,
+  pgTable, text, integer, timestamp, jsonb, boolean, uniqueIndex, index, primaryKey, customType,
 } from 'drizzle-orm/pg-core'
 
 const id = () => text('id').primaryKey().default(sql`gen_random_uuid()::text`)
@@ -18,41 +18,22 @@ export const orgs = pgTable('orgs', {
   id: id(),
   name: text('name').notNull(),
   aiMonthlyTokens: integer('ai_monthly_tokens').notNull().default(2_000_000),
-  // kết nối hệ thống ngoài: { xapi: { enabled, endpoint, username, password }, webhook: { enabled, url, secret } }
-  integrations: jsonb('integrations').$type<Record<string, Record<string, unknown>>>().notNull().default({}),
   createdAt: created(),
 })
 
-export const departments = pgTable('departments', {
-  id: id(),
-  orgId: text('org_id').notNull().references(() => orgs.id),
-  name: text('name').notNull(),
-  parentId: text('parent_id'),
-  sort: integer('sort').notNull().default(0),
-})
-
-export const positions = pgTable('positions', {
-  id: id(),
-  orgId: text('org_id').notNull().references(() => orgs.id),
-  name: text('name').notNull(),
-  // { skillId: mức cần }
-  needs: jsonb('needs').$type<Record<string, number>>().notNull().default({}),
-})
-
+export const ROLES = ['admin', 'author', 'reviewer'] as const
+export type Role = typeof ROLES[number]
 export const users = pgTable('users', {
   id: id(),
   orgId: text('org_id').notNull().references(() => orgs.id),
   email: text('email').notNull(),
   name: text('name').notNull(),
   passwordHash: text('password_hash'),
-  role: text('role', { enum: ['author', 'learner'] }).notNull().default('learner'),
+  // admin: quản lý người dùng, cài đặt, nhật ký và mọi khóa; author: soạn, mời review, xuất; reviewer: xem và góp ý khóa được mời
+  role: text('role', { enum: ROLES }).notNull().default('author'),
   title: text('title').notNull().default(''),
-  deptId: text('dept_id').references(() => departments.id),
-  positionId: text('position_id').references(() => positions.id),
-  managerId: text('manager_id'),
   color: text('color').notNull().default('#8b88c9'),
   active: boolean('active').notNull().default(true),
-  joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
   createdAt: created(),
 }, (t) => [uniqueIndex('users_email_uq').on(t.email)])
 
@@ -68,42 +49,6 @@ export const skills = pgTable('skills', {
   orgId: text('org_id').notNull().references(() => orgs.id),
   name: text('name').notNull(),
   group: text('group').notNull().default(''),
-})
-
-export const userSkills = pgTable('user_skills', {
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  skillId: text('skill_id').notNull().references(() => skills.id),
-  level: integer('level').notNull(),
-  source: text('source', { enum: ['declared', 'exam', 'evidence', 'manager'] }).notNull().default('declared'),
-  updatedAt: updated(),
-}, (t) => [primaryKey({ columns: [t.userId, t.skillId] })])
-
-export const skillEvents = pgTable('skill_events', {
-  id: id(),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  skillId: text('skill_id').notNull().references(() => skills.id),
-  from: integer('from_level').notNull(),
-  to: integer('to_level').notNull(),
-  reason: text('reason').notNull(),
-  refId: text('ref_id'),
-  byUserId: text('by_user_id'),
-  createdAt: created(),
-})
-
-export type KpiSkill = { skillId: string; why?: string; boost?: number; positions?: string[] }
-export const kpis = pgTable('kpis', {
-  id: id(),
-  orgId: text('org_id').notNull().references(() => orgs.id),
-  name: text('name').notNull(),
-  metric: text('metric').notNull().default(''),
-  target: text('target').notNull().default(''),
-  current: text('current').notNull().default(''),
-  due: text('due').notNull().default(''),
-  active: boolean('active').notNull().default(true),
-  skills: jsonb('skills').$type<KpiSkill[]>().notNull().default([]),
-  // chuỗi số liệu theo tháng để đo tác động: [{m:'T1', v: 12}]
-  trend: jsonb('trend').$type<{ m: string; v: number }[]>().notNull().default([]),
-  createdAt: created(),
 })
 
 export const sources = pgTable('sources', {
@@ -142,10 +87,7 @@ export const kits = pgTable('kits', {
   level: integer('level'),
   sourceIds: jsonb('source_ids').$type<string[]>().notNull().default([]),
   stage: text('stage', { enum: ['details', 'outline', 'generating', 'ready'] }).notNull().default('details'),
-  fromPlan: jsonb('from_plan').$type<{ kpiId?: string; skillId?: string; people?: string[] } | null>(),
   img: text('img').notNull().default('server'),
-  // đường dẫn chia sẻ cả bộ trong công ty (người có link học mọi tài liệu đã xuất bản của bộ)
-  shareSlug: text('share_slug'),
   createdBy: text('created_by').references(() => users.id),
   createdAt: created(),
   updatedAt: updated(),
@@ -178,7 +120,6 @@ export const artifacts = pgTable('artifacts', {
   status: text('status', { enum: ['generating', 'draft', 'published', 'failed'] }).notNull().default('draft'),
   publishedVersion: integer('published_version'),
   img: text('img').notNull().default('server'),
-  shareSlug: text('share_slug'),
   createdAt: created(),
   updatedAt: updated(),
 }, (t) => [index('artifacts_kit').on(t.kitId)])
@@ -195,79 +136,6 @@ export const artifactVersions = pgTable('artifact_versions', {
   publishedBy: text('published_by').references(() => users.id),
   createdAt: created(),
 }, (t) => [primaryKey({ columns: [t.artifactId, t.version] })])
-
-export type Jump = { lesson?: string; t?: number; slide?: number; step?: number; scene?: string }
-export const contentChunks = pgTable('content_chunks', {
-  id: id(),
-  orgId: text('org_id').notNull(),
-  artifactId: text('artifact_id').notNull().references(() => artifacts.id, { onDelete: 'cascade' }),
-  label: text('label').notNull(),
-  // nơi nhảy tới: { lesson: 'l1' } | { t: 95 }
-  jump: jsonb('jump').$type<Jump>().notNull(),
-  text: text('text').notNull(),
-  src: text('src'),
-  embedding: vector('embedding'),
-}, (t) => [index('content_chunks_art').on(t.artifactId)])
-
-export const assignments = pgTable('assignments', {
-  id: id(),
-  orgId: text('org_id').notNull(),
-  artifactId: text('artifact_id').notNull().references(() => artifacts.id, { onDelete: 'cascade' }),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  due: timestamp('due', { withTimezone: true }),
-  reason: text('reason').notNull().default(''),
-  kpiId: text('kpi_id'),
-  skillId: text('skill_id'),
-  assignedBy: text('assigned_by').references(() => users.id),
-  createdAt: created(),
-}, (t) => [uniqueIndex('assign_uq').on(t.artifactId, t.userId)])
-
-export const progress = pgTable('progress', {
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  artifactId: text('artifact_id').notNull().references(() => artifacts.id, { onDelete: 'cascade' }),
-  done: jsonb('done').$type<string[]>().notNull().default([]),
-  percent: integer('percent').notNull().default(0),
-  sessions: integer('sessions').notNull().default(1),
-  completedAt: timestamp('completed_at', { withTimezone: true }),
-  lastAt: timestamp('last_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [primaryKey({ columns: [t.userId, t.artifactId] })])
-
-export type AttemptQuestion = Record<string, unknown> & { id: string; type: string }
-export type Flag = { kind: 'tab' | 'paste' | 'blur' | 'camera'; at: number; note?: string; status?: 'open' | 'ok' | 'violation' }
-export const attempts = pgTable('attempts', {
-  id: id(),
-  orgId: text('org_id').notNull(),
-  artifactId: text('artifact_id').notNull().references(() => artifacts.id, { onDelete: 'cascade' }),
-  version: integer('version').notNull(),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  mode: text('mode', { enum: ['official', 'practice'] }).notNull(),
-  // đề riêng: bản chụp câu hỏi (kèm đáp án, chỉ server đọc)
-  questions: jsonb('questions').$type<AttemptQuestion[]>().notNull(),
-  answers: jsonb('answers').$type<Record<string, unknown>>().notNull().default({}),
-  // kết quả chấm từng câu: { qid: { score, max, auto, ai?, final? } }
-  grades: jsonb('grades').$type<Record<string, Record<string, unknown>>>().notNull().default({}),
-  flags: jsonb('flags').$type<Flag[]>().notNull().default([]),
-  consent: boolean('consent').notNull().default(false),
-  status: text('status', { enum: ['in_progress', 'grading', 'passed', 'failed'] }).notNull().default('in_progress'),
-  score: real('score'),
-  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
-  deadline: timestamp('deadline', { withTimezone: true }),
-  submittedAt: timestamp('submitted_at', { withTimezone: true }),
-  gradedBy: text('graded_by'),
-  gradedAt: timestamp('graded_at', { withTimezone: true }),
-}, (t) => [index('attempts_user').on(t.userId, t.artifactId)])
-
-export const tutorMessages = pgTable('tutor_messages', {
-  id: id(),
-  orgId: text('org_id').notNull(),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  artifactId: text('artifact_id').notNull().references(() => artifacts.id, { onDelete: 'cascade' }),
-  question: text('question').notNull(),
-  answer: jsonb('answer').$type<Record<string, unknown>>().notNull(),
-  found: boolean('found').notNull(),
-  resolved: boolean('resolved').notNull().default(false),
-  createdAt: created(),
-})
 
 export const jobs = pgTable('jobs', {
   id: id(),
@@ -305,32 +173,38 @@ export const auditLogs = pgTable('audit_logs', {
   createdAt: created(),
 })
 
-// Kết quả gửi sang Talent (mẫu outbox: hệ thống Talent đọc và xác nhận)
-export const outbox = pgTable('outbox', {
-  id: id(),
-  orgId: text('org_id').notNull(),
-  topic: text('topic').notNull(),
-  payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
-  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
-  // gửi lỗi thì thử lại sau, giãn dần; quá số lần thì dừng và giữ lỗi để xem
-  attempts: integer('attempts').notNull().default(0),
-  nextAt: timestamp('next_at', { withTimezone: true }).notNull().defaultNow(),
-  lastError: text('last_error'),
-  createdAt: created(),
-})
 
-// Bằng chứng năng lực (PR, đánh giá dự án) để AI đề xuất mức
-export const evidence = pgTable('evidence', {
+// Mời review khóa học: mỗi người review một dòng. pending → approved | changes; người soạn gửi lại thì về pending, round tăng
+export const REVIEW_STATUS = ['pending', 'approved', 'changes'] as const
+export const kitReviews = pgTable('kit_reviews', {
   id: id(),
-  orgId: text('org_id').notNull(),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  skillId: text('skill_id').notNull().references(() => skills.id),
-  kind: text('kind').notNull(),
-  title: text('title').notNull(),
-  text: text('text').notNull().default(''),
-  proposedLevel: integer('proposed_level'),
-  confidence: text('confidence'),
-  rationale: text('rationale'),
-  status: text('status', { enum: ['pending', 'accepted', 'rejected'] }).notNull().default('pending'),
+  orgId: text('org_id').notNull().references(() => orgs.id),
+  kitId: text('kit_id').notNull().references(() => kits.id, { onDelete: 'cascade' }),
+  reviewerId: text('reviewer_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  invitedBy: text('invited_by').references(() => users.id),
+  message: text('message').notNull().default(''),
+  due: timestamp('due', { withTimezone: true }),
+  status: text('status', { enum: REVIEW_STATUS }).notNull().default('pending'),
+  round: integer('round').notNull().default(1),
+  decisionNote: text('decision_note').notNull().default(''),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
   createdAt: created(),
-})
+  updatedAt: updated(),
+}, (t) => [uniqueIndex('kit_reviews_uq').on(t.kitId, t.reviewerId), index('kit_reviews_reviewer').on(t.reviewerId)])
+
+// Góp ý: gắn với khóa, có thể gắn một tài liệu và vị trí trong tài liệu (bài, slide, cảnh, câu hỏi…). parentId: trả lời trong luồng
+export type CommentAnchor = { key: string; label: string }
+export const reviewComments = pgTable('review_comments', {
+  id: id(),
+  orgId: text('org_id').notNull().references(() => orgs.id),
+  kitId: text('kit_id').notNull().references(() => kits.id, { onDelete: 'cascade' }),
+  artifactId: text('artifact_id').references(() => artifacts.id, { onDelete: 'cascade' }),
+  anchor: jsonb('anchor').$type<CommentAnchor | null>(),
+  parentId: text('parent_id'),
+  authorId: text('author_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  body: text('body').notNull(),
+  round: integer('round').notNull().default(1),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  resolvedBy: text('resolved_by').references(() => users.id),
+  createdAt: created(),
+}, (t) => [index('review_comments_kit').on(t.kitId, t.createdAt)])

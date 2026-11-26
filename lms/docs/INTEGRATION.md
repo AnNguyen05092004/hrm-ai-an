@@ -1,12 +1,13 @@
-# Kết nối với LMS và hệ thống nội bộ của công ty
+# Xuất khóa học sang LMS của công ty
 
-LMS này có ba cách nối với hệ thống đào tạo sẵn có. Có thể dùng cùng lúc.
+Bản này là công cụ soạn khóa học: người học không học trên đây mà học trên LMS sẵn có của công ty. Khóa xuất ra hai dạng:
 
-| Cách | Dùng khi | Chiều dữ liệu | Cài ở đâu |
-|---|---|---|---|
-| Xuất gói SCORM 1.2 | Công ty muốn khóa học chạy ngay trên LMS hiện có | LMS này → tệp .zip → LMS công ty | Trang khóa học → Chia sẻ cả khóa → Xuất SCORM |
-| xAPI tới LRS | LMS công ty có LRS và muốn nhận kết quả học trên LMS này | LMS này → LRS (tự động, gần thời gian thực) | Cài đặt → Tích hợp |
-| Webhook | Hệ thống nội bộ (HRM, Talent, BI) muốn nhận sự kiện học | LMS này → địa chỉ HTTP của bạn | Cài đặt → Tích hợp |
+| Dạng | Dùng khi | Ở đâu |
+|---|---|---|
+| Gói SCORM 1.2 | Đưa cả khóa (bài học, slide, tình huống, video, bài luyện tập) lên LMS công ty | Trang khóa học → Xuất khóa học → Gói SCORM và đề QTI |
+| Đề kiểm tra QTI 2.1 kèm đáp án | LMS công ty tự tổ chức thi và chấm | Cùng chỗ, mục "Đề kiểm tra cho LMS công ty tự chấm" |
+
+Nên mời review và xuất bản trước khi xuất: gói chỉ lấy bản đã xuất bản.
 
 ## 1. Gói SCORM 1.2
 
@@ -22,16 +23,15 @@ LMS công ty nhận được:
 | `cmi.core.session_time` | Thời gian học mỗi lần mở |
 
 Không có trong gói:
-- **Đề kiểm tra chính thức.** Gói chạy hoàn toàn trên trình duyệt nên đáp án sẽ nằm phía người học, không giữ được bảo mật đề. Giám sát khi thi cũng cần máy chủ. Thi chính thức làm trên LMS này, kết quả gửi sang công ty qua xAPI hoặc webhook.
-- **AI Tutor.** Tutor cần máy chủ và tài liệu nguồn.
+- **Đề kiểm tra chính thức.** Gói chạy hoàn toàn trên trình duyệt nên đáp án sẽ nằm phía người học, không giữ được bảo mật đề. Muốn LMS công ty tự tổ chức thi, tải riêng đề QTI kèm đáp án (mục dưới).
 
 Gói lấy bản đã xuất bản tại thời điểm xuất. Sửa khóa xong thì xuất bản lại rồi xuất gói mới.
 
 ### Thử trên LMS công ty (demo)
 
-`apps/company-lms` là một LMS mô phỏng của công ty, chạy riêng ở http://localhost:5192 (`npm start` tự bật). Dùng để xem gói xuất ra được LMS khác nhận và dùng thế nào, không cần cài Moodle.
+`apps/company-lms` là một LMS mô phỏng của công ty, chạy riêng ở http://localhost:5196 (`npm start` tự bật). Dùng để xem gói xuất ra được LMS khác nhận và dùng thế nào, không cần cài Moodle.
 
-1. Ở LMS: mở khóa → Chia sẻ cả khóa → Xuất SCORM → Tải gói.
+1. Ở LMS: mở khóa → Xuất khóa học → Gói SCORM và đề QTI → Tải gói.
 2. Ở cổng đào tạo (vai Quản trị đào tạo): Nhập gói SCORM, chọn tệp .zip. Cổng giải nén, đọc `imsmanifest.xml` và kiểm tra: có manifest ở gốc gói, đúng SCORM 1.2, có mục học, tệp khởi chạy tồn tại và là SCO, đủ tệp khai báo, điểm đạt (`masteryscore`). Gói lỗi thì báo rõ lý do và không cho nhập.
 3. Đặt tên hiển thị, giao cho nhân viên, đặt hạn. Nhập lại gói cùng mã (`identifier`) thì cổng đề nghị cập nhật khóa cũ và giữ kết quả học viên.
 4. Đổi sang vai Nhân viên → Bắt đầu học. Gói chạy trong khung cùng nguồn với cổng và gọi `window.API` của cổng. Bảng **Dữ liệu SCORM** bên phải cho thấy giá trị gói đang ghi (trạng thái, điểm, `suspend_data`…) và nhật ký từng lệnh API, kể cả lỗi theo mã chuẩn.
@@ -42,7 +42,7 @@ Cổng demo cài phần lõi của SCORM 1.2 (`cmi.core.*`, `suspend_data`, `lau
 
 ### Đề kiểm tra cho LMS công ty tự quản lý và chấm
 
-Đề chính thức không vào gói SCORM. Khi công ty muốn tự tổ chức thi trên LMS của họ: Chia sẻ cả khóa → Xuất SCORM → mục **Đề kiểm tra cho LMS công ty tự chấm**, tích xác nhận rồi **Tải đề kèm đáp án**. Mỗi lần tải ghi nhật ký (`kit.export_exam`).
+Đề chính thức không vào gói SCORM. Khi công ty muốn tự tổ chức thi trên LMS của họ: Xuất khóa học → Gói SCORM và đề QTI → mục **Đề kiểm tra cho LMS công ty tự chấm**, tích xác nhận rồi **Tải đề kèm đáp án**. Mỗi lần tải ghi nhật ký (`kit.export_exam`).
 
 Gói `.zip` theo **IMS QTI 2.1** (Canvas, Blackboard, D2L, TAO nhập được; Moodle qua plugin QTI), chỉ gồm câu đã duyệt:
 
@@ -54,66 +54,14 @@ Gói `.zip` theo **IMS QTI 2.1** (Canvas, Blackboard, D2L, TAO nhập được; 
 | `exam.json` | Toàn bộ đề theo cấu trúc gốc: đáp án, giải thích từng lựa chọn, rubric, test case, cách tính điểm từng dạng câu, lời nhắc mẫu cho AI chấm |
 | `huong-dan-cham.md` | Hướng dẫn cho người quản trị LMS công ty và lời nhắc mẫu để AI của họ chấm nháp tự luận theo tiêu chí |
 
-Thi trên LMS công ty thì LMS này không giám sát, không chấm và không nâng mức kỹ năng. Gói có đáp án nên chỉ gửi cho người quản trị.
+LMS công ty tự tổ chức thi và chấm. Gói có đáp án nên chỉ gửi cho người quản trị.
 
 Trang demo LMS công ty nhận được gói này: đọc QTI, kiểm tra có đáp án và tiêu chí, cho nhân viên làm bài có giờ, tự chấm câu khách quan; câu tự luận/code vào **Chấm bài**, người chấm tích tiêu chí đạt (hoặc sao chép lời nhắc cho AI chấm nháp) rồi xác nhận điểm.
-
-## 2. xAPI (Experience API 1.0.3)
-
-Nhập địa chỉ LRS, khóa và mật khẩu (Basic auth) ở Cài đặt → Tích hợp, bấm **Gửi thử**, rồi bật. Mỗi sự kiện gửi một statement tới `POST {endpoint}/statements`:
-
-| Sự kiện | Động từ (verb) | Đối tượng |
-|---|---|---|
-| Học xong một phần của khóa | `completed` | Tài liệu (lesson, media, simulation…), thuộc khóa học cha |
-| Có kết quả thi (tự chấm hoặc người chấm xác nhận) | `passed` / `failed`, kèm điểm | Đề kiểm tra (assessment) |
-| Xong mọi phần được giao của khóa | `completed` | Khóa học (course), chỉ gửi một lần |
-
-Ví dụ:
-
-```json
-{
-  "actor": { "objectType": "Agent", "name": "Trần Thu Hà", "mbox": "mailto:ha@demo.local" },
-  "verb": { "id": "http://adlnet.gov/expapi/verbs/passed", "display": { "vi-VN": "đã đạt" } },
-  "object": { "objectType": "Activity", "id": "https://lms.congty.vn/xapi/activities/exam/…", "definition": { "name": { "vi-VN": "Đề kiểm tra: Docker Volume" }, "type": "http://adlnet.gov/expapi/activities/assessment" } },
-  "result": { "completion": true, "success": true, "score": { "scaled": 0.9, "raw": 90, "min": 0, "max": 100 } },
-  "context": { "contextActivities": { "parent": [{ "id": "https://lms.congty.vn/xapi/activities/course/…" }] } }
-}
-```
-
-## 3. Webhook
-
-Hệ thống gửi `POST` JSON tới địa chỉ bạn nhập, với hai header:
-- `X-LMS-Event`: tên sự kiện;
-- `X-LMS-Signature: sha256=<HMAC-SHA256 của body, khóa là khóa ký>`.
-
-Tạo khóa ký ở Cài đặt → Tích hợp. Khóa chỉ hiện một lần.
-
-```json
-{ "event": "exam.finished", "at": "2026-11-19T08:30:00.000Z",
-  "user": { "id": "…", "name": "Trần Thu Hà", "email": "ha@demo.local" },
-  "course": { "id": "…", "title": "Docker Volume cơ bản" },
-  "item": { "id": "…", "type": "exam", "title": "Đề kiểm tra: Docker Volume" },
-  "result": { "score": 90, "passed": true, "mode": "official" } }
-```
-
-Bên nhận kiểm tra chữ ký (Node.js):
-
-```js
-const ok = req.headers['x-lms-signature'] === 'sha256=' + crypto.createHmac('sha256', SECRET).update(rawBody).digest('hex')
-```
-
-## Gửi tin cậy
-
-- Sự kiện được ghi vào hàng đợi (bảng `outbox`) ngay khi nghiệp vụ xảy ra. Phần gửi chạy nền mỗi 15 giây.
-- Gửi lỗi (mạng, 4xx, 5xx) thì thử lại sau 1, 2, 4… phút, tối đa 1 giờ một lần. Sau 8 lần thì dừng và giữ lỗi để xem.
-- Nhật ký gửi ở Cài đặt → Tích hợp cho biết từng sự kiện đã gửi, đang thử lại, hay đã dừng và vì sao.
-- Mật khẩu LRS và khóa ký không bao giờ trả về trình duyệt.
 
 ## Chưa làm (cần trao đổi với IT công ty)
 
 | Hạng mục | Ghi chú |
 |---|---|
 | Đăng nhập một lần (SSO qua SAML hoặc OIDC) | Cần thông tin nhà cung cấp định danh của công ty |
-| LTI 1.3 | Để LMS công ty mở thẳng khóa học trên LMS này (giữ được Tutor và thi chính thức) |
-| Đồng bộ danh sách nhân viên và phòng ban từ HRM | Hiện thêm thành viên trong Kế hoạch đào tạo → Đội ngũ |
 | SCORM 2004 / cmi5 | Làm thêm khi LMS công ty yêu cầu |
+| Đẩy gói thẳng lên LMS công ty qua API | Hiện tải tệp .zip rồi nhập tay |

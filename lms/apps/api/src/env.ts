@@ -3,8 +3,8 @@ import { z } from 'zod'
 const schema = z.object({
   NODE_ENV: z.string().default('development'),
   DATABASE_URL: z.string().url(),
-  PORT: z.coerce.number().default(4000),
-  WEB_ORIGIN: z.string().default('http://localhost:5190'),
+  PORT: z.coerce.number().default(4100),
+  WEB_ORIGIN: z.string().default('http://localhost:5194'),
   SESSION_DAYS: z.coerce.number().default(14),
   STORAGE_DIR: z.string().default('./storage'),
   AI_PROVIDER: z.enum(['openai', 'mock']).default('mock'),

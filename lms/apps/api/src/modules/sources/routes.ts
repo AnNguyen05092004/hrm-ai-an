@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { and, eq } from 'drizzle-orm'
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { db, schema } from '../../db/client.js'
-import { me, requireAuthor } from '../../lib/auth.js'
+import { me, requireEditor } from '../../lib/auth.js'
 import { badRequest, must } from '../../lib/errors.js'
 import { kindOf } from '../../lib/extract.js'
 import { putFile } from '../../lib/storage.js'
@@ -11,7 +11,7 @@ import { audit } from '../../lib/audit.js'
 import { fileKey, listSources } from './service.js'
 
 export const sourceRoutes: FastifyPluginAsyncZod = async (app) => {
-  app.addHook('preHandler', requireAuthor)
+  app.addHook('preHandler', requireEditor)
 
   app.get('/', async (req) => listSources(me(req).orgId))
 

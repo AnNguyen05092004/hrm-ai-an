@@ -11,12 +11,10 @@ import Dashboard from './pages/Dashboard'
 import { KitLoading, KitDetails, KitOutline } from './pages/KitFlow'
 import KitPage from './pages/KitPage'
 import Editor from './pages/Editor'
-import { AuthorPreview, LearnerPlayer } from './pages/Preview'
-import { Library, Analytics, Grading, SettingsPage } from './pages/Lists'
-import { MyLearning } from './pages/Roles'
-import Workforce from './pages/Workforce'
-import { ExamPage } from './pages/Exam'
-import { CoursePage } from './pages/Course'
+import { Preview } from './pages/Preview'
+import { Library, SettingsPage } from './pages/Lists'
+import { ReviewInbox, ReviewPage } from './pages/Review'
+import Users from './pages/Users'
 
 function Full({ children }) { return <div className="grid h-full place-items-center">{children}</div> }
 
@@ -29,8 +27,9 @@ function Gate({ allow, children }) {
   if (allow && !allow.includes(me.role)) return <Navigate to={me.home} replace />
   return children
 }
-const A = ['author']
-const L = ['learner']
+// người soạn: author và admin; quản trị: admin
+const E = ['author', 'admin']
+const ADMIN = ['admin']
 
 function ScrollTop() {
   const { pathname } = useLocation()
@@ -38,7 +37,7 @@ function ScrollTop() {
   return null
 }
 
-function HomeRedirect() { const { me } = useMe(); return me?.role === 'learner' ? <Navigate to="/learn" replace /> : <Dashboard /> }
+function Home() { const { me } = useMe(); return me?.role === 'reviewer' ? <ReviewInbox /> : <Dashboard /> }
 function Keyed({ C }) { const p = useParams(); return <C key={Object.values(p).join('/')} /> }
 
 // Trình soạn và xem trước cần màn rộng: trên điện thoại hiện lời nhắn thay vì để khung bị vỡ
@@ -84,25 +83,18 @@ export default function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route element={<Gate><Shell /></Gate>}>
-                <Route path="/" element={<HomeRedirect />} />
-                <Route path="/library" element={<Gate allow={A}><Library /></Gate>} />
-                <Route path="/workforce" element={<Gate allow={A}><Workforce /></Gate>} />
-                <Route path="/analytics" element={<Gate allow={A}><Analytics /></Gate>} />
-                <Route path="/grading" element={<Gate allow={A}><Grading /></Gate>} />
-                <Route path="/settings" element={<Gate allow={A}><SettingsPage /></Gate>} />
-                <Route path="/learn" element={<Gate allow={L}><MyLearning /></Gate>} />
+                <Route path="/" element={<Home />} />
+                <Route path="/library" element={<Gate allow={E}><Library /></Gate>} />
+                <Route path="/users" element={<Gate allow={ADMIN}><Users /></Gate>} />
+                <Route path="/settings" element={<SettingsPage />} />
               </Route>
-              <Route path="/kit/:id/loading" element={<Gate allow={A}><KitLoading /></Gate>} />
-              <Route path="/kit/:id/details" element={<Gate allow={A}><KitDetails /></Gate>} />
-              <Route path="/kit/:id/outline" element={<Gate allow={A}><KitOutline /></Gate>} />
-              <Route path="/kit/:id" element={<Gate allow={A}><Keyed C={KitPage} /></Gate>} />
-              <Route path="/edit/:aid" element={<Gate allow={A}><Wide what="soạn"><Keyed C={Editor} /></Wide></Gate>} />
-              <Route path="/preview/:aid" element={<Gate allow={A}><Wide what="xem trước"><Keyed C={AuthorPreview} /></Wide></Gate>} />
-              <Route path="/learn/:aid" element={<Gate><Keyed C={LearnerPlayer} /></Gate>} />
-              <Route path="/s/:slug" element={<Gate><Keyed C={LearnerPlayer} /></Gate>} />
-              <Route path="/course/:id" element={<Gate><Keyed C={CoursePage} /></Gate>} />
-              <Route path="/k/:slug" element={<Gate><Keyed C={CoursePage} /></Gate>} />
-              <Route path="/exam/:aid" element={<Gate><Keyed C={ExamPage} /></Gate>} />
+              <Route path="/kit/:id/loading" element={<Gate allow={E}><KitLoading /></Gate>} />
+              <Route path="/kit/:id/details" element={<Gate allow={E}><KitDetails /></Gate>} />
+              <Route path="/kit/:id/outline" element={<Gate allow={E}><KitOutline /></Gate>} />
+              <Route path="/kit/:id" element={<Gate allow={E}><Keyed C={KitPage} /></Gate>} />
+              <Route path="/edit/:aid" element={<Gate allow={E}><Wide what="soạn"><Keyed C={Editor} /></Wide></Gate>} />
+              <Route path="/preview/:aid" element={<Gate><Wide what="xem trước"><Keyed C={Preview} /></Wide></Gate>} />
+              <Route path="/review/:kitId" element={<Gate><Keyed C={ReviewPage} /></Gate>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Boundary>

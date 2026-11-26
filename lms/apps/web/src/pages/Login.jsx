@@ -45,7 +45,7 @@ export default function Login() {
         <div className="mt-6 rounded-lg bg-neutral-50 p-3 text-[13px] text-neutral-600">
           <b>Tài khoản mẫu</b> (mật khẩu <code>demo1234</code>)
           <div className="mt-1 flex flex-wrap gap-2">
-            {[['an@demo.local', 'Giám đốc · người tạo khóa'], ['ha@demo.local', 'Người học']].map(([e, l]) => (
+            {[['admin@demo.local', 'Quản trị'], ['an@demo.local', 'Người soạn'], ['ha@demo.local', 'Reviewer']].map(([e, l]) => (
               <button type="button" key={e} onClick={() => { setEmail(e); setPassword('demo1234') }} className="chip hover:bg-neutral-200">{l}</button>
             ))}
           </div>

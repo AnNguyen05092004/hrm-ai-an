@@ -14,7 +14,7 @@ import { AppError, badRequest } from '../../lib/errors.js'
 import { audit } from '../../lib/audit.js'
 import { getFile } from '../../lib/storage.js'
 import { PRESET_IMAGES, presetJpeg } from '../../lib/preset-images.js'
-import { learnerView, publishedContent } from '../learn/access.js'
+import { learnerView, publishedContent } from '../artifacts/view.js'
 import { loadImage } from '../images/routes.js'
 import { getKit, themeOf } from './service.js'
 

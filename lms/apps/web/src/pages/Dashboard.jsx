@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Paperclip, HardDrive, ArrowRight, ChevronRight, Users, Target, FileText, X, FolderOpen, Sparkles, FileUp, Box, CornerDownRight, ChevronLeft, AlertTriangle, Check } from 'lucide-react'
-import { useMe, useStore } from '../store'
+import { Paperclip, HardDrive, ArrowRight, ChevronRight, Users, Target, FileText, X, FolderOpen, Sparkles, FileUp, Box, CornerDownRight, ChevronLeft, AlertTriangle, Check, MessageSquare } from 'lucide-react'
+import { useMe, useStore, initials } from '../store'
 import { FORMATS } from '../data'
 import { FormatIcon, Modal, Thumb, FormatGlyph, Status, Avatar, Spinner } from '../ui'
-import { ShareModal } from './Common'
+import { PublishModal } from './Common'
+import { ReviewBadge } from './Review'
 import { TopOrg } from '../Shell'
 import { EXAMPLES } from '../examples'
 import { api, get, post } from '../api'
@@ -105,6 +106,8 @@ export default function Dashboard() {
   }
   const uploading = files.some((f) => !f.id && !f.error)
   const list = kits.data ?? []
+  // khóa có người yêu cầu sửa hoặc còn góp ý chưa xử lý
+  const todo = list.filter((k) => k.review && (k.review.changes > 0 || k.review.open > 0))
   const recent = list.flatMap((k) => [...k.artifacts.filter((a) => a.status !== 'generating').slice(0, 2).map((a) => ({ a, k })), { k }]).slice(0, 6)
 
   return (
@@ -162,6 +165,20 @@ export default function Dashboard() {
       </div>
 
       <div className="mx-auto mt-16 max-w-[1100px] px-8 pb-24">
+        {todo.length > 0 && (
+          <div className="mb-10">
+            <h3 className="text-[19px] font-semibold">Review cần bạn xử lý</h3>
+            <div className="mt-4 divide-y divide-line rounded-2xl border border-line bg-white">
+              {todo.map((k) => (
+                <button key={k.id} onClick={() => nav(`/review/${k.id}`)} className="flex w-full items-center gap-4 px-5 py-3.5 text-left hover:bg-neutral-50">
+                  <MessageSquare size={18} className="shrink-0 text-neutral-500" />
+                  <span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-semibold">{k.title}</span><span className="mt-0.5 flex flex-wrap items-center gap-2 text-[13px] text-neutral-600"><ReviewBadge review={k.review} />{k.review.open > 0 && <span>{k.review.open} góp ý chưa xử lý</span>}</span></span>
+                  <ChevronRight size={18} className="text-neutral-400" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <h3 className="text-[19px] font-semibold">Tiếp tục công việc</h3>
           <button onClick={() => nav('/library')} className="flex items-center gap-2 text-[15px] font-semibold"><FolderOpen size={18} />Xem thư viện</button>
@@ -177,7 +194,7 @@ export default function Dashboard() {
               return (
                 <div key={a ? a.id : k.id} className="card flex flex-col overflow-hidden transition hover:shadow-pop">
                   <button onClick={go} className="text-left">
-                    <Thumb img={(a || k.artifacts[0])?.img || k.img || 'office'} className="h-40"><span className="absolute left-3 top-3 rounded-full ring-2 ring-white/70"><Avatar text={me.initials} size={24} color={me.color} /></span></Thumb>
+                    <Thumb img={(a || k.artifacts[0])?.img || k.img || 'office'} className="h-40"><span className="absolute left-3 top-3 rounded-full ring-2 ring-white/70"><Avatar text={initials(k.createdBy || me.name)} size={24} color={me.color} /></span></Thumb>
                     <div className="px-4 pt-4">
                       <div className="flex items-center gap-1.5 text-[13px] font-medium">
                         {a ? <><CornerDownRight size={14} className="text-neutral-400" /><FormatGlyph type={a.type} size={14} />{FORMATS[a.type].name}</> : <><Box size={14} className="text-emerald-600" />Khóa học<span className="font-normal text-neutral-500">· {k.stage !== 'ready' ? 'đang soạn' : `${k.artifacts.length} tài liệu`}</span></>}
@@ -188,7 +205,8 @@ export default function Dashboard() {
                   </button>
                   <div className="flex-1" />
                   <div className="mt-4 min-h-[86px] border-t border-line px-4 pb-4 pt-3">
-                    {a && <><Status s={a.status} /><button onClick={() => setShare(a)} className="btn-line mt-3 h-9 w-full">Chia sẻ</button></>}
+                    {a && <><Status s={a.status} /><button onClick={() => setShare(a)} className="btn-line mt-3 h-9 w-full">Xuất bản</button></>}
+                    {!a && k.stage === 'ready' && <><ReviewBadge review={k.review} /><button onClick={() => nav(`/review/${k.id}`)} className="btn-line mt-3 h-9 w-full">{k.review?.total ? 'Xem review' : 'Mời review'}</button></>}
                   </div>
                 </div>
               )
@@ -199,7 +217,7 @@ export default function Dashboard() {
 
       <HowItWorks open={how} onClose={() => setHow(false)} />
       <SourcePicker open={pick} onClose={() => setPick(false)} chosen={files} onPick={(s, on) => setFiles((x) => (on ? [...x, { key: s.id, id: s.id, name: s.name, ready: true }] : x.filter((y) => y.id !== s.id)))} />
-      <ShareModal open={!!share} art={share} onClose={() => setShare(null)} />
+      <PublishModal open={!!share} art={share} onClose={() => setShare(null)} />
     </div>
   )
 }

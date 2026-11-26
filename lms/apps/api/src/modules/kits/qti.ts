@@ -11,7 +11,7 @@ import { db, schema } from '../../db/client.js'
 import { me } from '../../lib/auth.js'
 import { badRequest, notFound } from '../../lib/errors.js'
 import { audit } from '../../lib/audit.js'
-import { publishedContent } from '../learn/access.js'
+import { publishedContent } from '../artifacts/view.js'
 import { getKit } from './service.js'
 
 type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any

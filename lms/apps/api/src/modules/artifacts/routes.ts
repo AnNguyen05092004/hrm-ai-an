@@ -1,14 +1,12 @@
-import crypto from 'node:crypto'
 import { z } from 'zod'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { db, schema } from '../../db/client.js'
-import { me, requireAuthor } from '../../lib/auth.js'
+import { me, requireEditor } from '../../lib/auth.js'
 import { badRequest, conflict, must } from '../../lib/errors.js'
 import { audit } from '../../lib/audit.js'
 import { enqueue } from '../../lib/jobs.js'
 import { artifactDto, artifactMeta, getKit } from '../kits/service.js'
-import { indexArtifact } from '../tutor/index-content.js'
 import { aiBlock, aiEditBlock, generateQuestions } from './ai-edit.js'
 import { publishIssues } from './validate.js'
 import { publishArtifact } from './publish.js'
@@ -20,7 +18,7 @@ export const getArtifact = async (orgId: string, id: string): Promise<typeof sch
   must((await db.select().from(schema.artifacts).where(and(eq(schema.artifacts.id, id), eq(schema.artifacts.orgId, orgId))))[0], 'Tài liệu')
 
 export const artifactRoutes: FastifyPluginAsyncZod = async (app) => {
-  app.addHook('preHandler', requireAuthor)
+  app.addHook('preHandler', requireEditor)
 
   app.get('/', async (req) => {
     const rows = await db.select().from(schema.artifacts).where(eq(schema.artifacts.orgId, me(req).orgId)).orderBy(desc(schema.artifacts.updatedAt))
@@ -29,7 +27,7 @@ export const artifactRoutes: FastifyPluginAsyncZod = async (app) => {
 
   app.get('/:id', { schema: { params: P } }, async (req) => {
     const a = await getArtifact(me(req).orgId, req.params.id)
-    return { ...artifactDto(a), shareSlug: a.shareSlug }
+    return artifactDto(a)
   })
 
   // Lưu tự động từ màn soạn: tên, tóm tắt, ảnh và toàn bộ cây nội dung
@@ -57,7 +55,7 @@ export const artifactRoutes: FastifyPluginAsyncZod = async (app) => {
 
   app.get('/:id/check', { schema: { params: P } }, async (req) => publishIssues(await getArtifact(me(req).orgId, req.params.id)))
 
-  // Xuất bản: chụp bản hiện tại thành phiên bản mới, lập chỉ mục cho Tutor (BR02)
+  // Xuất bản: chụp bản hiện tại thành phiên bản mới; gói xuất (SCORM, đề QTI) dùng bản này
   app.post('/:id/publish', { schema: { params: P, body: z.object({ note: z.string().max(500).default('') }) } }, async (req) => {
     const u = me(req)
     const a = await getArtifact(u.orgId, req.params.id)
@@ -68,8 +66,7 @@ export const artifactRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post('/:id/unpublish', { schema: { params: P } }, async (req) => {
     const u = me(req)
     const a = await getArtifact(u.orgId, req.params.id)
-    const [r] = await db.update(schema.artifacts).set({ status: 'draft', publishedVersion: null, shareSlug: null, updatedAt: new Date() }).where(eq(schema.artifacts.id, a.id)).returning()
-    await indexArtifact(a.id)
+    const [r] = await db.update(schema.artifacts).set({ status: 'draft', publishedVersion: null, updatedAt: new Date() }).where(eq(schema.artifacts.id, a.id)).returning()
     await audit(u, 'artifact.unpublish', a.id)
     return artifactMeta(r)
   })
@@ -88,16 +85,6 @@ export const artifactRoutes: FastifyPluginAsyncZod = async (app) => {
     const v = must((await db.select().from(schema.artifactVersions).where(and(eq(schema.artifactVersions.artifactId, a.id), eq(schema.artifactVersions.version, req.params.v))))[0], 'Phiên bản')
     await db.update(schema.artifacts).set({ title: v.title, summary: v.summary, content: v.content, updatedAt: new Date() }).where(eq(schema.artifacts.id, a.id))
     return { ok: true }
-  })
-
-  // Đường dẫn chia sẻ trong công ty
-  app.post('/:id/share', { schema: { params: P, body: z.object({ on: z.boolean() }) } }, async (req) => {
-    const u = me(req)
-    const a = await getArtifact(u.orgId, req.params.id)
-    if (req.body.on && a.status !== 'published') throw badRequest('Xuất bản tài liệu trước khi tạo đường dẫn')
-    const slug = req.body.on ? (a.shareSlug ?? crypto.randomBytes(6).toString('base64url')) : null
-    await db.update(schema.artifacts).set({ shareSlug: slug }).where(eq(schema.artifacts.id, a.id))
-    return { shareSlug: slug }
   })
 
   // Sửa bằng AI một khối / slide / câu hỏi

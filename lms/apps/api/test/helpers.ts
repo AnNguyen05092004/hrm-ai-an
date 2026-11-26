@@ -2,10 +2,10 @@ import { beforeAll, afterAll } from 'vitest'
 import type { FastifyInstance, InjectOptions } from 'fastify'
 import { buildApp } from '../src/app.js'
 import { runMigrations } from '../src/db/migrate.js'
-import { seed, AUTHOR_EMAIL, LEARNER_EMAIL, DEMO_PASSWORD } from '../src/db/seed.js'
-import { indexAllPublished } from '../src/modules/tutor/index-content.js'
+import { seed, ADMIN_EMAIL, AUTHOR_EMAIL, REVIEWER_EMAIL, DEMO_PASSWORD } from '../src/db/seed.js'
 
-export interface Ctx { app: FastifyInstance; ids: Awaited<ReturnType<typeof seed>>; author: Client; learner: Client; authorCookie: string }
+// admin, author (người soạn) và reviewer (Phạm Thu Hà, được mời sẵn vào khóa An toàn thông tin và Nghỉ phép)
+export interface Ctx { app: FastifyInstance; ids: Awaited<ReturnType<typeof seed>>; admin: Client; author: Client; reviewer: Client; authorCookie: string }
 export type Client = (method: InjectOptions['method'], url: string, body?: unknown) => Promise<{ status: number; body: any }> // eslint-disable-line @typescript-eslint/no-explicit-any
 
 export function client(app: FastifyInstance, cookie = ''): Client {
@@ -30,11 +30,11 @@ export function setupApp(): Ctx {
   beforeAll(async () => {
     await runMigrations()
     ctx.ids = await seed()
-    await indexAllPublished(ctx.ids.orgId)
     ctx.app = await buildApp()
     ctx.authorCookie = await sessionCookie(ctx.app, AUTHOR_EMAIL)
     ctx.author = client(ctx.app, ctx.authorCookie)
-    ctx.learner = await loginAs(ctx.app, LEARNER_EMAIL)
+    ctx.admin = await loginAs(ctx.app, ADMIN_EMAIL)
+    ctx.reviewer = await loginAs(ctx.app, REVIEWER_EMAIL)
   })
   afterAll(async () => { await ctx.app?.close() })
   return ctx

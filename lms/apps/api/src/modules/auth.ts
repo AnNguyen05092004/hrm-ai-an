@@ -5,7 +5,7 @@ import { db, schema } from '../db/client.js'
 import { COOKIE, checkPassword, createSession, destroySession, me, requireUser, setSessionCookie } from '../lib/auth.js'
 import { AppError, notFound } from '../lib/errors.js'
 import { demoMode } from '../env.js'
-import { AUTHOR_EMAIL, LEARNER_EMAIL } from '../db/demo-accounts.js'
+import { DEMO_ACCOUNTS } from '../db/demo-accounts.js'
 
 export const authRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post('/login', {
@@ -20,11 +20,8 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     return { id: u.id }
   })
 
-  // ----- Bản demo: vào thẳng và đổi vai không cần mật khẩu (chỉ hai tài khoản mẫu, tắt ở production) -----
-  const DEMO = [
-    { email: AUTHOR_EMAIL, label: 'Giám đốc' },
-    { email: LEARNER_EMAIL, label: 'Người học' },
-  ]
+  // ----- Bản demo: vào thẳng và đổi vai không cần mật khẩu (chỉ các tài khoản mẫu, tắt ở production) -----
+  const DEMO = DEMO_ACCOUNTS
   const demoUsers = async () => {
     if (!demoMode()) throw notFound('Không có bản demo')
     const rows = await db.select({ id: schema.users.id, email: schema.users.email, name: schema.users.name, title: schema.users.title, role: schema.users.role, color: schema.users.color, active: schema.users.active })
@@ -57,7 +54,7 @@ export const authRoutes: FastifyPluginAsyncZod = async (app) => {
     const u = me(req)
     const [row] = await db.select({
       id: schema.users.id, name: schema.users.name, email: schema.users.email, role: schema.users.role,
-      title: schema.users.title, color: schema.users.color, orgName: schema.orgs.name, deptId: schema.users.deptId,
+      title: schema.users.title, color: schema.users.color, orgName: schema.orgs.name,
     }).from(schema.users).innerJoin(schema.orgs, eq(schema.orgs.id, schema.users.orgId)).where(eq(schema.users.id, u.id))
     return { ...row, demo: demoMode() }
   })

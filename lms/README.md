@@ -1,114 +1,118 @@
-# LMS: soạn khóa bằng AI, AI Tutor, thi và năng lực đội ngũ
+# LMS Studio: soạn khóa học bằng AI, mời review, xuất sang LMS công ty
 
-Bản chạy thật của [prototype LMS](../prototype/lms): có backend, cơ sở dữ liệu, đăng nhập và AI thật (OpenAI). Phân tích và quyết định kiến trúc ở [docs/PLAN.md](docs/PLAN.md), rà soát UX và so sánh với Articulate ở [docs/REVIEW-UX.md](docs/REVIEW-UX.md), kết nối LMS công ty ở [docs/INTEGRATION.md](docs/INTEGRATION.md), đặc tả ở [lms-specs.md](../docs/modules/lms/lms-specs.md).
+Nhánh `feat/lms-studio`, tách từ bản LMS đầy đủ (`feat/lms-app`). Bản này chỉ giữ phần **làm ra khóa học**: soạn bằng AI từ tài liệu nội bộ, mời người review, xuất gói SCORM 1.2 và đề QTI 2.1 cho LMS sẵn có của công ty. Đã bỏ toàn bộ phía người học (học, AI Tutor, thi, chấm bài, kế hoạch đào tạo, phân tích, xAPI/webhook). Lý do và phạm vi ở [docs/STUDIO.md](docs/STUDIO.md), cách xuất ở [docs/INTEGRATION.md](docs/INTEGRATION.md).
 
 ## Chạy (một lệnh)
 
-Cần cài sẵn Node 22, Docker Desktop (đang mở) và ffmpeg (`brew install ffmpeg`, chỉ dùng để dựng video AI).
+Cần Node 22, Docker Desktop (đang mở) và ffmpeg (`brew install ffmpeg`, chỉ dùng để dựng video AI).
 
 ```bash
 cd lms
 npm start
 ```
 
-Mở http://localhost:5190. Dừng bằng Ctrl+C.
+Mở http://localhost:5194. Dừng bằng Ctrl+C.
 
 `npm start` tự làm các bước:
 
-1. Tạo `.env` nếu chưa có. Lấy key OpenAI từ `../key.txt`; không có key thì chạy AI giả lập.
+1. Tạo `.env` từ `.env.example` nếu chưa có. Lấy key OpenAI từ `../key.txt`; không có key thì chạy AI giả lập.
 2. Chạy `npm install` nếu chưa cài.
-3. Bật Postgres trong Docker.
-4. Tạo bảng và dữ liệu mẫu, chỉ ở lần chạy đầu. Các lần sau giữ nguyên dữ liệu.
-5. Chạy API (cổng 4000), web (cổng 5190) và trang demo LMS công ty nhận gói SCORM (cổng 5192).
+3. Bật Postgres trong Docker, tạo DB `lms_studio` nếu chưa có.
+4. Tạo bảng và dữ liệu mẫu ở lần chạy đầu. Các lần sau giữ nguyên dữ liệu.
+5. Chạy API (cổng 4100), web (cổng 5194) và trang demo LMS công ty nhận gói (cổng 5196).
+
+Cổng và DB khác bản LMS đầy đủ (4000, 5190, 5192, DB `lms`) nên chạy song song hai bản được, dữ liệu không đụng nhau.
 
 | Lệnh | Dùng khi |
 |---|---|
 | `npm start` | Chạy hằng ngày |
 | `npm run reset` | Xóa hết dữ liệu, tạo lại dữ liệu mẫu rồi chạy |
-| `npm run db:seed-grading -w apps/api` | Thêm đề mẫu An toàn thông tin và 2 bài chờ chấm vào DB đang dùng, không xóa dữ liệu (bản `reset` đã có sẵn) |
-| `npm test` | Chạy 74 test API (AI giả lập, DB `lms_test` riêng) |
+| `npm test` | Chạy 43 test API (AI giả lập, DB `lms_studio_test` riêng) |
 | `npm run typecheck` · `npm run build` | Kiểm tra kiểu · build bản production (gồm cả trình học cho gói SCORM) |
 
-Muốn chạy không cần key: đặt `AI_PROVIDER=mock` trong `.env`.
+**Bản demo:** mở web là vào thẳng vai người soạn. Bấm tên ở góc dưới thanh bên để đổi vai. Tự bật khi không phải production; tắt bằng `DEMO_MODE=false` trong `.env` để dùng màn đăng nhập.
 
-**Bản demo:** mở web là vào thẳng vai giám đốc, không qua màn đăng nhập. Bấm tên ở góc dưới thanh bên để đổi sang vai người học và ngược lại. Chế độ này tự bật khi không phải production; tắt bằng `DEMO_MODE=false` trong `.env` để dùng lại màn đăng nhập.
+## Ba vai
 
-**Tài khoản mẫu** (mật khẩu `demo1234`, chỉ dùng ở môi trường phát triển):
+Mật khẩu mẫu `demo1234`, chỉ dùng ở môi trường phát triển.
 
-| Vai | Email | Thấy gì |
+| Vai | Email mẫu | Làm được |
 |---|---|---|
-| Giám đốc, người tạo khóa học | an@demo.local | Trang chủ, Thư viện, Kế hoạch đào tạo, Phân tích, Chấm bài, Cài đặt |
-| Người học | ha@demo.local | Khóa học của tôi, học, hỏi AI Tutor, thi |
+| Quản trị (admin) | admin@demo.local | Mọi việc của người soạn, cộng thêm: tạo tài khoản, đổi vai, khóa tài khoản, đặt lại mật khẩu, đổi hạn mức AI, xem nhật ký |
+| Người soạn (author) | an@demo.local | Tải tài liệu nguồn, tạo và soạn khóa học bằng AI, mời review, trả lời góp ý, xuất bản, xuất gói |
+| Reviewer | ha@demo.local, nam.lh@demo.local | Chỉ thấy khóa được mời. Xem bản nháp (kèm đáp án câu hỏi), góp ý theo từng bài / slide / cảnh / câu hỏi, kết luận Duyệt hoặc Cần sửa. Không sửa được nội dung |
 
-## Tech stack
+Quyền được kiểm tra ở API, không chỉ ẩn nút trên giao diện. Đổi vai hoặc khóa tài khoản thì mọi phiên đăng nhập của người đó hết hiệu lực ngay.
 
-| Lớp | Dùng | Ghi chú |
-|---|---|---|
-| Web | React 18, Vite, Tailwind, React Router, TanStack Query | Tái dùng giao diện prototype. Vite chuyển `/api` sang cổng 4000 |
-| API | Node 22, Fastify 5, TypeScript strict, Zod | Kiểm tra mọi đầu vào bằng schema |
-| CSDL | PostgreSQL 16 + pgvector (Docker), Drizzle ORM | Bảng quan hệ, nội dung bài học dạng JSONB, vector cho Tutor, tất cả trong một DB |
-| AI | OpenAI: `gpt-5.4-mini` (mặc định), `gpt-5.4` (việc khó), `text-embedding-3-small`, `gpt-4o-mini-tts`, `gpt-image-2` (tạo ảnh) | Đầu ra JSON theo schema. Đổi model qua `.env`. Có hạn mức theo tháng |
-| Đăng nhập | Email + mật khẩu (bcrypt), session trong cookie httpOnly | Có chống CSRF và giới hạn số lần gọi |
-| Việc chạy nền | Bảng `jobs` + worker trong tiến trình API | Dùng cho AI soạn bài và dựng video. Khởi động lại không mất việc |
-| Tài liệu nguồn | pdf-parse, mammoth | Trích chữ, chia đoạn theo mục, tạo embedding |
-| Chấm bài code | worker thread + `node:vm` | Giới hạn thời gian và bộ nhớ, không có biến môi trường |
-| Video | resvg (vẽ slide), TTS, ffmpeg | Ghép slide và giọng đọc thành MP4 có phụ đề |
-| Tích hợp | SCORM 1.2 (gói .zip, fflate), xAPI 1.0.3, webhook HMAC | Hàng đợi `outbox` gửi nền, thử lại khi lỗi. Chi tiết ở [docs/INTEGRATION.md](docs/INTEGRATION.md) |
-| Test | Vitest + `app.inject` | AI giả lập nên test không tốn tiền |
+## Luồng làm việc
 
-## Tính năng đã làm
+```
+Người soạn                         Reviewer                         LMS công ty
+──────────                         ────────                         ───────────
+Tải tài liệu nguồn
+Nhập mục tiêu → AI soạn chi tiết
+→ dàn ý → tài liệu (có trích nguồn)
+Mời review (chọn người, lời nhắn, hạn) ──► Hộp "Cần review"
+                                   Xem bản nháp, góp ý theo vị trí
+                                   Kết luận: Duyệt / Cần sửa
+Trả lời, "Sửa chỗ này", đánh dấu  ◄──
+đã xử lý → "Đã sửa, gửi lại review" ──► Vòng 2 ...
+Xuất bản → Xuất khóa học ─────────────────────────────────────────► Nhập gói SCORM / đề QTI
+```
+
+## Tính năng
 
 | Phần | Làm được |
 |---|---|
 | Tài liệu nguồn | Tải PDF, DOCX, TXT, MD rồi tìm theo nghĩa. Tải bản mới thì chỉ ra bài, slide, câu hỏi nào đang trích phần bị đổi |
-| Soạn bộ đào tạo | Nhập mục tiêu → AI soạn chi tiết → dàn ý → 4 loại tài liệu (Tài liệu nhanh, Slide, Tình huống, Video). Mọi khối đều ghi nguồn. Chỗ nguồn không đủ được đánh dấu. AI cảnh báo khi nguồn mâu thuẫn hoặc có nội dung nhạy cảm |
-| Khối nội dung | Văn bản, tiêu đề, danh sách, bảng, mã lệnh, ảnh, ảnh có chú thích (điểm bấm), tab, mục mở rộng, thẻ lật, dòng thời gian, các bước, câu hỏi nhanh, luyện tập kéo thả phân loại. AI soạn được các khối này từ tài liệu nguồn |
-| Ảnh | Ảnh có sẵn, tải ảnh lên (kiểm tra định dạng thật của tệp, tối đa 8 MB), AI tạo ảnh từ mô tả. Dùng cho khối ảnh, slide, ảnh bìa tài liệu và khóa; ảnh vào cả video dựng |
-| Giao diện khóa | Màu nhấn, bộ font, ảnh bìa riêng cho từng khóa; áp cho trình soạn, trang khóa, bài học, slide, video và trang thi |
-| Soạn tại chỗ | Bấm vào chữ là sửa, tự lưu. Bôi đen chữ để in đậm, nghiêng, gạch chân, gạch ngang, đổi màu, tô nền, gắn liên kết (⌘B/I/U/K). Mỗi khối chỉnh được cỡ chữ, căn lề, nền. Sửa từng khối bằng AI, sinh câu hỏi theo mức. Xuất bản có phiên bản, khôi phục được bản cũ |
-| Slide | 8 bố cục, sửa chữ tại chỗ. Soạn như phần mềm trình chiếu: chèn hộp chữ, ảnh, hình khối (chữ nhật, bo góc, tròn, đường thẳng, mũi tên); kéo để di chuyển, kéo góc để đổi cỡ; cỡ chữ, font (11 font có đủ dấu tiếng Việt, cho từng phần chữ hoặc cả slide), màu (cả màu tùy chọn), đậm/nghiêng/gạch chân, căn lề; xoay phần tử (tay nắm hoặc nhập độ), độ đậm, sắp lớp, căn giữa slide, nhân đôi; nền màu hoặc ảnh nền có lớp phủ sáng/tối, áp cho mọi slide; hoàn tác/làm lại (⌘Z), phím tắt (Delete, mũi tên, ⌘D); kéo thả đổi thứ tự slide; ẩn/hiện ghi chú. Sửa slide bằng AI, nghe thử lời đọc bằng giọng AI. Video dựng và gói SCORM giữ đúng các định dạng này |
-| Video AI | Slide + lời đọc → giọng AI → MP4 có phụ đề, chương theo thời lượng thật (giữ đúng định dạng slide). Sửa slide ngay trong trang video; sửa slide nào chỉ dựng lại đoạn đó |
-| Khóa học | Một khóa gồm Tài liệu nhanh, Slide, Tình huống, Video, Đề kiểm tra. Chia sẻ cả khóa: xuất bản hàng loạt (bỏ qua tài liệu không đổi, nêu lý do tài liệu bị chặn), giao cả khóa, một đường dẫn cho cả khóa |
-| Học | Khóa học của tôi gom theo khóa; mở khóa thấy các phần theo thứ tự học, tiến độ từng phần và nút học tiếp. Có hạn, theo dõi tiến độ. Danh sách khóa và trang khóa học xếp gọn trên điện thoại |
-| AI Tutor | Chỉ trả lời từ nội dung đã xuất bản, kèm nguồn và nút nhảy tới bài hoặc phút video. Tìm sang khóa khác. Không có câu trả lời thì nói rõ và gom câu hỏi cho người soạn. Tự tắt khi người học đang thi |
-| Đề kiểm tra | Tạo đề riêng cho khóa: chọn mức, số câu mỗi mức, số câu mỗi đề, giờ, điểm đạt, lượt, giám sát; AI soạn ngân hàng câu có nguồn, người soạn duyệt (có duyệt tất cả) |
-| Dạng câu hỏi | Một đáp án, nhiều đáp án, điền chỗ trống, ghép cặp, sắp thứ tự, phân loại kéo thả (chấm tự động, cho điểm từng phần), tự luận (AI chấm nháp), bài code JavaScript (chạy cách ly) |
-| Thi và chấm | Mỗi người một đề riêng, rút từ ngân hàng câu đã duyệt. Có giờ thi, số lượt, lưu liên tục, làm tiếp được khi mất mạng. Trắc nghiệm và bài code JavaScript chấm tự động. AI chấm nháp tự luận theo rubric, người chấm xác nhận |
-| Giám sát | Bật theo bài, người thi phải đồng ý. Gắn cờ khi chuyển tab, rời cửa sổ, dán từ ngoài. Người chấm quyết định. Tự xóa sau 30 ngày |
-| Kế hoạch đào tạo | Chọn KPI, bộ phận, thời hạn rồi phân tích: từ KPI ra kỹ năng cần và khoảng cách của từng người, sơ đồ KPI → kỹ năng → khóa → người học, lộ trình chia đợt. Gợi ý khóa có sẵn, hoặc tạo khóa bằng AI cho kỹ năng chưa có. Có sơ đồ đội ngũ và đánh giá mức từ bằng chứng. Thi chính thức đạt thì nâng mức (tối đa 3). Trợ lý AI trả lời trên dữ liệu đội |
-| Kết nối LMS công ty | Xuất khóa thành gói SCORM 1.2 (cùng giao diện học, ghi hoàn thành, điểm, học dở); gửi kết quả học sang LRS qua xAPI; webhook có chữ ký cho hệ thống nội bộ. Tải riêng đề kiểm tra kèm đáp án và tiêu chí chấm (IMS QTI 2.1 + exam.json) để LMS công ty tự quản lý, tự chấm, kể cả bằng AI của họ. Trang demo LMS công ty (http://localhost:5192, `apps/company-lms`): nhập gói SCORM hoặc đề QTI, giao cho nhân viên, chạy gói và xem từng lệnh SCORM gửi về, cho làm bài và chấm tự luận theo tiêu chí, báo cáo, tải CSV |
-| Phân tích | Theo khóa, từ trên xuống: mỗi khóa một dòng (số người được giao, đã bắt đầu, đã xong, tiến độ trung bình, thi, điểm, Tutor); bung ra tài liệu trong khóa; bấm số người để xem ai được giao, lọc quá hạn / chưa bắt đầu / đang học / đã xong; mở chi tiết một người: tiến độ từng tài liệu, lượt thi (mở thẳng bài chấm), mức kỹ năng, câu đã hỏi Tutor. Lần xem chi tiết được ghi nhật ký. Câu Tutor chưa trả lời được, câu hỏi bị sai nhiều |
-| Vận hành | Hạn mức AI theo tháng, thống kê token theo tính năng, nhật ký thao tác |
+| Soạn khóa học | Nhập mục tiêu → AI soạn chi tiết → dàn ý → Tài liệu nhanh, Slide, Tình huống, Video, Đề kiểm tra. Mọi khối ghi nguồn; chỗ nguồn không đủ được đánh dấu; AI cảnh báo nguồn mâu thuẫn hoặc nhạy cảm |
+| Soạn tại chỗ | Bấm vào chữ là sửa, tự lưu, định dạng chữ, sửa từng khối bằng AI, sinh câu hỏi theo mức, khôi phục phiên bản cũ |
+| Slide, video AI | Trình soạn slide (hộp chữ, ảnh, hình khối, xoay, sắp lớp, hoàn tác); slide + lời đọc → giọng AI → MP4 có phụ đề |
+| Câu hỏi | Một / nhiều đáp án, điền chỗ trống, ghép cặp, sắp thứ tự, phân loại, tự luận có tiêu chí chấm, bài code có test case. Người soạn duyệt từng câu |
+| Review | Mời nhiều reviewer cho một khóa, kèm lời nhắn và hạn. Góp ý gắn với tài liệu và vị trí (bài, slide, chương, cảnh, bước, câu hỏi), trả lời trong luồng, đánh dấu đã xử lý / mở lại. Kết luận "Cần sửa" bắt buộc nói rõ cần sửa gì. Gửi lại mở vòng review mới. Thẻ khóa học hiện tình trạng review |
+| Xuất | Xuất bản cả khóa (bỏ qua tài liệu không đổi, nêu lý do tài liệu bị chặn). Gói SCORM 1.2 cùng giao diện học. Đề kiểm tra QTI 2.1 kèm đáp án, tiêu chí chấm và lời nhắc cho AI chấm của LMS công ty. Trang demo LMS công ty (http://localhost:5196) để thử nhập gói |
+| Quản trị | Người dùng và vai, hạn mức AI theo tháng, thống kê token, nhật ký thao tác (mời review, kết luận, xuất gói, đổi vai…) |
 
 ## Kịch bản demo nhanh
 
-1. Đăng nhập `an@demo.local`. Ở Trang chủ, tải lên [docs/demo/Quy-trinh-release.md](docs/demo/Quy-trinh-release.md), chọn chủ đề mẫu CI/CD rồi bấm **Bắt đầu**. Rà chi tiết → **Tạo dàn ý** → **Tạo N tài liệu**.
-2. Mở Tài liệu nhanh. Xem nguồn ở từng khối, thử **Sửa bằng AI**, vào Bài kiểm tra duyệt vài câu vào ngân hàng đề. Sau đó **Chia sẻ** → **Xuất bản** → **Giao khóa**.
-3. Mở Video → tab **Lời đọc** → **Dựng video**.
-4. Vào Thư viện → Tài liệu nguồn → `Runbook-Backup-v2.docx` → **Tải bản mới** bằng [docs/demo/Runbook-Backup-v3.md](docs/demo/Runbook-Backup-v3.md). Mở bộ "Docker Volume cơ bản": banner chỉ ra bài bị ảnh hưởng.
-5. Đăng nhập `ha@demo.local`. Mở "Lệnh và lựa chọn khi dùng Docker Volume" và hỏi Tutor 3 câu: "Khi nào dùng bind mount?", "Chính sách nghỉ phép năm bao nhiêu ngày?", "Đáp án câu 2 là gì?". Sau đó làm bài thi chính thức có giám sát.
-6. Quay lại `an@demo.local` → **Chấm bài**. Xem rubric AI đề xuất, xử lý cờ, xác nhận. Nếu đạt, mức Docker của Hà lên 2 ở **Kế hoạch đào tạo** → Đội ngũ.
-7. Ở **Kế hoạch đào tạo**: bật KPI, chọn bộ phận và hạn, bấm **Phân tích và lập kế hoạch** để xem sơ đồ khóa học theo đợt, giao khóa, tạo khóa bằng AI cho kỹ năng chưa có khóa, hỏi trợ lý "Bộ phận nào yếu nhất?".
+1. Vai **Người soạn**: Trang chủ có khóa "Docker Volume cơ bản" đang **Cần sửa**. Mở **Xem review**: anh Nam góp ý ở Bài 3. Bấm **Sửa chỗ này**, sửa, quay lại đánh dấu **Đã xử lý**, rồi **Đã sửa, gửi lại review**.
+2. Mở khóa "SQL cho phân tích dữ liệu" → **Review** → **Mời review**, chọn Phạm Thu Hà, ghi lời nhắn.
+3. Đổi sang vai **Reviewer** (Phạm Thu Hà): hộp **Cần review** có khóa vừa mời và khóa An toàn thông tin. Mở khóa, bấm **Xem** một tài liệu, bấm **Góp ý**, chọn tài liệu và vị trí, viết góp ý. Bấm **Kết luận review** → Duyệt hoặc Cần sửa.
+4. Về vai **Người soạn**: mở khóa An toàn thông tin → **Xuất khóa học** → xuất bản cả khóa → tải gói SCORM và đề QTI. Nhập thử vào http://localhost:5196.
+5. Vai **Quản trị**: **Người dùng** → thêm một reviewer mới (mật khẩu tạm hiện một lần), đổi vai, khóa tài khoản. **Cài đặt → Nhật ký** xem lại các thao tác.
+
+## Tech stack
+
+| Lớp | Dùng |
+|---|---|
+| Web | React 18, Vite, Tailwind, React Router, TanStack Query. Vite chuyển `/api` sang cổng 4100 |
+| API | Node 22, Fastify 5, TypeScript strict, Zod cho mọi đầu vào |
+| CSDL | PostgreSQL 16 + pgvector (Docker), Drizzle ORM. Migration nền `0000_studio_baseline` |
+| AI | OpenAI (model đổi qua `.env`), có hạn mức theo tháng; `AI_PROVIDER=mock` để chạy không cần key |
+| Đăng nhập | Email + mật khẩu (bcrypt), session trong cookie httpOnly, chống CSRF, giới hạn số lần gọi |
+| Việc chạy nền | Bảng `jobs` + worker trong tiến trình API (AI soạn, dựng video) |
+| Xuất gói | SCORM 1.2 và IMS QTI 2.1 (fflate) |
+| Test | Vitest + `app.inject` |
 
 ## Cấu trúc
 
 ```
 lms/
-├── scripts/start.sh          lệnh chạy một bước (npm start)
-├── docker-compose.yml        Postgres + pgvector (DB lms và lms_test)
-├── docs/PLAN.md              phân tích, quyết định kiến trúc, tiến độ
+├── scripts/start.sh          chạy một bước (npm start)
+├── docker-compose.yml        Postgres + pgvector
+├── docs/STUDIO.md            phạm vi bản này, quyết định, phân quyền
+├── docs/INTEGRATION.md       xuất SCORM và đề QTI, thử trên LMS công ty
 ├── apps/api                  Fastify + TypeScript + Drizzle
 │   ├── src/db                schema, migration, dữ liệu mẫu
-│   ├── src/lib               auth, AI (OpenAI/mock), job nền, sandbox code, trích tài liệu
-│   └── src/modules           sources, kits, artifacts, learn, tutor, exams, workforce, video, analytics
-└── apps/web                  React + Vite + Tailwind
+│   ├── src/lib               auth, AI (OpenAI/mock), job nền, trích tài liệu
+│   └── src/modules           sources, kits (soạn, xuất SCORM/QTI), artifacts (soạn, xem trước), reviews, users, images, video
+├── apps/web                  React + Vite + Tailwind
+└── apps/company-lms          LMS công ty mô phỏng để thử nhập gói
 ```
 
-## Giới hạn của bản này
+## Giới hạn
 
-- Chỉ đăng nhập bằng email và mật khẩu. Chưa có SSO, chưa có màn đổi mật khẩu.
-- Bài code chỉ hỗ trợ JavaScript, chạy trong worker cách ly của Node. Production nên chạy trong container riêng.
-- Giám sát chỉ ghi sự kiện trên trình duyệt, chưa phân tích camera.
-- Worker giả định chỉ có một tiến trình API. Chạy nhiều máy chủ thì cần hàng đợi riêng.
-- Chưa tạo được Hướng dẫn từng bước bằng AI. Loại này chỉ có trong dữ liệu mẫu.
-- Gói SCORM không có đề kiểm tra chính thức và AI Tutor (cần máy chủ). Kết quả thi gửi sang công ty qua xAPI hoặc webhook.
+- Chỉ đăng nhập bằng email và mật khẩu. Chưa có SSO, chưa có màn đổi mật khẩu (quản trị đặt lại mật khẩu tạm).
+- Chưa gửi email thông báo khi được mời review; reviewer xem ở hộp "Cần review" (có số đếm ở thanh bên).
+- Reviewer xem bản nháp đang soạn, không phải bản chụp cố định: người soạn sửa trong lúc review thì reviewer thấy ngay bản mới.
+- Worker giả định chỉ có một tiến trình API.

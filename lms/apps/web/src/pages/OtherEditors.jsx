@@ -4,7 +4,7 @@ import { SlidersHorizontal, Maximize2, X, Plus, ChevronDown, Home, User, ListChe
 import { useStore, uid } from '../store'
 import { fmtTime } from '../data'
 import { Avatar, Modal, Tip, Thumb } from '../ui'
-import { ArtifactTop, ShareModal, DraftBar } from './Common'
+import { ArtifactTop, PublishModal, DraftBar } from './Common'
 import { post } from '../api'
 
 // Cho phép mã soạn cũ dạng set(d => d.artifacts[art.id]...) ghi vào bản nháp đang mở
@@ -108,7 +108,7 @@ export function ScenarioEditor({ art, kit, up, saveText, onRestored }) {
           <button onClick={() => { setOpen(true); setMode('edit') }} className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[13px] font-semibold shadow-card"><Pencil size={14} />Sửa các cảnh</button>
         </div>
       </div>
-      <ShareModal open={share} art={art} onClose={() => setShare(false)} onChanged={onRestored} />
+      <PublishModal open={share} art={art} onClose={() => setShare(false)} onChanged={onRestored} />
     </div>
   )
 
@@ -369,7 +369,7 @@ export function DeckEditor({ art, kit, up, saveText, onRestored }) {
           <div className="flex items-center gap-2 rounded-xl bg-neutral-50 p-3"><RefreshCw size={16} />Sửa lời đọc hoặc slide thì chỉ tạo lại đoạn đó, không làm lại cả video</div>
         </div>
       </Modal>
-      <ShareModal open={share} art={art} onClose={() => setShare(false)} onChanged={onRestored} />
+      <PublishModal open={share} art={art} onClose={() => setShare(false)} onChanged={onRestored} />
     </div>
   )
 }
@@ -504,7 +504,7 @@ export function VideoEditor({ art, kit, up, saveText, onRestored }) {
           </div>
         </aside>
       </div>
-      <ShareModal open={share} art={art} onClose={() => setShare(false)} onChanged={onRestored} />
+      <PublishModal open={share} art={art} onClose={() => setShare(false)} onChanged={onRestored} />
     </div>
   )
 }
@@ -537,7 +537,7 @@ export function GuideEditor({ art, kit, up, saveText, onRestored }) {
           </div>))}</div>
         <div className="mt-6 flex justify-center"><button onClick={() => upA((a) => { a.steps.push({ title: '', text: '', img: 'screen' }) })} className="btn-line"><Plus size={16} />Thêm bước</button></div>
       </div>
-      <ShareModal open={share} art={art} onClose={() => setShare(false)} onChanged={onRestored} />
+      <PublishModal open={share} art={art} onClose={() => setShare(false)} onChanged={onRestored} />
     </div>
   )
 }

@@ -13,8 +13,8 @@ describe('AI edit of a block / slide', () => {
     expect(r.body.boxes).toHaveLength(1)
   })
 
-  it('rejects learners', async () => {
+  it('rejects reviewers', async () => {
     const deck = ((await ctx.author('GET', '/api/artifacts')).body as { id: string; type: string }[]).find((a) => a.type === 'deck')!
-    expect((await ctx.learner('POST', `/api/artifacts/${deck.id}/ai-edit`, { kind: 'block', value: { t: 'para', p: 'x' }, instruction: 'Sửa' })).status).toBe(403)
+    expect((await ctx.reviewer('POST', `/api/artifacts/${deck.id}/ai-edit`, { kind: 'block', value: { t: 'para', p: 'x' }, instruction: 'Sửa' })).status).toBe(403)
   })
 })

@@ -3,11 +3,12 @@ import bcrypt from 'bcryptjs'
 import { and, eq, gt } from 'drizzle-orm'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { db, schema } from '../db/client.js'
+import type { Role } from '../db/schema.js'
 import { env } from '../env.js'
 import { AppError, forbidden } from './errors.js'
 
 export const COOKIE = 'lms_session'
-export type Role = 'author' | 'learner'
+export type { Role }
 export interface AuthUser { id: string; orgId: string; role: Role; name: string; email: string }
 
 declare module 'fastify' {
@@ -55,10 +56,19 @@ export async function requireUser(req: FastifyRequest): Promise<void> {
   req.user = u
 }
 
-/** preHandler: bắt buộc vai người tạo khóa học */
-export async function requireAuthor(req: FastifyRequest): Promise<void> {
+/** Người soạn khóa học: author, và admin (quản trị làm được mọi việc của người soạn) */
+export const canEdit = (u: AuthUser): boolean => u.role === 'author' || u.role === 'admin'
+
+/** preHandler: bắt buộc vai người soạn (author hoặc admin) */
+export async function requireEditor(req: FastifyRequest): Promise<void> {
   await requireUser(req)
-  if (req.user!.role !== 'author') throw forbidden()
+  if (!canEdit(req.user!)) throw forbidden()
+}
+
+/** preHandler: bắt buộc vai quản trị */
+export async function requireAdmin(req: FastifyRequest): Promise<void> {
+  await requireUser(req)
+  if (req.user!.role !== 'admin') throw forbidden()
 }
 
 export const me = (req: FastifyRequest): AuthUser => {

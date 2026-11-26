@@ -37,10 +37,9 @@ export function StoreProvider({ children }) {
 
 export const useStore = () => useContext(Ctx)
 
-const HOME = { author: '/', learner: '/learn' }
 export function useMe() {
   const q = useQuery({ queryKey: ['me'], queryFn: () => get('/auth/me'), retry: false, staleTime: 60_000 })
-  const me = q.data ? { ...q.data, initials: initials(q.data.name), home: HOME[q.data.role] } : null
+  const me = q.data ? { ...q.data, initials: initials(q.data.name), home: '/' } : null
   return { me, role: me?.role, loading: q.isLoading, error: q.error }
 }
 

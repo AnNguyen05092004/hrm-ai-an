@@ -21,20 +21,27 @@ fi
 
 [ -d node_modules ] || npm install
 
-# trình học cho gói SCORM (Chia sẻ cả khóa → Xuất SCORM); build lại mỗi lần chạy để gói luôn theo giao diện mới nhất
+# trình học cho gói SCORM (Xuất khóa học → Gói SCORM); build lại mỗi lần chạy để gói luôn theo giao diện mới nhất
 echo "→ Build trình học cho gói SCORM"
 npm run build:scorm -w apps/web --silent >/dev/null
 
 echo "→ Bật Postgres (Docker)"
-docker compose up -d --wait db >/dev/null
+# Postgres đang chạy (có thể do bản LMS đầy đủ bật) thì dùng luôn, không tạo lại container
+docker compose exec -T db pg_isready -U lms >/dev/null 2>&1 || docker compose up -d --wait db >/dev/null
 
-users=$(docker compose exec -T db psql -U lms -d lms -tAc "select count(*) from users" 2>/dev/null || echo 0)
+# bản Studio dùng DB riêng, không đụng DB "lms" của bản đầy đủ
+for d in lms_studio lms_studio_test; do
+  docker compose exec -T db psql -U lms -d lms -tAc "select 1 from pg_database where datname='$d'" | grep -q 1 \
+    || docker compose exec -T db psql -U lms -d lms -qc "create database $d" >/dev/null
+done
+
+users=$(docker compose exec -T db psql -U lms -d lms_studio -tAc "select count(*) from users" 2>/dev/null || echo 0)
 if [ "${1:-}" = "--reset" ] || [ "${users// /}" = "0" ]; then
   echo "→ Tạo bảng và dữ liệu mẫu"
   npm run db:seed -w apps/api --silent
 fi
 
-echo "→ API http://localhost:4000 · Web http://localhost:5190 · LMS công ty (demo SCORM) http://localhost:5192 (Ctrl+C để dừng)"
+echo "→ API http://localhost:4100 · Web http://localhost:5194 · LMS công ty (demo nhập gói) http://localhost:5196 (Ctrl+C để dừng)"
 trap 'kill 0' EXIT
 npm run dev -w apps/api --silent &
 npm run dev -w apps/web --silent &

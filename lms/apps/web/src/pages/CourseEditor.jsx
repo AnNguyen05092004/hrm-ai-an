@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { AlignLeft, AlignCenter, AlignRight, Type, HelpCircle, ChevronLeft, Eye, Sparkles, Plus, ArrowUp, ArrowDown, Copy, Trash2, X, Check, ShieldCheck, GripVertical, Code2, FileText, Wand2, AlertTriangle } from 'lucide-react'
+import { AlignLeft, AlignCenter, AlignRight, Type, HelpCircle, ChevronLeft, Eye, Sparkles, Plus, ArrowUp, ArrowDown, Copy, Trash2, X, Check, GripVertical, Code2, FileText, Wand2, AlertTriangle } from 'lucide-react'
 import { useStore, uid } from '../store'
 import { LEVELS } from '../data'
-import { Tip, Toggle, SrcChip, Modal, Spinner } from '../ui'
+import { Tip, SrcChip, Modal, Spinner } from '../ui'
 import { BlockView, BLOCK_SIZES, BLOCK_ALIGNS, BLOCK_BGS, ALIGNABLE } from '../blocks'
 import RichToolbar from '../RichToolbar'
 import { Editable, EditableList, MiniBtn } from '../edit'
-import { ArtifactTop, ShareModal, DraftBar } from './Common'
+import { ArtifactTop, PublishModal, DraftBar } from './Common'
 import { useSkills } from './KitFlow'
 import { post } from '../api'
 
@@ -292,20 +292,15 @@ function QuizEditor({ art, up, onBack, exam = false }) {
               <h1 className="font-lato text-[44px] font-black leading-tight">{exam ? <Editable value={art.title} className="block" placeholder="Tên đề kiểm tra" onChange={(v) => up((a) => { a.title = v })} /> : 'Bài kiểm tra'}</h1>
               <div className="mt-8 h-1 w-28 bg-brand" />
               {exam && <p className="mt-8 font-serif text-[17px] text-neutral-800"><Editable value={art.summary} multiline className="block" placeholder="Mô tả cho người thi (hiện ở màn mở đầu)" onChange={(v) => up((a) => { a.summary = v })} /></p>}
-              <p className="mt-6 font-serif text-[17px] text-neutral-500">{exam ? 'Đề' : 'Bài kiểm tra'} cho kỹ năng {skillName}, mức {qz.level}. Mỗi người nhận một đề riêng rút ngẫu nhiên từ các câu đã duyệt, thứ tự câu và lựa chọn được xáo.</p>
+              <p className="mt-6 font-serif text-[17px] text-neutral-500">{exam ? 'Đề' : 'Bài kiểm tra'} cho kỹ năng {skillName}, mức {qz.level}. Chỉ câu đã duyệt được xuất. Trong gói đề QTI, mỗi lượt thi rút ngẫu nhiên số câu theo cấu hình, xáo thứ tự câu.</p>
               <div className="card mt-10 divide-y divide-line">
-                <div className="flex items-center gap-4 px-5 py-4"><div className="flex-1"><div className="font-semibold">Loại bài</div><div className="text-[13px] text-neutral-600">Chỉ bài thi chính thức đạt mới cập nhật mức kỹ năng</div></div>
-                  <div className="flex rounded-lg bg-neutral-100 p-1 text-[14px]">{[['practice', 'Luyện tập'], ['official', 'Thi chính thức']].map(([k, l]) => <button key={k} onClick={() => upQ((z) => { z.mode = k; if (k === 'practice') z.proctor = false })} className={`rounded-md px-3 py-1.5 ${qz.mode === k ? 'bg-white font-semibold shadow-card' : 'text-neutral-600'}`}>{l}</button>)}</div></div>
-                <div className="flex items-center gap-4 px-5 py-4"><div className="flex-1"><div className="font-semibold">Mức kỹ năng</div><div className="text-[13px] text-neutral-600">Dạng bài theo mức: {lv.kinds}. Mức 4–5 đánh giá qua dự án, không thi trên LMS.</div></div>
+                <div className="flex items-center gap-4 px-5 py-4"><div className="flex-1"><div className="font-semibold">Loại bài</div><div className="text-[13px] text-neutral-600">Luyện tập: câu chấm tự động được đưa vào gói SCORM. Chính thức: không vào gói SCORM, chỉ xuất riêng dạng đề QTI kèm đáp án</div></div>
+                  <div className="flex rounded-lg bg-neutral-100 p-1 text-[14px]">{[['practice', 'Luyện tập'], ['official', 'Thi chính thức']].map(([k, l]) => <button key={k} onClick={() => upQ((z) => { z.mode = k })} className={`rounded-md px-3 py-1.5 ${qz.mode === k ? 'bg-white font-semibold shadow-card' : 'text-neutral-600'}`}>{l}</button>)}</div></div>
+                <div className="flex items-center gap-4 px-5 py-4"><div className="flex-1"><div className="font-semibold">Mức kỹ năng</div><div className="text-[13px] text-neutral-600">Dạng bài theo mức: {lv.kinds}. Mức 4–5 nên đánh giá qua dự án.</div></div>
                   <select className="field w-28 py-1.5" value={qz.level} onChange={(e) => upQ((z) => { z.level = +e.target.value })}>{LEVELS.map((l) => <option key={l.v} value={l.v}>Mức {l.v}</option>)}</select></div>
                 {[['Số câu mỗi đề', 'pick', 'câu', 1, 50], ['Điểm đạt', 'passScore', '%', 1, 100], ['Số lượt thi', 'attempts', 'lượt', 1, 10], ['Thời gian', 'minutes', 'phút', 1, 240]].map(([l, k, u, min, max]) => (
                   <div key={k} className="flex items-center gap-4 px-5 py-4"><div className="flex-1"><div className="font-semibold">{l}</div>{k === 'pick' && <div className="text-[13px] text-neutral-600">Ngân hàng hiện có {approved} câu đã duyệt</div>}</div><input type="number" min={min} max={max} className="field w-24 py-1.5 text-right" value={qz[k] ?? (k === 'pick' ? approved : '')} onChange={(e) => upQ((z) => { z[k] = Math.max(min, Math.min(max, +e.target.value || min)) })} /><span className="w-10 text-[14px] text-neutral-600">{u}</span></div>
                 ))}
-                <div className="px-5 py-4">
-                  <div className="flex items-center gap-4"><ShieldCheck size={20} /><div className="flex-1"><div className="font-semibold">Giám sát khi thi</div><div className="text-[13px] text-neutral-600">Chỉ bật được cho bài thi chính thức</div></div><Toggle on={qz.proctor} disabled={qz.mode !== 'official'} onChange={(v) => upQ((z) => { z.proctor = v })} /></div>
-                  {qz.proctor && <div className="ml-9 mt-3 rounded-xl bg-neutral-50 p-3 text-[13px] leading-relaxed text-neutral-700">
-                    · Người thi thấy rõ những gì được ghi lại và phải bấm đồng ý trước khi vào thi.<br />· Hệ thống gắn cờ khi chuyển tab, rời cửa sổ hoặc dán nội dung từ ngoài vào. Mỗi cờ có mốc thời gian.<br />· Người chấm xem lại rồi quyết định. Hệ thống không tự hủy bài, không tự trừ điểm.<br />· Bản ghi giám sát tự xóa sau 30 ngày, trừ bài đang được xem xét.<br />· AI Tutor tắt trong lúc thi.</div>}
-                </div>
               </div>
             </div>
           ) : q && (
@@ -358,10 +353,10 @@ export function ExamEditor({ art, kit, up, saveText, onRestored }) {
   const [share, setShare] = useState(false)
   return (
     <div className="flex h-full flex-col">
-      <ArtifactTop art={art} kit={kit} saveText={saveText} onRestored={onRestored} onShare={() => setShare(true)} onPreview={() => nav(`/exam/${art.id}?preview=1`)} />
+      <ArtifactTop art={art} kit={kit} saveText={saveText} onRestored={onRestored} onShare={() => setShare(true)} onPreview={() => nav(`/preview/${art.id}`)} />
       <DraftBar art={art} />
       <div className="min-h-0 flex-1"><QuizEditor art={art} up={up} exam /></div>
-      <ShareModal open={share} art={art} onClose={() => setShare(false)} onChanged={onRestored} />
+      <PublishModal open={share} art={art} onClose={() => setShare(false)} onChanged={onRestored} />
     </div>
   )
 }
@@ -401,7 +396,7 @@ export default function CourseEditor({ art, kit, up, saveText, onRestored }) {
           </div>}
         </div>
       </div>
-      <ShareModal open={share} art={art} onClose={() => setShare(false)} onChanged={onRestored} />
+      <PublishModal open={share} art={art} onClose={() => setShare(false)} onChanged={onRestored} />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
 import { db, schema } from '../../db/client.js'
 import type { ArtifactType } from '../../db/schema.js'
 import { defineJob } from '../../lib/jobs.js'
@@ -41,20 +41,38 @@ export async function kitDto(k: Kit): Promise<Json> {
   return {
     id: k.id, title: k.title, desc: k.goal, goalText: d.goalText ?? '', audience: d.audience ?? '', goals: d.goals ?? [], takeaways: d.takeaways ?? [],
     metrics: d.metrics ?? [], practice: d.practice ?? 'balanced', delivery: d.delivery ?? 'self', plan: d.plan ?? [], warnings: d.warnings ?? [],
-    skill: k.skillId, level: k.level, stage: k.stage, fromPlan: k.fromPlan, img: k.img, updated: fmt(k.updatedAt), updatedAt: k.updatedAt,
-    sources: srcs, sourceIds: k.sourceIds, artifacts: arts.map(artifactMeta), job: d.job ?? null, shareSlug: k.shareSlug, theme: d.theme ?? null,
+    skill: k.skillId, level: k.level, stage: k.stage, img: k.img, updated: fmt(k.updatedAt), updatedAt: k.updatedAt,
+    sources: srcs, sourceIds: k.sourceIds, artifacts: arts.map(artifactMeta), job: d.job ?? null, theme: d.theme ?? null,
   }
 }
 
 /** Giao diện khóa (màu nhấn, font) lưu trong details */
 export const themeOf = (k: { details: unknown }): Json | null => ((k.details as Json)?.theme as Json) ?? null
 
+/** Tình trạng review của khóa: số người được mời theo từng trạng thái, số góp ý chưa xử lý */
+export type ReviewSummary = { total: number; pending: number; approved: number; changes: number; open: number }
+export async function reviewSummaries(orgId: string): Promise<Map<string, ReviewSummary>> {
+  const [rs, cs] = await Promise.all([
+    db.select({ kitId: schema.kitReviews.kitId, status: schema.kitReviews.status }).from(schema.kitReviews).where(eq(schema.kitReviews.orgId, orgId)),
+    db.select({ kitId: schema.reviewComments.kitId }).from(schema.reviewComments)
+      .where(and(eq(schema.reviewComments.orgId, orgId), isNull(schema.reviewComments.resolvedAt), isNull(schema.reviewComments.parentId))),
+  ])
+  const m = new Map<string, ReviewSummary>()
+  const of = (id: string): ReviewSummary => { if (!m.has(id)) m.set(id, { total: 0, pending: 0, approved: 0, changes: 0, open: 0 }); return m.get(id)! }
+  for (const r of rs) { const x = of(r.kitId); x.total++; x[r.status]++ }
+  for (const c of cs) of(c.kitId).open++
+  return m
+}
+
 export async function listKits(orgId: string): Promise<Json[]> {
-  const kits = await db.select().from(schema.kits).where(eq(schema.kits.orgId, orgId)).orderBy(desc(schema.kits.updatedAt))
-  const arts = await db.select().from(schema.artifacts).where(eq(schema.artifacts.orgId, orgId)).orderBy(schema.artifacts.createdAt)
-  return kits.map((k) => ({
-    id: k.id, title: k.title, desc: k.goal, skill: k.skillId, level: k.level, stage: k.stage, img: k.img, fromPlan: k.fromPlan,
-    updated: fmt(k.updatedAt), updatedAt: k.updatedAt, artifacts: arts.filter((a) => a.kitId === k.id).map(artifactMeta),
+  const [kits, arts, reviews] = await Promise.all([
+    db.select({ k: schema.kits, by: schema.users.name }).from(schema.kits).leftJoin(schema.users, eq(schema.users.id, schema.kits.createdBy)).where(eq(schema.kits.orgId, orgId)).orderBy(desc(schema.kits.updatedAt)),
+    db.select().from(schema.artifacts).where(eq(schema.artifacts.orgId, orgId)).orderBy(schema.artifacts.createdAt),
+    reviewSummaries(orgId),
+  ])
+  return kits.map(({ k, by }) => ({
+    id: k.id, title: k.title, desc: k.goal, skill: k.skillId, level: k.level, stage: k.stage, img: k.img, createdBy: by ?? '',
+    updated: fmt(k.updatedAt), updatedAt: k.updatedAt, artifacts: arts.filter((a) => a.kitId === k.id).map(artifactMeta), review: reviews.get(k.id) ?? null,
   }))
 }
 
@@ -96,10 +114,9 @@ defineJob('kit.draft', async ({ job, report }) => {
   await report(45, 'Viết mục tiêu, đối tượng và kế hoạch tài liệu')
   const r = await draftDetails(k.orgId, d.goalText ?? k.goal, skills, hits, srcs.map((s) => s.name), srcs.filter((s) => s.sensitive).map((s) => s.name))
   const skillOk = skills.some((s) => s.id === r.skillId)
-  const fromPlan = k.fromPlan
   await patchKit(k.id, {
     title: r.title, goal: r.desc,
-    skillId: fromPlan?.skillId ?? (skillOk ? r.skillId : k.skillId),
+    skillId: k.skillId ?? (skillOk ? r.skillId : null),
     level: k.level ?? Math.min(3, Math.max(1, r.level)),
   }, {
     audience: r.audience, goals: r.goals, takeaways: r.takeaways, metrics: r.metrics, practice: r.practice,

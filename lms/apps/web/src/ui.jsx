@@ -39,7 +39,7 @@ export function Modal({ open, onClose, title, sub, children, footer, w = 560, pa
   // portal ra body: không bị cha có opacity/overflow/transform ẩn hoặc cắt; sự kiện không lan về thẻ cha
   return createPortal(
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/35 p-4" onMouseDown={onClose} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-      <div className="fade relative max-h-[92vh] w-full overflow-hidden rounded-2xl bg-white shadow-pop flex flex-col" style={{ maxWidth: w }} onMouseDown={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined} className="fade relative max-h-[92vh] w-full overflow-hidden rounded-2xl bg-white shadow-pop flex flex-col" style={{ maxWidth: w }} onMouseDown={(e) => e.stopPropagation()}>
         {title !== undefined && (
           <div className="flex items-start justify-between px-6 pt-5 pb-1">
             <div>

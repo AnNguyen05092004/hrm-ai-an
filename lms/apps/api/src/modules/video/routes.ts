@@ -3,13 +3,13 @@ import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { db, schema } from '../../db/client.js'
-import { me, requireAuthor, requireUser } from '../../lib/auth.js'
+import { me, requireEditor, requireUser } from '../../lib/auth.js'
 import { badRequest, conflict, notFound } from '../../lib/errors.js'
 import { enqueue } from '../../lib/jobs.js'
 import { uid } from '../../lib/ids.js'
 import { tts } from '../../lib/ai/index.js'
 import { getArtifact } from '../artifacts/routes.js'
-import { viewable } from '../learn/access.js'
+import { viewable } from '../artifacts/view.js'
 import './render.js'
 
 type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -17,7 +17,7 @@ const FILE = /^video-\d+\.(mp4|vtt)$/
 
 export const videoRoutes: FastifyPluginAsyncZod = async (app) => {
   // Dựng (hoặc dựng lại) video từ slide và lời đọc
-  app.post('/artifacts/:id/render', { preHandler: requireAuthor, schema: { params: z.object({ id: z.string() }) } }, async (req) => {
+  app.post('/artifacts/:id/render', { preHandler: requireEditor, schema: { params: z.object({ id: z.string() }) } }, async (req) => {
     const u = me(req)
     const a = await getArtifact(u.orgId, req.params.id)
     const c = a.content as Json
@@ -29,7 +29,7 @@ export const videoRoutes: FastifyPluginAsyncZod = async (app) => {
   })
 
   // Tạo video từ bộ slide: lời đọc lấy từ ghi chú người trình bày
-  app.post('/artifacts/:id/to-video', { preHandler: requireAuthor, schema: { params: z.object({ id: z.string() }) } }, async (req) => {
+  app.post('/artifacts/:id/to-video', { preHandler: requireEditor, schema: { params: z.object({ id: z.string() }) } }, async (req) => {
     const u = me(req)
     const deck = await getArtifact(u.orgId, req.params.id)
     const slides = ((deck.content as Json).slides ?? []) as Json[]
@@ -42,7 +42,7 @@ export const videoRoutes: FastifyPluginAsyncZod = async (app) => {
   })
 
   // Nghe thử lời đọc của một slide bằng giọng AI có sẵn
-  app.post('/tts', { preHandler: requireAuthor, schema: { body: z.object({ text: z.string().trim().min(1).max(2000) }) } }, async (req, reply) => {
+  app.post('/tts', { preHandler: requireEditor, schema: { body: z.object({ text: z.string().trim().min(1).max(2000) }) } }, async (req, reply) => {
     const audio = await tts(me(req).orgId, req.body.text)
     if (!audio) throw badRequest('Đang chạy AI giả lập nên chưa có giọng đọc. Đặt AI_PROVIDER=openai để nghe thử')
     return reply.type('audio/mpeg').send(audio)

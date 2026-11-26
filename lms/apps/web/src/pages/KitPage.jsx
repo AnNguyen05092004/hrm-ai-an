@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { BarChart3, Target, TrendingUp, Plus, FileWarning, ArrowRight, Link2, AlertTriangle, RotateCw, Trash2, Share2, Palette } from 'lucide-react'
+import { Target, TrendingUp, Plus, FileWarning, ArrowRight, Link2, AlertTriangle, RotateCw, Trash2, PackageOpen, Palette, MessageSquare } from 'lucide-react'
 import { useStore, useMe } from '../store'
 import { FORMATS, TYPE_ORDER } from '../data'
 import { FormatIcon, FormatGlyph, Spinner, Thumb, Avatar, Status, Modal, Tip } from '../ui'
 import { KitHeader, AddArtifact, GEN_FORMATS, useKit, useSkills } from './KitFlow'
-import { ShareModal } from './Common'
-import { KitShareModal, ExamCreateModal } from './KitShare'
+import { PublishModal } from './Common'
+import { KitExportModal, ExamCreateModal } from './KitShare'
+import { ReviewBadge } from './Review'
 import { KitThemeModal } from './KitTheme'
 import { ChangeImage } from '../blocks'
 import { Editable, EditableList } from '../edit'
@@ -42,11 +43,12 @@ export default function KitPage() {
   const [share, setShare] = useState(null)
   const [add, setAdd] = useState(null)
   const [src, setSrc] = useState(false)
-  const [kitShare, setKitShare] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const review = useQuery({ queryKey: ['kits'], queryFn: () => get('/kits') }).data?.find((k) => k.id === id)?.review
   const [exam, setExam] = useState(false)
   const [theme, setTheme] = useState(false)
   if (!kit) return <div className="grid h-full place-items-center"><Spinner /></div>
-  // cùng thứ tự với trang khóa của người học
+  // cùng thứ tự với trình học trong gói SCORM
   const arts = [...(live.data ?? kit.artifacts)].sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type))
   const skill = skills.find((s) => s.id === kit.skill)
   const addArtifact = async (item) => {
@@ -69,18 +71,14 @@ export default function KitPage() {
       <KitHeader kit={kit} saveText={saveLabel(saveState)} />
       <div className="fixed right-5 top-2.5 z-40 flex items-center gap-1">
         <button onClick={() => setTheme(true)} className="btn-line btn-sm mr-1 h-9"><Palette size={15} />Giao diện</button>
-        <button onClick={() => setKitShare(true)} className="btn-dark btn-sm mr-1 h-9"><Share2 size={15} />Chia sẻ cả khóa</button>
-        <Tip label="Phân tích" onClick={() => nav('/analytics')}><BarChart3 size={19} /></Tip>
+        <button onClick={() => nav(`/review/${id}`)} className="btn-line btn-sm mr-1 h-9"><MessageSquare size={15} />Review{review?.open > 0 && <span className="ml-0.5 rounded-full bg-brand px-1.5 text-[11px] font-semibold text-white">{review.open}</span>}</button>
+        <button onClick={() => setExporting(true)} className="btn-dark btn-sm mr-1 h-9"><PackageOpen size={15} />Xuất khóa học</button>
         <Tip label="Xóa khóa học" onClick={delKit}><Trash2 size={19} /></Tip>
       </div>
       <div className="mx-auto max-w-[880px] px-6 pt-10">
-        {kit.fromPlan && (
-          <div className="mb-6 flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-[14px]">
-            <Target size={18} className="shrink-0 text-violet-600" />
-            <span className="flex-1">Khóa này được tạo từ <b>kế hoạch đào tạo</b> để bù kỹ năng {skill?.name}. Rà bản nháp, xuất bản, rồi quay lại giao cho người còn thiếu.</span>
-            <button onClick={() => nav('/workforce')} className="btn-line btn-sm shrink-0">Về kế hoạch<ArrowRight size={14} /></button>
-          </div>
-        )}
+        <button onClick={() => nav(`/review/${id}`)} className="mb-5 flex w-full items-center gap-3 rounded-xl border border-line px-4 py-3 text-left text-[14px] hover:bg-neutral-50">
+          <MessageSquare size={18} className="shrink-0 text-neutral-500" /><span className="flex-1">Review: <ReviewBadge review={review} />{review?.open > 0 && <span className="ml-2 text-neutral-600">· {review.open} góp ý chưa xử lý</span>}</span><ArrowRight size={16} className="text-neutral-400" />
+        </button>
         <h1 className="text-[26px] font-semibold"><Editable value={kit.title} className="block" placeholder="Tên khóa học" onChange={(v) => up((k) => { k.title = v })} /></h1>
         <p className="mt-3 text-[16px] leading-relaxed"><Editable value={kit.desc} multiline className="block" placeholder="Mô tả khóa học" onChange={(v) => up((k) => { k.desc = v })} /></p>
         <div className="mt-3 flex flex-wrap gap-2 text-[13px]">
@@ -91,7 +89,7 @@ export default function KitPage() {
         {ch.length > 0 && (
           <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
             <FileWarning size={20} className="mt-0.5 text-amber-600" />
-            <div className="flex-1 text-[15px]"><b>Tài liệu nguồn đã có bản mới.</b> {ch.map((c) => `${c.sourceName} v${c.from} → v${c.to}`).join(', ')}. AI tìm thấy {ch.reduce((n, c) => n + c.parts.length, 0)} phần đang trích đoạn bị đổi. Người học vẫn thấy bản cũ cho tới khi bạn xuất bản bản cập nhật.</div>
+            <div className="flex-1 text-[15px]"><b>Tài liệu nguồn đã có bản mới.</b> {ch.map((c) => `${c.sourceName} v${c.from} → v${c.to}`).join(', ')}. AI tìm thấy {ch.reduce((n, c) => n + c.parts.length, 0)} phần đang trích đoạn bị đổi. Gói xuất vẫn dùng bản cũ cho tới khi bạn xuất bản bản cập nhật.</div>
             <button className="btn-dark btn-sm" onClick={() => setSrc(true)}>Xem phần bị ảnh hưởng</button>
           </div>
         )}
@@ -120,7 +118,7 @@ export default function KitPage() {
               <div className="mt-4 border-t border-line px-4 pb-4 pt-3">
                 <div className="flex items-center"><Status s={a.status} /><div className="flex-1" /><button onClick={() => remove(a)} className="icon-btn h-8 w-8 opacity-0 group-hover:opacity-100" aria-label="Xóa tài liệu"><Trash2 size={15} /></button></div>
                 {a.status === 'failed' ? <button onClick={() => regen(a)} className="btn-line mt-3 h-9 w-full"><RotateCw size={15} />Soạn lại</button>
-                  : <button onClick={() => setShare(a)} className="btn-line mt-3 h-9 w-full">Chia sẻ</button>}
+                  : <button onClick={() => setShare(a)} className="btn-line mt-3 h-9 w-full">Xuất bản</button>}
               </div>
             </div>
           ))}
@@ -139,9 +137,9 @@ export default function KitPage() {
         </div>
       </div>
 
-      <ShareModal open={!!share} art={share} onClose={() => setShare(null)} onChanged={() => { live.refetch(); reload() }} />
+      <PublishModal open={!!share} art={share} onClose={() => setShare(null)} onChanged={() => { live.refetch(); reload() }} />
       <KitThemeModal open={theme} kit={kit} onClose={() => setTheme(false)} onSave={(v) => { up((k) => { k.theme = v.theme; k.img = v.img }); say('Đã lưu giao diện khóa') }} />
-      <KitShareModal open={kitShare} kit={kit} onClose={() => setKitShare(false)} onChanged={() => { live.refetch(); reload() }} />
+      <KitExportModal open={exporting} kit={kit} onClose={() => setExporting(false)} onChanged={() => { live.refetch(); reload() }} />
       <ExamCreateModal open={exam} kit={kit} onClose={() => setExam(false)} onCreated={() => live.refetch()} />
       <AddArtifact kitId={id} open={!!add} initial={add || 'deck'} onClose={() => setAdd(null)} onAdd={addArtifact} />
       <Modal open={src} onClose={() => setSrc(false)} title="Phần bị ảnh hưởng khi tài liệu nguồn đổi" w={680} footer={<button className="btn-dark h-10" onClick={() => setSrc(false)}>Đóng</button>}>

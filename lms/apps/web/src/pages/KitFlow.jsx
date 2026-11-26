@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, ArrowRight, Info, Trash2, FileText, Plus, Sparkles, Pencil, Link2, Check, ArrowLeft, AlertTriangle, RotateCw } from 'lucide-react'
+import { ChevronDown, ChevronRight, ArrowRight, Info, Trash2, FileText, Plus, Sparkles, Pencil, Link2, Check, AlertTriangle, RotateCw } from 'lucide-react'
 import { useStore } from '../store'
 import { FORMATS, LEVELS } from '../data'
 import { Logo, FormatIcon, Modal, Segmented, Spinner, Avatar } from '../ui'
@@ -24,7 +24,6 @@ export function KitHeader({ kit, step, saveText }) {
         <button onClick={() => nav('/')} aria-label="Trang chủ"><Logo size={26} /></button>
         <span className="text-[17px] font-semibold">{kit.title}</span>
         {saveText && <span className="text-[13px] italic text-neutral-500">{saveText}</span>}
-        {kit.fromPlan && <button onClick={() => nav('/workforce')} className="flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[13px] font-medium text-violet-800 hover:bg-violet-100"><ArrowLeft size={14} />Về Kế hoạch đào tạo</button>}
       </div>
       {step && (
         <div className="flex h-12 items-center justify-center gap-4 border-b border-line text-[15px]">
@@ -179,7 +178,7 @@ export function KitDetails() {
           ))}
           <div className="mt-6 rounded-2xl border border-violet-200 bg-violet-50/50 p-4">
             <div className="flex items-center gap-2 text-[15px] font-semibold"><Link2 size={16} className="text-violet-600" />Gắn với khung năng lực</div>
-            <p className="mt-1 text-[13px] text-neutral-600">Khóa được gắn sẵn kỹ năng và mức. Bài thi chính thức đạt sẽ cập nhật mức kỹ năng của người học, tối đa mức 3.</p>
+            <p className="mt-1 text-[13px] text-neutral-600">Khóa được gắn kỹ năng và mức. AI soạn nội dung và câu hỏi theo mức này (tối đa mức 3).</p>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div><div className="mb-1 text-[13px] font-medium">Kỹ năng</div>
                 <select className="field py-2" value={kit.skill ?? ''} onChange={(e) => up((x) => { x.skill = e.target.value || null })}><option value="">Chưa chọn</option>{skills.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>

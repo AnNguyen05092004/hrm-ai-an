@@ -4,7 +4,7 @@ import { and, desc, eq } from 'drizzle-orm'
 import { Resvg } from '@resvg/resvg-js'
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { db, schema } from '../../db/client.js'
-import { me, requireAuthor, requireUser } from '../../lib/auth.js'
+import { me, requireEditor, requireUser } from '../../lib/auth.js'
 import { badRequest, must } from '../../lib/errors.js'
 import { audit } from '../../lib/audit.js'
 import { imageGen } from '../../lib/ai/index.js'
@@ -47,12 +47,12 @@ async function save(orgId: string, userId: string, name: string, mime: string, d
 }
 
 export const imageRoutes: FastifyPluginAsyncZod = async (app) => {
-  app.get('/images', { preHandler: requireAuthor }, async (req) => {
+  app.get('/images', { preHandler: requireEditor }, async (req) => {
     const rows = await db.select().from(schema.images).where(eq(schema.images.orgId, me(req).orgId)).orderBy(desc(schema.images.createdAt)).limit(200)
     return rows.map(dto)
   })
 
-  app.post('/images', { preHandler: requireAuthor }, async (req) => {
+  app.post('/images', { preHandler: requireEditor }, async (req) => {
     const u = me(req)
     const file = await req.file()
     if (!file) throw badRequest('Chưa chọn ảnh')
@@ -65,7 +65,7 @@ export const imageRoutes: FastifyPluginAsyncZod = async (app) => {
     return dto(row)
   })
 
-  app.post('/images/generate', { preHandler: requireAuthor, schema: { body: z.object({ prompt: z.string().trim().min(3).max(1000) }) } }, async (req) => {
+  app.post('/images/generate', { preHandler: requireEditor, schema: { body: z.object({ prompt: z.string().trim().min(3).max(1000) }) } }, async (req) => {
     const u = me(req)
     const png = (await imageGen(u.orgId, req.body.prompt)) ?? placeholder(req.body.prompt)
     const row = await save(u.orgId, u.id, req.body.prompt.slice(0, 80), 'image/png', png, 'ai', req.body.prompt)
@@ -73,7 +73,7 @@ export const imageRoutes: FastifyPluginAsyncZod = async (app) => {
     return dto(row)
   })
 
-  app.delete('/images/:id', { preHandler: requireAuthor, schema: { params: z.object({ id: z.string() }) } }, async (req) => {
+  app.delete('/images/:id', { preHandler: requireEditor, schema: { params: z.object({ id: z.string() }) } }, async (req) => {
     const u = me(req)
     await db.delete(schema.images).where(and(eq(schema.images.id, req.params.id), eq(schema.images.orgId, u.orgId)))
     return { ok: true }

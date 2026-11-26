@@ -31,9 +31,9 @@ describe('kit authoring flow', () => {
     expect(r.status).toBe(400)
   })
 
-  it('learners cannot access authoring APIs', async () => {
-    expect((await ctx.learner('GET', '/api/kits')).status).toBe(403)
-    expect((await ctx.learner('POST', '/api/kits', { goal: 'Tạo khóa CI/CD' })).status).toBe(403)
+  it('reviewers cannot access authoring APIs', async () => {
+    expect((await ctx.reviewer('GET', '/api/kits')).status).toBe(403)
+    expect((await ctx.reviewer('POST', '/api/kits', { goal: 'Tạo khóa CI/CD' })).status).toBe(403)
   })
 
   it('drafts details, outline and content with source citations', async () => {
@@ -67,7 +67,7 @@ describe('kit authoring flow', () => {
     expect(a.quiz.questions.every((q: { approved: boolean }) => q.approved === false)).toBe(true)
   })
 
-  it('autosaves edits and publishes a version indexed for the tutor', async () => {
+  it('autosaves edits and publishes a version', async () => {
     const k = (await ctx.author('GET', `/api/kits/${kitId}`)).body
     const qr = k.artifacts.find((a: { type: string }) => a.type === 'qr')
     const a = (await ctx.author('GET', `/api/artifacts/${qr.id}`)).body

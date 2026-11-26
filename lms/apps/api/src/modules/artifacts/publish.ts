@@ -1,10 +1,9 @@
-// Xuất bản một tài liệu: chụp bản hiện tại thành phiên bản mới, lập chỉ mục cho Tutor (BR02).
+// Xuất bản một tài liệu: chụp bản hiện tại thành phiên bản mới. Gói xuất (SCORM, đề QTI) chỉ dùng bản đã xuất bản.
 import { and, eq, inArray } from 'drizzle-orm'
 import { db, schema } from '../../db/client.js'
 import type { AuthUser } from '../../lib/auth.js'
 import { badRequest } from '../../lib/errors.js'
 import { audit } from '../../lib/audit.js'
-import { indexArtifact } from '../tutor/index-content.js'
 import { publishIssues } from './validate.js'
 
 type Artifact = typeof schema.artifacts.$inferSelect
@@ -21,7 +20,6 @@ export async function publishArtifact(u: AuthUser, a: Artifact, note = ''): Prom
     sourceVersions: Object.fromEntries(srcs.map((s) => [s.id, s.version])),
   })
   const [r] = await db.update(schema.artifacts).set({ status: 'published', publishedVersion: version, updatedAt: new Date() }).where(eq(schema.artifacts.id, a.id)).returning()
-  await indexArtifact(a.id)
   await audit(u, 'artifact.publish', a.id, { version })
   return r
 }

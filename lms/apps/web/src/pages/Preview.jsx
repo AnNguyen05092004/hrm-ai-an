@@ -1,97 +1,31 @@
 import { useEffect, useRef, useState } from 'react'
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, Search, AlignLeft, HelpCircle, Sparkles, X, Lightbulb, ArrowUp, ShieldCheck, PlayCircle, BookOpen, Menu, Flag, Video as VideoIcon, Clock, CheckCircle2 } from 'lucide-react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { ChevronLeft, AlignLeft, HelpCircle, Menu, Flag, CheckCircle2 } from 'lucide-react'
 import { useMe } from '../store'
 import { fmtTime } from '../data'
-import { Thumb, Spinner } from '../ui'
+import { Thumb, Spinner, Modal } from '../ui'
+import { QuizSheet } from './QuizSheet'
 import { BlockView } from '../blocks'
 import { DeviceBar, DEVICES } from './Common'
 import { Slide, VideoStage, ScenarioPlay } from './OtherEditors'
-import { Md } from '../md'
 import { themeStyle } from '../theme'
 import { useOffline } from '../offline'
 import { get, post } from '../api'
 
-const STARTERS = [['bulb', 'Giải thích đơn giản hơn'], ['list', 'Tóm tắt khóa này'], ['search', 'Khái niệm quan trọng nhất là gì?'], ['book', 'Mình chỉ cần học một phần, nên xem phần nào?']]
-const ICON = { bulb: Lightbulb, list: AlignLeft, search: Search, book: BookOpen }
-
-/* ---------- AI Tutor ---------- */
-function Tutor({ open, onClose, onJump, artId, courseTitle, draft }) {
-  const [msgs, setMsgs] = useState([])
-  const [t, setT] = useState('')
-  const [typing, setTyping] = useState(false)
-  const end = useRef()
-  useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs, typing])
-  if (!open) return null
-  const ask = async (q) => {
-    if (!q.trim() || typing) return
-    const history = msgs.slice(-6).map((m) => ({ role: m.me ? 'user' : 'tutor', text: (m.me ?? m.text ?? '').slice(0, 1500) }))
-    setMsgs((m) => [...m, { me: q }]); setT(''); setTyping(true)
-    try { const a = await post(`/tutor/${artId}/ask`, { question: q, history }); setMsgs((m) => [...m, a]) } catch (e) { setMsgs((m) => [...m, { text: e.message, none: true }]) } finally { setTyping(false) }
-  }
-  const lastBot = msgs.length - 1
-  return (
-    <div className="fade fixed bottom-24 right-6 z-40 flex h-[min(580px,calc(100vh-120px))] w-[420px] flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-pop">
-      <div className="flex items-center gap-2 border-b border-line px-4 py-3">
-        <span className="grid h-7 w-7 place-items-center rounded-full bg-violet-100"><Sparkles size={15} className="text-violet-600" /></span>
-        <div className="min-w-0 flex-1 leading-tight"><div className="text-[14px] font-semibold">AI Tutor</div><div className="truncate text-[12px] text-neutral-500">{courseTitle}</div></div>
-        {msgs.length > 0 && <button onClick={() => setMsgs([])} className="rounded-lg px-2 py-1 text-[12px] font-medium text-neutral-600 hover:bg-neutral-100">Cuộc trò chuyện mới</button>}
-        <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg border border-line" aria-label="Đóng"><X size={16} /></button>
-      </div>
-      <div className="scroll-thin flex-1 overflow-y-auto px-5">
-        {draft && <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-800">Đang xem trước bản nháp. Tutor chỉ trả lời từ bản đã xuất bản.</div>}
-        {msgs.length === 0 ? (
-          <div className="pt-8 text-center">
-            <div className="mx-auto grid h-16 w-16 place-items-center rounded-full border-2 border-dashed border-violet-300"><Sparkles size={28} className="text-violet-500" /></div>
-            <div className="mt-4 text-[17px] font-semibold">Cần trợ giúp không?</div>
-            <div className="mt-1 text-[13px] text-neutral-500">Hỏi bất kỳ điều gì về nội dung khóa này</div>
-            <div className="mt-5 flex flex-col items-center gap-2">
-              {STARTERS.map(([k, l]) => { const I = ICON[k]; return <button key={l} onClick={() => ask(l)} className="flex items-center gap-1.5 rounded-full border-2 border-violet-300 px-4 py-1.5 text-[14px] font-medium hover:bg-violet-50"><I size={15} />{l}</button> })}
-            </div>
-          </div>
-        ) : msgs.map((m, i) => m.me ? (
-          <div key={i} className="my-3 flex justify-end"><div className="max-w-[85%] rounded-2xl bg-ink px-4 py-2.5 text-[14px] text-white">{m.me}</div></div>
-        ) : (
-          <div key={i}>
-            <div className={`my-3 rounded-2xl px-4 py-3 text-[14px] leading-relaxed ${m.none ? 'border border-amber-200 bg-amber-50' : m.off ? 'border border-line bg-neutral-50' : 'bg-neutral-100'}`}>
-              {m.off && <ShieldCheck size={18} className="mb-1 text-neutral-500" />}
-              <Md text={m.text} />
-              {m.list && <ul className="mt-2 space-y-1">{m.list.map((x) => <li key={x} className="flex gap-2"><PlayCircle size={15} className="mt-0.5 shrink-0 text-violet-600" /><span><Md text={x} /></span></li>)}</ul>}
-              {m.src && <div className="mt-2 text-[12px] text-neutral-500">Nguồn: {m.src}</div>}
-              {m.jump?.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{m.jump.map((j) => <button key={j.label} onClick={() => onJump(j)} className="rounded-full border border-violet-300 bg-white px-3 py-1 text-[12px] font-semibold text-violet-700">{j.label}</button>)}</div>}
-            </div>
-            {i === lastBot && !typing && m.suggest?.length > 0 && <div className="-mt-1 mb-3 flex flex-wrap gap-1.5">{m.suggest.map((x) => <button key={x} onClick={() => ask(x)} className="rounded-full border border-line bg-white px-3 py-1 text-[12px] text-neutral-700 hover:border-violet-300 hover:bg-violet-50">{x}</button>)}</div>}
-          </div>
-        ))}
-        {typing && <div className="my-3 flex w-16 items-center justify-center gap-1 rounded-2xl bg-neutral-100 py-3">{[0, 1, 2].map((d) => <span key={d} className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-400" style={{ animationDelay: `${d * 0.15}s` }} />)}</div>}
-        <div ref={end} />
-      </div>
-      <div className="p-4">
-        <div className="flex items-center rounded-xl border border-line px-3 py-2"><input value={t} maxLength={1000} onChange={(e) => setT(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ask(t)} className="flex-1 text-[14px] outline-none" placeholder="Nhập câu hỏi" /><button onClick={() => ask(t)} disabled={typing} className="grid h-7 w-7 place-items-center rounded-md bg-neutral-100" aria-label="Gửi"><ArrowUp size={15} /></button></div>
-        <p className="mt-2 text-center text-[11px] leading-snug text-neutral-500">AI có thể sai, hãy kiểm tra thông tin quan trọng. Tutor chỉ trả lời từ nội dung đã xuất bản mà bạn được xem.</p>
-      </div>
-    </div>
-  )
-}
-
-const TutorBtn = ({ onClick }) => <button onClick={onClick} className="fixed bottom-8 right-6 z-30 flex items-center gap-2 rounded-full border-2 border-violet-400 bg-[#1e1b4b] px-4 py-2.5 text-[14px] font-semibold text-white shadow-pop"><Sparkles size={16} />Hỏi AI Tutor</button>
-
-/** Dùng chung: theo dõi tiến độ phía server */
+/** Tiến độ học: trong gói SCORM, lệnh ghi tiến độ được trình học SCORM nhận và báo về LMS công ty. Xem trước trên web thì không ghi */
 function useProgress(art, preview) {
-  const qc = useQueryClient()
   const [done, setDone] = useState(art.progress?.done ?? [])
   const mark = async (unit) => {
     if (preview || done.includes(unit)) return
     setDone((d) => [...d, unit])
-    try { const r = await post(`/learn/a/${art.id}/progress`, { unit }); setDone(r.done); qc.invalidateQueries({ queryKey: ['my-learning'] }) } catch { /* tiến độ sẽ ghi lại ở lần sau */ }
+    try { const r = await post(`/learn/a/${art.id}/progress`, { unit }); setDone(r.done) } catch { /* tiến độ sẽ ghi lại ở lần sau */ }
   }
   return { done, mark }
 }
 
 /* ---------- Tài liệu nhanh ---------- */
-function CoursePlayer({ art, start, preview, onTutorJump }) {
-  const nav = useNavigate()
+function CoursePlayer({ art, start, preview }) {
   const [cur, setCur] = useState(start)
   const [side, setSide] = useState(true)
   const { done, mark } = useProgress(art, preview)
@@ -100,11 +34,13 @@ function CoursePlayer({ art, start, preview, onTutorJump }) {
   const idx = lessons.indexOf(L)
   const learnCount = lessons.filter((x) => x.kind === 'lesson').length
   const pct = Math.round((done.length / Math.max(1, learnCount)) * 100)
-  useEffect(() => { onTutorJump.current = (j) => { if (j.to.lesson && lessons.some((x) => x.id === j.to.lesson)) { setCur(j.to.lesson); window.scrollTo(0, 0) } } })
   const off = useOffline()
-  const openQuiz = () => (off ? off.onQuiz(art) : nav(`/exam/${art.id}${preview ? '?preview=1' : ''}`))
+  const [quiz, setQuiz] = useState(false)
+  const openQuiz = () => (off ? off.onQuiz(art) : setQuiz(true))
+  const sheet = <Modal open={quiz} onClose={() => setQuiz(false)} w={760} title="Bài kiểm tra" sub={`${art.questions?.length ?? 0} câu · đạt từ ${art.quiz?.passScore ?? 80}%. Người soạn và reviewer thấy đáp án; người học làm bài trên LMS nhận gói.`}><QuizSheet questions={art.questions} /></Modal>
   if (!cur) return (
     <div>
+      {sheet}
       <div className="grid min-h-[520px] grid-cols-2">
         <div className="flex flex-col justify-center bg-brand px-[14%]"><div className="font-lato text-[14px] font-bold uppercase tracking-wider">{art.kitTitle}</div><h1 className="mt-5 font-lato text-[34px] font-black leading-tight">{art.title}</h1><button onClick={() => setCur(lessons[0].id)} className="mt-7 w-fit rounded-full bg-ink px-9 py-3.5 font-lato text-[13px] font-bold tracking-wider text-white">{done.length ? 'HỌC TIẾP' : 'BẮT ĐẦU KHÓA HỌC'}</button></div>
         <Thumb img={art.img} />
@@ -116,6 +52,7 @@ function CoursePlayer({ art, start, preview, onTutorJump }) {
   )
   return (
     <div className="flex min-h-full">
+      {sheet}
       {side && <aside className="sticky top-0 h-[calc(100vh-56px)] w-[300px] shrink-0 overflow-y-auto bg-neutral-100">
         <div className="bg-brand px-6 pb-5 pt-5"><div className="font-lato text-[26px] font-black leading-tight">{art.title}</div><div className="mt-6 h-px bg-ink/30" /><div className="mt-2 text-[11px] font-bold tracking-wide">{pct}% HOÀN THÀNH</div></div>
         {lessons.map((x) => <button key={x.id} onClick={() => (x.kind === 'quiz' ? openQuiz() : setCur(x.id))} className={`flex w-full items-center gap-3 px-5 py-4 text-left text-[13px] font-semibold ${x.id === cur ? 'border-l-4 border-brand bg-white' : 'hover:bg-white/60'}`}>{x.kind === 'quiz' ? <HelpCircle size={15} /> : <AlignLeft size={15} />}<span className="flex-1">{x.kind === 'quiz' ? 'Bài kiểm tra' : x.title}</span><span className={`h-4 w-4 rounded-full border-2 ${done.includes(x.id) ? 'border-brand bg-brand' : 'border-neutral-400'}`} /></button>)}
@@ -131,7 +68,7 @@ function CoursePlayer({ art, start, preview, onTutorJump }) {
 }
 
 /* ---------- Video ---------- */
-function VideoPlayer({ art, preview, onTutorJump, seek }) {
+function VideoPlayer({ art, preview, seek }) {
   const [t, setT] = useState(seek ?? 0)
   const [play, setPlay] = useState(false)
   const [cp, setCp] = useState(null)
@@ -141,7 +78,6 @@ function VideoPlayer({ art, preview, onTutorJump, seek }) {
   const { mark } = useProgress(art, preview)
   const real = art.render?.status === 'done' && art.render.url
   const duration = art.duration || 1
-  useEffect(() => { onTutorJump.current = (j) => { if (j.to.t != null) { setT(j.to.t); if (vref.current) vref.current.currentTime = j.to.t } } })
   useEffect(() => {
     const ch = [...art.chapters].reverse().find((c) => c.t <= t)
     if (ch && t - ch.t > 5) mark(`t${ch.t}`)
@@ -182,11 +118,10 @@ function VideoPlayer({ art, preview, onTutorJump, seek }) {
   )
 }
 
-function DeckViewer({ art, preview, onTutorJump }) {
+function DeckViewer({ art, preview }) {
   const [i, setI] = useState(0)
   const { mark } = useProgress(art, preview)
   useEffect(() => { mark(art.slides[i]?.id) }, [i]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { onTutorJump.current = (j) => { if (j.to.slide != null) setI(j.to.slide) } })
   return <div className="p-8"><div className="aspect-video overflow-hidden rounded-xl shadow-pop"><Slide s={art.slides[i]} n={i + 1} total={art.slides.length} /></div><div className="mt-4 flex items-center justify-center gap-4"><button onClick={() => setI(Math.max(0, i - 1))} className="btn-line btn-sm">Trước</button><span className="text-[14px]">{i + 1}/{art.slides.length}</span><button onClick={() => setI(Math.min(art.slides.length - 1, i + 1))} className="btn-line btn-sm">Sau</button></div></div>
 }
 
@@ -195,38 +130,19 @@ function GuideViewer({ art, preview }) {
   return <div className="mx-auto max-w-[760px] p-10"><h1 className="font-lato text-[32px] font-black">{art.title}</h1>{art.steps.map((s, i) => <div key={i} className="mt-6 flex gap-4"><button onClick={() => mark(`s${i}`)} className={`grid h-9 w-9 shrink-0 place-items-center rounded-full font-bold text-white ${done.includes(`s${i}`) ? 'bg-emerald-600' : 'bg-emerald-400'}`} title="Đánh dấu đã làm">{done.includes(`s${i}`) ? '✓' : i + 1}</button><div><div className="font-lato text-[19px] font-bold">{s.title}</div><p className="mt-1 font-serif">{s.text}</p><Thumb img={s.img || 'screen'} className="mt-3 h-40 w-[420px] rounded-lg" /></div></div>)}</div>
 }
 
-/** Trình học dùng chung cho người học (bản xuất bản) và người soạn (xem trước bản nháp) */
+/** Trình học dùng chung: xem trước trên web (người soạn, reviewer) và trình học trong gói SCORM */
 export function Player({ art, preview, start }) {
   const nav = useNavigate()
   const off = useOffline()
-  const [tutor, setTutor] = useState(false)
-  const [other, setOther] = useState(null)
-  const jumpRef = useRef(() => {})
-  const onJump = (j) => {
-    setTutor(false)
-    if (j.other) { setOther(j); return }
-    jumpRef.current(j)
-  }
   const { done, mark } = useProgress(art, preview)
   return (
     <>
-      {art.type === 'qr' && <CoursePlayer key={start || 'cover'} art={art} start={start} preview={preview} onTutorJump={jumpRef} />}
-      {art.type === 'video' && <VideoPlayer art={art} preview={preview} onTutorJump={jumpRef} />}
+      {art.type === 'qr' && <CoursePlayer key={start || 'cover'} art={art} start={start} preview={preview} />}
+      {art.type === 'video' && <VideoPlayer art={art} preview={preview} />}
       {art.type === 'scenario' && <div className="h-[calc(100vh-56px)]"><ScenarioPlay art={art} onExit={() => { if (!done.includes('end')) mark('end'); if (off) off.onExit(); else nav(-1) }} /></div>}
-      {art.type === 'deck' && <DeckViewer art={art} preview={preview} onTutorJump={jumpRef} />}
+      {art.type === 'deck' && <DeckViewer art={art} preview={preview} />}
       {art.type === 'guide' && <GuideViewer art={art} preview={preview} />}
-      {/* AI Tutor cần máy chủ: không có trong gói SCORM */}
-      {art.type !== 'scenario' && !off && <TutorBtn onClick={() => setTutor(!tutor)} />}
-      {!off && <Tutor open={tutor} onClose={() => setTutor(false)} artId={art.id} courseTitle={art.title} draft={art.draft} onJump={onJump} />}
-      {other && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-6" onClick={() => setOther(null)}>
-          <div className="w-[440px] rounded-2xl bg-white p-6 shadow-pop" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-2 text-[16px] font-semibold"><VideoIcon size={18} className="text-violet-600" />Nội dung ở khóa khác</div>
-            <p className="mt-2 text-[14px] text-neutral-600">Tutor tìm thấy phần này ở khóa khác bạn được xem. Mở khóa đó tại đúng chỗ?</p>
-            <div className="mt-5 flex justify-end gap-2"><button className="btn-line h-10" onClick={() => setOther(null)}>Để sau</button><button className="btn-dark h-10" onClick={() => { const q = other.to.lesson ? `?l=${other.to.lesson}` : other.to.t != null ? `?t=${other.to.t}` : ''; nav(`/learn/${other.artifactId}${q}`); setOther(null) }}>Mở khóa</button></div>
-          </div>
-        </div>
-      )}
+      {art.type === 'exam' && <div className="mx-auto max-w-[820px] px-6 py-10"><h1 className="font-lato text-[30px] font-black">{art.title}</h1><p className="mt-2 text-[14px] text-neutral-600">{art.summary}</p><div className="mt-6"><QuizSheet questions={art.questions} /></div></div>}
     </>
   )
 }
@@ -234,43 +150,23 @@ export function Player({ art, preview, start }) {
 const Loading = () => <div className="grid h-full place-items-center"><Spinner /></div>
 const Err = ({ e }) => <div className="grid h-full place-items-center text-center"><div><div className="text-[18px] font-semibold">Không mở được tài liệu</div><p className="mt-2 text-[14px] text-neutral-600">{e.message}</p></div></div>
 
-/** Người học mở khóa: /learn/:aid hoặc đường dẫn chia sẻ /s/:slug */
-export function LearnerPlayer() {
-  const { aid, slug } = useParams()
-  const [params] = useSearchParams()
-  const nav = useNavigate()
-  const { me } = useMe()
-  const resolved = useQuery({ queryKey: ['slug', slug], queryFn: () => get(`/learn/s/${slug}`), enabled: !!slug })
-  const id = aid ?? resolved.data?.id
-  const q = useQuery({ queryKey: ['learn', id], queryFn: () => get(`/learn/a/${id}`), enabled: !!id, staleTime: 0 })
-  if (resolved.error) return <Err e={resolved.error} />
-  if (q.error) return <Err e={q.error} />
-  if (!q.data) return <Loading />
-  if (q.data.type === 'exam') return <Navigate to={`/exam/${q.data.id}`} replace />
-  return (
-    <div className="flex h-full flex-col" style={themeStyle(q.data.theme)}>
-      <DeviceBar devices={false} left={<><button className="icon-btn" onClick={() => nav(me.role === 'learner' ? `/course/${q.data.kitId}` : -1)} aria-label="Quay lại"><ChevronLeft size={20} /></button><span className="h-7 w-px bg-line" /><span className="text-[15px] font-medium">{me.role === 'learner' ? q.data.kitTitle ?? 'Khóa học của tôi' : 'Bản người học thấy'}</span><span className="ml-2 flex items-center gap-1 text-[13px] text-neutral-500"><Clock size={13} />Phiên bản {q.data.version}</span></>} />
-      <div className="scroll-thin flex-1 overflow-y-auto bg-white"><Player art={q.data} start={params.get('l')} /></div>
-    </div>
-  )
-}
-
-/** Người soạn xem trước bản nháp ở nhiều cỡ màn hình */
-export function AuthorPreview() {
+/** Xem trước bản nháp ở nhiều cỡ màn hình: người soạn (có nút Sửa) và reviewer được mời */
+export function Preview() {
   const { aid } = useParams()
   const [params] = useSearchParams()
   const nav = useNavigate()
+  const { me } = useMe()
   const [device, setDevice] = useState('desktop')
-  const q = useQuery({ queryKey: ['preview', aid], queryFn: () => get(`/learn/a/${aid}?draft=1`), staleTime: 0 })
+  const q = useQuery({ queryKey: ['preview', aid], queryFn: () => get(`/view/${aid}`), staleTime: 0 })
   if (q.error) return <Err e={q.error} />
   if (!q.data) return <Loading />
-  if (q.data.type === 'exam') return <Navigate to={`/exam/${aid}?preview=1`} replace />
   const w = DEVICES.find((d) => d[0] === device)[3]
+  const editor = me.role !== 'reviewer'
   return (
     <div className="flex h-full flex-col" style={themeStyle(q.data.theme)}>
       <DeviceBar device={device} setDevice={setDevice}
         left={<><button className="icon-btn" onClick={() => nav(-1)} aria-label="Quay lại"><ChevronLeft size={20} /></button><span className="h-7 w-px bg-line" /><span className="text-[15px] font-medium">Xem trước bản nháp</span></>}
-        right={<button className="btn-dark btn-sm ml-3 h-9" onClick={() => nav(`/edit/${aid}`)}>Sửa</button>} />
+        right={editor ? <button className="btn-dark btn-sm ml-3 h-9" onClick={() => nav(`/edit/${aid}`)}>Sửa</button> : <button className="btn-dark btn-sm ml-3 h-9" onClick={() => nav(`/review/${q.data.kitId}?a=${aid}`)}>Góp ý</button>} />
       <div className="scroll-thin flex-1 overflow-y-auto bg-neutral-100">
         <div className="mx-auto min-h-full bg-white transition-all" style={{ width: w, maxWidth: '100%' }}>
           <Player art={q.data} preview start={params.get('l') === 'quiz' ? null : params.get('l')} />
