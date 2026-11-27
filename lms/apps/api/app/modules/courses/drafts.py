@@ -173,7 +173,7 @@ def _mock_qr(outline: dict, kit: KitBrief, hits: list[Hit]) -> dict:
     return {"lessons": lessons, "questions": questions}
 
 
-SLIDE_NULLS = {"sub": None, "items": None, "cols": None, "head": None, "rows": None, "stats": None, "quote": None, "by": None}
+SLIDE_NULLS = {"sub": None, "items": None, "cols": None, "head": None, "rows": None, "stats": None, "quote": None, "by": None, "delivery": None}
 
 
 def draft_deck(org_id: str, kit: KitBrief, item: dict, titles: list[str], hits: list[Hit], for_video: bool = False) -> dict:
@@ -181,7 +181,8 @@ def draft_deck(org_id: str, kit: KitBrief, item: dict, titles: list[str], hits: 
 
     def mock() -> dict:
         return {"slides": [{**SLIDE_NULLS, "layout": "cover" if i == 0 else "bullets", "title": t, "sub": kit.goal[:80] if i == 0 else None,
-                            "items": None if i == 0 else kit.goals[:3], "notes": f"Phần {t}. {kit.goals[0] if kit.goals else ''}", "src": "S1" if hits else None}
+                            "items": None if i == 0 else kit.goals[:3], "notes": f"Phần {t}. {kit.goals[0] if kit.goals else ''}", "src": "S1" if hits else None,
+                            "delivery": ("Nhấn vào tên phần, ngừng một nhịp trước ý chính" if for_video else None)}
                            for i, t in enumerate(titles)]}
 
     return ai_json(
@@ -189,7 +190,8 @@ def draft_deck(org_id: str, kit: KitBrief, item: dict, titles: list[str], hits: 
         system=f"""{RULES}
 Nhiệm vụ: viết {'kịch bản video dạng slide + lời đọc' if for_video else 'bộ slide'} theo danh sách tiêu đề. Mỗi slide ngắn gọn (≤ 5 ý, mỗi ý ≤ 12 từ). Slide đầu layout cover.
 Chọn layout hợp nội dung: bullets, steps (quy trình), two (so sánh hai cột), table, stat (số liệu có trong nguồn), quote.
-notes: lời đọc tự nhiên {'3–5 câu, đây là lời đọc của giọng AI' if for_video else '2–4 câu'}. Mỗi slide nội dung có src.""",
+notes: lời đọc tự nhiên {'3–5 câu, đây là lời đọc của giọng AI' if for_video else '2–4 câu'}. Mỗi slide nội dung có src.
+{'delivery: chỉ dẫn ngắn cho giọng AI đọc slide này hay hơn: từ hoặc cụm cần nhấn (trích nguyên văn trong notes), chỗ ngừng, cảm xúc (vd: nhấn "phải dừng container trước", ngừng sau câu hỏi). Không lặp lại nội dung.' if for_video else 'delivery: null.'}""",
         input=f"{brief_text(kit)}\n\nTài liệu: {item['title']}\nMục đích: {item['summary']}\n\nTiêu đề các slide:\n{titles_text}\n\nTrích đoạn nguồn:\n{hits_text(hits) or '(không có nguồn)'}",
         mock=mock,
     )

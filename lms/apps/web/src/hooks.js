@@ -64,8 +64,16 @@ export function useDoc(key, url, toBody) {
     return () => { window.removeEventListener('beforeunload', before); flush() }
   }, [flush])
 
-  const reload = useCallback(async () => { pending.current = null; const d = await qc.fetchQuery({ queryKey: key, queryFn: () => get(url) }); setDoc(d) }, [url]) // eslint-disable-line react-hooks/exhaustive-deps
-  return { doc, up, saveState, flush, reload, loading: q.isLoading, error: q.error }
+  // reload: bỏ thay đổi chưa lưu (vd. sau khi khôi phục phiên bản cũ)
+  const reload = useCallback(async () => { pending.current = null; const d = await qc.fetchQuery({ queryKey: key, queryFn: () => get(url), staleTime: 0 }); setDoc(d) }, [url]) // eslint-disable-line react-hooks/exhaustive-deps
+  // refresh: lấy bản mới từ máy chủ (vd. kết quả job nền) mà không làm mất thay đổi đang gõ
+  const refresh = useCallback(async () => {
+    await flush()
+    // staleTime 0: luôn hỏi máy chủ (bản trong bộ đệm có thể còn "mới" theo cấu hình chung 15 giây)
+    const d = await qc.fetchQuery({ queryKey: key, queryFn: () => get(url), staleTime: 0 })
+    if (!pending.current) setDoc(d)
+  }, [url, flush]) // eslint-disable-line react-hooks/exhaustive-deps
+  return { doc, up, saveState, flush, reload, refresh, loading: q.isLoading, error: q.error }
 }
 
 export const saveLabel = (s) => s.state === 'saving' ? 'Đang lưu…' : s.state === 'error' ? (s.retry ? 'Chưa lưu được, đang thử lại…' : `Không lưu được: ${s.error}`) : s.state === 'saved' ? `Đã lưu lúc ${s.at.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}` : 'Tự động lưu'

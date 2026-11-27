@@ -48,6 +48,8 @@ Chặn ở API: `require_editor` (author, admin), `require_admin`; reviewer qua 
 | Việc chạy nền | Background Worker là tiến trình riêng, hàng đợi trong bảng `jobs` | API khởi động lại không mất việc đang chạy; chưa cần Redis |
 | Thông báo | Lưu trong CSDL, chuông ở góc trên bên phải (polling 30 giây); email gửi bằng job nền. Reviewer nhận lời mời và nhắc hạn; người soạn nhận kết luận, góp ý (gộp theo người khi chưa đọc), kết quả gửi LMS | Request không chờ SMTP; lỗi email không làm hỏng thao tác chính. Email kiểm lại lời mời còn hiệu lực trước khi gửi |
 | Gửi sang LMS | Ghim phiên bản lúc người soạn xác nhận; worker dựng gói từ đúng các phiên bản đó | Xuất bản lại sau khi bấm gửi không làm đổi gói đang gửi. Gửi lại dùng cùng `Idempotency-Key` nên LMS không nhận trùng |
+| Giọng đọc video | Giọng có sẵn của dịch vụ TTS (`gpt-4o-mini-tts`), chọn trong 4 giọng; phong cách chung của video + "cách đọc" riêng từng slide gửi kèm dưới dạng chỉ dẫn | Dịch vụ không có thẻ nhấn từng âm tiết, chỉ dẫn bằng lời là cách duy nhất. Không nhân bản giọng người thật. Video cũ giữ giọng alloy để dựng lại một slide không bị lệch giọng |
+| Người dẫn ở góc video | Tạm thời: ảnh chân dung người do AI tạo (không có thật) trong khung tròn, vòng sáng theo giọng đọc; chưa khớp khẩu hình | Bản nhân vật 3D dựng bằng code nhìn không đạt. Người dẫn như thật cần dịch vụ avatar (HeyGen, D-ID, Synthesia: trả phí, gửi lời đọc ra ngoài, cần IT duyệt) hoặc mô hình tự chạy (cần GPU, kiểm giấy phép). Khi chốt chỉ thay adapter `presenter.py`, luồng dựng giữ nguyên. Không dùng ảnh người thật |
 | Cổng chạy | 4100 / 5194 / 5196 | Chạy song song với bản đầy đủ (4000 / 5190 / 5192) |
 
 ## 5. Luồng tạo khóa: nội dung trước, định dạng sau
@@ -95,11 +97,12 @@ Trước đây đề chọn "mức 1–3", mà mỗi mức lại gắn sẵn d�
 
 ## 7. Kiểm thử
 
-- `npm test`: 69 test pytest (FastAPI TestClient, DB `lms_studio_test`, AI / email / LMS đều giả lập), gồm toàn bộ test chuyển từ bản Node và các phần mới:
+- `npm test`: 77 test pytest (FastAPI TestClient, DB `lms_studio_test`, AI / email / LMS đều giả lập), gồm toàn bộ test chuyển từ bản Node và các phần mới:
   - `test_kits.py`: luồng nội dung, chặn khi chưa chốt, chốt lại và soạn lại, vị trí cảnh báo khi chốt, AI thêm bài học.
   - `test_bank.py`: Kho đề, ma trận đề và gói QTI theo ô, từ chối ma trận trùng ô / quá lớn, đề từ khóa / từ tài liệu, dạng Đúng/Sai.
   - `test_reviews.py`, `test_users.py`: phạm vi xem của reviewer, mời, góp ý, kết luận, vòng mới; chỉ admin quản trị, hết phiên khi đổi vai / khóa.
   - `test_export.py`: gói SCORM (có test Nội dung không vào gói), đề QTI.
   - `test_notifications.py`: thông báo khi mời, mời lại, kết luận, góp ý; gộp góp ý liên tiếp tới khi đọc; email qua job nền; không gửi khi lời mời đã bị bỏ; nhắc hạn một lần mỗi vòng; chỉ xem và đánh dấu thông báo của mình.
+  - `test_narration.py`: giọng, phong cách, cách đọc từng slide được gửi đúng vào TTS; video cũ giữ giọng cũ và dùng lại đoạn đã dựng; vòng sáng theo giọng; khung người dẫn tròn, nền trong suốt; video có người dẫn 20 khung/giây; trình soạn theo dõi tiến độ bằng jobId; bản lưu từ trình duyệt không ghi đè kết quả dựng.
   - `test_lms_export.py`: gửi đúng phiên bản đã ghim kể cả khi xuất bản v2 sau đó, header và token, LMS từ chối (4xx, không thử lại), LMS lỗi (5xx, thử lại rồi báo lỗi), gửi lại, chưa cấu hình, phân quyền.
 - Kiểm tra trên trình duyệt (Chrome không giao diện, hồ sơ tạm, DB riêng, API Python + worker): ba vai, luồng mời → góp ý → kết luận → gửi lại; luồng chi tiết → dàn ý → nội dung → chốt → định dạng; tạo đề theo ma trận; chuông thông báo và email trong Mailpit; gửi khóa sang LMS demo → "LMS đã nhận" → LMS demo **Xem và nhập**.

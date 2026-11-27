@@ -84,9 +84,11 @@ def save(artifact_id: str, body: PatchArtifact, u: Editor) -> dict:
     if content is not None and len(json.dumps(content, ensure_ascii=False)) > MAX_CONTENT:
         raise bad_request("Nội dung quá lớn")
     if content is not None:
-        # plan và render do server quản lý, không để bản lưu từ trình duyệt ghi đè
+        # plan và render do server quản lý, không để bản lưu từ trình duyệt ghi đè. Video dựng từ slide:
+        # chương, lời thoại, thời lượng, nhãn giọng cũng do lần dựng tính ra (trình duyệt có thể giữ bản cũ)
         old = a["content"] or {}
-        keep = {k: old[k] for k in ("plan", "render") if old.get(k) is not None}
+        owned = ("plan", "render", *(("chapters", "transcript", "duration", "voice") if a["type"] == "video" and old.get("slides") else ()))
+        keep = {k: old[k] for k in owned if old.get(k) is not None}
         content = {**content, **keep}
         b["content"] = content
     r = set_artifact(a["id"], **b)

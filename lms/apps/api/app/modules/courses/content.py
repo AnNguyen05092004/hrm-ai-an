@@ -1,6 +1,7 @@
 """Chuyển bản nháp AI sang cấu trúc nội dung của trình soạn (bài, khối, câu hỏi, slide, cảnh)."""
 import re
 
+from app.modules.courses.narration import DEFAULT, narration_of
 from app.modules.sources.service import Hit
 from app.shared.ids import uid
 
@@ -8,7 +9,6 @@ NEEDS_SRC = {"heading", "para", "list", "flash", "accordion", "tabs", "timeline"
 CHARS_PER_SEC = 14
 DEFAULT_QR_LESSONS = 3
 DEFAULT_PICK = 10
-VOICE = "Giọng đọc AI có sẵn (alloy)"
 
 
 def js_round(x: float) -> int:
@@ -106,7 +106,7 @@ def video_content(r: dict, hits: list[Hit]) -> dict:
             transcript.append({"t": t, "x": sentence})
             t += max(3, js_round(len(sentence) / CHARS_PER_SEC))
         slides.append(_slide(s, hits, t=at))
-    return {"ai": True, "voice": VOICE, "slides": slides, "chapters": chapters, "transcript": transcript, "checkpoints": [], "duration": t, "render": {"status": "none"}}
+    return {"ai": True, "voice": narration_of({"narration": DEFAULT}).label, "narration": dict(DEFAULT), "slides": slides, "chapters": chapters, "transcript": transcript, "checkpoints": [], "duration": t, "render": {"status": "none"}}
 
 
 def scenario_content(r: dict) -> dict:

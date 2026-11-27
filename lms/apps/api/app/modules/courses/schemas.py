@@ -152,6 +152,7 @@ class Slide(BaseModel):
     quote: str | None
     by: str | None
     notes: str = Field(description="lời người trình bày, cũng là lời đọc khi tạo video, 2–4 câu")
+    delivery: str | None = Field(description="chỉ dẫn cách đọc lời của slide này cho giọng AI (chỉ video, bộ slide để null): từ cần nhấn, chỗ ngừng, cảm xúc; ≤ 20 từ")
     src: str | None
 
 

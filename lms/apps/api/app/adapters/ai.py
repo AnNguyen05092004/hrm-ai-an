@@ -98,11 +98,13 @@ def image_gen(org_id: str, prompt: str) -> bytes | None:
     return base64.b64decode(b64)
 
 
-def tts(org_id: str, text_: str) -> bytes | None:
-    """Giọng đọc AI (giọng có sẵn của dịch vụ, không nhân bản giọng người thật)"""
+def tts(org_id: str, text_: str, voice: str = "alloy", instructions: str | None = None) -> bytes | None:
+    """Giọng đọc AI (giọng có sẵn của dịch vụ, không nhân bản giọng người thật).
+    instructions: chỉ dẫn cách đọc (phong cách, nhấn nhá, nhịp), chỉ model gpt-4o-mini-tts trở lên làm theo"""
     if is_mock():
         return None
     _check_quota(org_id)
-    r = _client().audio.speech.create(model=settings().AI_TTS_MODEL, voice="alloy", input=text_[:4000], response_format="mp3")
-    _track(org_id, "tts", settings().AI_TTS_MODEL, -(-len(text_) // 4), 0)
+    extra = {"instructions": instructions[:2000]} if instructions else {}
+    r = _client().audio.speech.create(model=settings().AI_TTS_MODEL, voice=voice, input=text_[:4000], response_format="mp3", **extra)
+    _track(org_id, "tts", settings().AI_TTS_MODEL, -(-len(text_) // 4) + -(-len(instructions or "") // 4), 0)
     return r.read() if hasattr(r, "read") else r.content

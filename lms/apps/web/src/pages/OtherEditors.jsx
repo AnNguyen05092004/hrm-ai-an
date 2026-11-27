@@ -5,7 +5,9 @@ import { useStore, uid } from '../store'
 import { fmtTime } from '../data'
 import { Avatar, Modal, Tip, Thumb } from '../ui'
 import { ArtifactTop, PublishModal, DraftBar } from './Common'
-import { post } from '../api'
+import { get, post } from '../api'
+import { useJob } from '../hooks'
+import { useQuery } from '@tanstack/react-query'
 
 // Cho phép mã soạn cũ dạng set(d => d.artifacts[art.id]...) ghi vào bản nháp đang mở
 const artSet = (art, up) => (fn) => up((a) => fn({ artifacts: { [art.id]: a } }))
@@ -223,26 +225,29 @@ export function ScenarioEditor({ art, kit, up, saveText, onRestored }) {
 export { Slide }
 
 /** Nghe thử lời đọc bằng giọng AI thật */
-function VoicePreview({ text }) {
+/** Nghe thử giọng AI: lời của một slide (kèm cách đọc), hoặc câu mẫu khi chọn giọng (sample) */
+function VoicePreview({ text, voice = 'marin', style = 'friendly', delivery = '', sample = false, label = 'Nghe thử giọng AI' }) {
   const { say } = useStore()
   const [state, setState] = useState('idle')
   const audio = useRef(null)
   useEffect(() => () => audio.current?.pause(), [])
-  const play = async () => {
+  const play = async (e) => {
+    e?.stopPropagation()
     if (state === 'playing') { audio.current?.pause(); setState('idle'); return }
-    if (!text?.trim()) { say('Slide này chưa có ghi chú để đọc'); return }
+    if (!sample && !text?.trim()) { say('Slide này chưa có ghi chú để đọc'); return }
     setState('loading')
     try {
-      const res = await fetch('/api/tts', { method: 'POST', headers: { 'x-lms': '1', 'content-type': 'application/json' }, body: JSON.stringify({ text }) })
+      const body = sample ? { sample: true, voice, style } : { text, voice, style, delivery: delivery ?? '' }
+      const res = await fetch('/api/tts', { method: 'POST', headers: { 'x-lms': '1', 'content-type': 'application/json' }, body: JSON.stringify(body) })
       if (!res.ok) throw new Error((await res.json().catch(() => null))?.error?.message ?? 'Không tạo được giọng đọc')
       const url = URL.createObjectURL(await res.blob())
       audio.current?.pause()
       audio.current = new Audio(url)
       audio.current.onended = () => { setState('idle'); URL.revokeObjectURL(url) }
       await audio.current.play(); setState('playing')
-    } catch (e) { say(e.message); setState('idle') }
+    } catch (err) { say(err.message); setState('idle') }
   }
-  return <button onClick={play} disabled={state === 'loading'} className="flex items-center gap-1 text-[13px] font-medium text-violet-700 disabled:opacity-50">{state === 'loading' ? <RefreshCw size={14} className="spin" /> : state === 'playing' ? <Pause size={14} /> : <AudioLines size={14} />}{state === 'playing' ? 'Dừng' : 'Nghe thử giọng AI'}</button>
+  return <button type="button" onClick={play} disabled={state === 'loading'} className="flex items-center gap-1 text-[13px] font-medium text-violet-700 disabled:opacity-50">{state === 'loading' ? <RefreshCw size={14} className="spin" /> : state === 'playing' ? <Pause size={14} /> : <AudioLines size={14} />}{state === 'playing' ? 'Dừng' : label}</button>
 }
 
 const NOTES_KEY = 'deck-notes-open'
@@ -411,26 +416,120 @@ export function VideoStage({ art, t, playing, onToggle, cp, onAnswer }) {
 }
 
 
-/** Trạng thái dựng video thật từ slide + giọng đọc AI; sửa slide/lời đọc thì chỉ dựng lại đoạn đổi */
-function RenderPanel({ art, onReload }) {
-  const { say } = useStore()
-  const r = art.render ?? { status: 'none' }
-  const rendering = r.status === 'rendering'
-  useEffect(() => { if (!rendering) return; const i = setInterval(onReload, 3000); return () => clearInterval(i) }, [rendering]) // eslint-disable-line react-hooks/exhaustive-deps
-  const start = async () => { try { await post(`/artifacts/${art.id}/render`, {}); say('Đang dựng video bằng giọng đọc AI'); onReload() } catch (e) { say(e.message) } }
+const LEGACY_NARRATION = { voice: 'alloy', style: 'none', presenter: false, pos: 'right' }
+
+/** Cấu hình lời đọc của video (video tạo trước khi có cấu hình giữ giọng cũ) và danh sách giọng từ API */
+function useNarration(art) {
+  const opts = useQuery({ queryKey: ['narration-options'], queryFn: () => get('/media/narration-options'), staleTime: Infinity }).data
+  const n = art.narration ?? opts?.legacy ?? LEGACY_NARRATION
+  const voice = opts?.voices.find((v) => v.id === n.voice)
+  const style = opts?.styles.find((x) => x.id === n.style)
+  return { n, opts, look: voice?.look ?? 'f', label: voice ? `${voice.label} · ${style?.label ?? ''}` : '' }
+}
+
+/** Người dẫn trên ảnh xem trước slide: đúng vị trí và cỡ trong video (khung 232 px trên slide 1280 × 720, xem presenter.overlay_xy) */
+function PresenterGhost({ art, n, look }) {
+  if (!n.presenter) return null
+  const pos = n.pos === 'left' ? { left: '0.16%' } : { left: '81.72%' }
+  return <img src={`/api/artifacts/${art.id}/presenter.png?look=${look}`} alt="" aria-hidden className="pointer-events-none absolute opacity-90" style={{ ...pos, top: '67.5%', width: '18.13%', height: '32.22%' }} />
+}
+
+function NarrationPanel({ art, upA }) {
+  const { n, opts, look } = useNarration(art)
+  if (!opts) return null
+  const set = (patch) => upA((a) => { a.narration = { ...(a.narration ?? n), ...patch } })
+  const voices = opts.voices.filter((v) => v.id !== 'alloy' || n.voice === 'alloy')
+  const styles = opts.styles.filter((x) => x.id !== 'none' || n.style === 'none')
   return (
-    <div className="mb-4 flex items-center gap-3 rounded-xl border border-line p-4 text-[14px]">
-      <Film size={18} className="shrink-0 text-rose-500" />
-      <div className="flex-1">{rendering ? <span className="flex items-center gap-2 font-medium"><RefreshCw size={14} className="spin" />Đang dựng video… (mỗi đoạn vài giây)</span>
-        : r.status === 'done' ? <span><b>Video đã dựng</b> · {fmtTime(art.duration)} · {r.total} đoạn{r.reused ? `, dùng lại ${r.reused} đoạn không đổi` : ''}</span>
-          : r.status === 'failed' ? <span className="text-red-600">Dựng lỗi: {r.error}</span>
-            : <span className="text-neutral-600">Chưa dựng. Hình lấy từ slide, lời đọc lấy từ ghi chú từng slide, giọng đọc AI có sẵn.</span>}</div>
-      <button className="btn-dark btn-sm h-9 shrink-0" disabled={rendering} onClick={start}><Sparkles size={14} />{r.status === 'done' ? 'Dựng lại phần đã sửa' : 'Dựng video'}</button>
+    <div className="mb-4 rounded-xl border border-line p-4">
+      <div className="flex items-center gap-2 text-[15px] font-semibold"><AudioLines size={16} className="text-violet-600" />Giọng đọc và người dẫn</div>
+      <p className="mt-1 text-[13px] text-neutral-500">Đổi giọng, phong cách hoặc người dẫn thì cả video được dựng lại. Sửa lời hay cách đọc một slide thì chỉ dựng lại slide đó.</p>
+      <div className="mt-4 grid gap-5 md:grid-cols-[1fr_220px]">
+        <div>
+          <div className="mb-1.5 text-[13px] font-medium text-neutral-600">Giọng</div>
+          <div role="radiogroup" aria-label="Giọng đọc" className="grid grid-cols-2 gap-2">
+            {voices.map((v) => <div key={v.id} role="radio" aria-checked={n.voice === v.id} tabIndex={0} onClick={() => set({ voice: v.id })} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); set({ voice: v.id }) } }}
+              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-[14px] ${n.voice === v.id ? 'border-violet-500 bg-violet-50 font-medium' : 'border-line hover:bg-neutral-50'}`}>
+              <span className="flex-1">{v.label}</span><VoicePreview sample voice={v.id} style={n.style} label="Nghe" />
+            </div>)}
+          </div>
+          <label className="mt-3 block text-[13px] font-medium text-neutral-600" htmlFor={`style-${art.id}`}>Phong cách đọc</label>
+          <select id={`style-${art.id}`} value={n.style} onChange={(e) => set({ style: e.target.value })} className="mt-1.5 h-9 w-full rounded-lg border border-line bg-white px-2 text-[14px]">
+            {styles.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+          </select>
+          <p className="mt-2 text-[12px] text-neutral-500">Nhấn từ nào, ngừng ở đâu của từng slide: sửa ở ô <b>Cách đọc</b> dưới lời đọc. AI soạn video đã điền sẵn.</p>
+        </div>
+        <div>
+          <label className="flex cursor-pointer items-center gap-2 text-[14px] font-medium"><input type="checkbox" checked={n.presenter} onChange={(e) => set({ presenter: e.target.checked })} className="h-4 w-4 accent-violet-600" />Người dẫn ở góc video</label>
+          {n.presenter ? <>
+            <img src={`/api/artifacts/${art.id}/presenter.png?look=${look}`} alt="Người dẫn do AI tạo" className="mx-auto mt-2 h-[132px] w-[132px]" />
+            <div role="radiogroup" aria-label="Vị trí người dẫn" className="mt-2 flex rounded-lg border border-line p-0.5 text-[13px]">
+              {[['left', 'Góc trái'], ['right', 'Góc phải']].map(([k, l]) => <button key={k} type="button" role="radio" aria-checked={n.pos === k} onClick={() => set({ pos: k })} className={`flex-1 rounded-md py-1 ${n.pos === k ? 'bg-ink font-medium text-white' : 'text-neutral-600'}`}>{l}</button>)}
+            </div>
+            <p className="mt-2 text-[12px] text-neutral-500">Người dẫn là ảnh do AI tạo (không phải người thật), nam hay nữ theo giọng đã chọn. Vòng sáng quanh ảnh nhấp nháy theo giọng đọc; khớp khẩu hình sẽ bổ sung sau.</p>
+          </> : <p className="mt-2 text-[12px] text-neutral-500">Bật để có người dẫn ở góc dưới video.</p>}
+        </div>
+      </div>
     </div>
   )
 }
 
-export function VideoEditor({ art, kit, up, saveText, onRestored }) {
+/** Trạng thái dựng video thật từ slide + giọng đọc AI; sửa slide/lời đọc thì chỉ dựng lại đoạn đổi */
+function RenderPanel({ art, n, onRefresh, flush }) {
+  const { say } = useStore()
+  const r = art.render ?? { status: 'none' }
+  const rendering = r.status === 'rendering'
+  const [starting, setStarting] = useState(false)
+  const [justDone, setJustDone] = useState(false)
+  // tiến độ thật của job dựng (từng đoạn); job xong thì lấy kết quả về
+  const job = useJob(rendering ? r.jobId : null)
+  useEffect(() => { if (job?.status === 'done' || job?.status === 'failed') onRefresh() }, [job?.status]) // eslint-disable-line react-hooks/exhaustive-deps
+  // dữ liệu cũ chưa ghi jobId: hỏi lại trạng thái mỗi 3 giây (không bỏ thay đổi đang gõ)
+  useEffect(() => { if (!rendering || r.jobId) return; const i = setInterval(onRefresh, 3000); return () => clearInterval(i) }, [rendering, r.jobId]) // eslint-disable-line react-hooks/exhaustive-deps
+  // báo khi dựng xong hoặc lỗi
+  const prev = useRef(r.status)
+  useEffect(() => {
+    if (prev.current === 'rendering' && r.status === 'done') {
+      say(`Đã dựng xong video · ${fmtTime(art.duration)}`)
+      setJustDone(true); const t = setTimeout(() => setJustDone(false), 5000); prev.current = r.status; return () => clearTimeout(t)
+    }
+    if (prev.current === 'rendering' && r.status === 'failed') say(`Dựng video lỗi: ${r.error}`)
+    prev.current = r.status
+  }, [r.status]) // eslint-disable-line react-hooks/exhaustive-deps
+  // giọng / người dẫn đã đổi sau lần dựng gần nhất (lần dựng ghi lại cấu hình đã dùng)
+  const stale = r.status === 'done' && r.narration && ['voice', 'style', 'presenter', 'pos'].some((k) => r.narration[k] !== n[k])
+  const start = async () => {
+    setStarting(true)
+    try {
+      await flush() // vừa đổi giọng / người dẫn / lời đọc: lưu trước để máy chủ dựng đúng bản đang thấy
+      await post(`/artifacts/${art.id}/render`, {})
+      say('Đã bắt đầu dựng video. Video dựng ở máy chủ, bạn vẫn sửa tiếp được')
+      await onRefresh()
+    } catch (e) { say(e.message) } finally { setStarting(false) }
+  }
+  const pct = Math.max(3, job?.progress ?? 0)
+  return (
+    <div role="status" aria-live="polite" className={`mb-4 rounded-xl border p-4 text-[14px] transition-colors duration-500 ${justDone ? 'border-emerald-300 bg-emerald-50' : rendering ? 'border-violet-200 bg-violet-50/50' : 'border-line'}`}>
+      <div className="flex items-center gap-3">
+        {justDone ? <CheckCircle2 size={18} className="shrink-0 text-emerald-600" /> : <Film size={18} className="shrink-0 text-rose-500" />}
+        <div className="min-w-0 flex-1">{rendering
+          ? <><div className="font-medium">Đang dựng video · {pct}%</div><div className="mt-0.5 text-[13px] text-neutral-600">{job?.message || (job?.status === 'queued' ? 'Đang chờ đến lượt…' : 'Đang chuẩn bị…')}</div></>
+          : r.status === 'done' ? <span>{justDone ? <b className="text-emerald-700">Đã dựng xong</b> : <b>Video đã dựng</b>} · {fmtTime(art.duration)} · {r.total} đoạn{r.reused ? `, dùng lại ${r.reused} đoạn không đổi` : ''}{stale && <span className="mt-1 block font-medium text-amber-700">Giọng, phong cách đọc hoặc người dẫn đã đổi sau lần dựng này. Bấm Dựng lại để áp dụng.</span>}</span>
+            : r.status === 'failed' ? <span className="text-red-600">Dựng lỗi: {r.error}</span>
+              : <span className="text-neutral-600">Chưa dựng. Hình lấy từ slide, lời đọc lấy từ ghi chú từng slide, giọng đọc AI có sẵn.</span>}</div>
+        <button className="btn-dark btn-sm h-9 shrink-0" disabled={rendering || starting} onClick={start}>
+          {starting ? <><RefreshCw size={14} className="spin" />Đang bắt đầu…</> : rendering ? <><RefreshCw size={14} className="spin" />Đang dựng…</> : <><Sparkles size={14} />{r.status === 'done' ? 'Dựng lại phần đã sửa' : 'Dựng video'}</>}
+        </button>
+      </div>
+      {rendering && <>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-violet-100" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}><div className="h-full rounded-full bg-violet-600 transition-all duration-700" style={{ width: `${pct}%` }} /></div>
+        <p className="mt-2 text-[12px] text-neutral-500">Video dựng ở máy chủ: bạn có thể tiếp tục sửa hoặc rời trang, quay lại sẽ thấy kết quả. Có người dẫn thì mỗi phút video mất khoảng 30–60 giây.</p>
+      </>}
+    </div>
+  )
+}
+
+export function VideoEditor({ art, kit, up, saveText, onRestored, onRefresh, flush }) {
   const { say } = useStore()
   const set = artSet(art, up)
   const nav = useNavigate()
@@ -450,6 +549,7 @@ export function VideoEditor({ art, kit, up, saveText, onRestored }) {
   const seek = (x) => { setT(x); if (vref.current) vref.current.currentTime = x; if (fromSlides) { const i = art.chapters.findLastIndex((c) => c.t <= x); if (i >= 0 && i < art.slides.length) setCur(i) } }
   const sl = fromSlides ? art.slides[Math.min(cur, art.slides.length - 1)] : null
   const upS = (fn) => upA((a) => fn(a.slides[Math.min(cur, a.slides.length - 1)]))
+  const narr = useNarration(art)
   return (
     <div className="flex h-full flex-col">
       <ArtifactTop art={art} kit={kit} saveText={saveText} onRestored={onRestored} onShare={() => setShare(true)} onPreview={() => nav(`/preview/${art.id}`)} />
@@ -458,9 +558,10 @@ export function VideoEditor({ art, kit, up, saveText, onRestored }) {
         <div className="scroll-thin min-h-0 overflow-y-auto p-8">
           <h1 className="mb-1 font-lato text-[26px] font-black"><Editable value={art.title} className="block" placeholder="Tên video" onChange={(v) => upA((a) => { a.title = v })} /></h1>
           <p className="mb-5 text-[14px] text-neutral-600"><Editable value={art.summary} multiline className="block" placeholder="Mô tả ngắn" onChange={(v) => upA((a) => { a.summary = v })} /></p>
-          {fromSlides && <RenderPanel art={art} onReload={onRestored} />}
+          {fromSlides && <NarrationPanel art={art} upA={upA} />}
+          {fromSlides && <RenderPanel art={art} n={narr.n} onRefresh={onRefresh} flush={flush} />}
           {rendered ? <video ref={vref} key={art.render.url} src={`${art.render.url}#t=0.5`} controls className="aspect-video w-full rounded-xl bg-black" onTimeUpdate={(e) => setT(e.currentTarget.currentTime)}><track kind="captions" src={art.render.vtt} srcLang="vi" label="Tiếng Việt" default /></video>
-            : fromSlides ? <div className="relative aspect-video overflow-hidden rounded-xl bg-neutral-100"><Slide s={sl} n={cur + 1} total={art.slides.length} /><span className="absolute right-3 top-3 rounded bg-black/60 px-2 py-1 text-[12px] text-white">Xem trước slide {cur + 1} · bấm Dựng video để có video thật</span></div>
+            : fromSlides ? <div className="relative aspect-video overflow-hidden rounded-xl bg-neutral-100"><Slide s={sl} n={cur + 1} total={art.slides.length} /><PresenterGhost art={art} n={narr.n} look={narr.look} /><span className="absolute right-3 top-3 rounded bg-black/60 px-2 py-1 text-[12px] text-white">{art.render?.status === 'rendering' ? `Xem trước slide ${cur + 1} · đang dựng video` : `Xem trước slide ${cur + 1} · bấm Dựng video để có video thật`}</span></div>
               : <VideoStage art={art} t={t} playing={playing} onToggle={() => setPlaying(!playing)} />}
           <div className="mt-4">
             <div className="relative h-10">
@@ -475,12 +576,13 @@ export function VideoEditor({ art, kit, up, saveText, onRestored }) {
             <div className="mb-3 flex items-center gap-2 text-[15px] font-semibold">Slide trong video<span className="font-normal text-neutral-500">{art.slides.length} slide · sửa xong bấm "Dựng lại phần đã sửa"</span></div>
             <div className="scroll-thin mb-4 flex gap-2 overflow-x-auto pb-1">{art.slides.map((x, i) => <button key={x.id ?? i} onClick={() => seek(art.chapters[i]?.t ?? 0)} className={`aspect-video w-[132px] shrink-0 overflow-hidden rounded-lg border-2 ${i === cur ? 'border-neutral-700' : 'border-line'}`}><Slide s={x} n={i + 1} /></button>)}</div>
             <div className="flex justify-center"><SlideCanvas key={cur} artId={art.id} s={sl} n={cur + 1} total={art.slides.length} upS={upS} /></div>
-            <div className="mt-4 rounded-xl border border-line bg-white p-4"><div className="flex items-center gap-2 text-[14px] font-semibold"><AudioLines size={15} />Lời đọc slide {cur + 1}<div className="flex-1" /><VoicePreview text={sl.notes} /></div>
-              <div className="mt-2 text-[15px]"><Editable value={sl.notes ?? ''} multiline className="block min-h-[44px]" placeholder="Lời giọng AI đọc khi slide này hiện" onChange={(v) => upS((x) => { x.notes = v })} /></div></div>
+            <div className="mt-4 rounded-xl border border-line bg-white p-4"><div className="flex items-center gap-2 text-[14px] font-semibold"><AudioLines size={15} />Lời đọc slide {cur + 1}<div className="flex-1" /><VoicePreview text={sl.notes} voice={narr.n.voice} style={narr.n.style} delivery={sl.delivery} /></div>
+              <div className="mt-2 text-[15px]"><Editable value={sl.notes ?? ''} multiline className="block min-h-[44px]" placeholder="Lời giọng AI đọc khi slide này hiện" onChange={(v) => upS((x) => { x.notes = v })} /></div>
+              <div className="mt-3 flex items-start gap-2 border-t border-line pt-3 text-[13px]"><span className="shrink-0 font-medium text-neutral-600">Cách đọc</span><Editable value={sl.delivery ?? ''} className="block flex-1 text-neutral-700" placeholder='Ví dụ: nhấn "phải dừng container trước", ngừng một nhịp sau câu hỏi' onChange={(v) => upS((x) => { x.delivery = v })} /></div></div>
           </div>}
           <div className="mt-6 grid grid-cols-3 gap-3 text-[13px]">
             <div className="rounded-xl border border-line p-3"><div className="text-neutral-500">Nguồn video</div><div className="mt-1 font-semibold">{art.ai ? 'AI tạo từ bộ slide' : 'Tải lên'}</div></div>
-            <div className="rounded-xl border border-line p-3"><div className="text-neutral-500">Giọng đọc</div><div className="mt-1 font-semibold">{art.voice}</div></div>
+            <div className="rounded-xl border border-line p-3"><div className="text-neutral-500">Giọng đọc</div><div className="mt-1 font-semibold">{fromSlides && narr.label ? `${narr.label}${narr.n.presenter ? ' · có người dẫn' : ''}` : art.voice}</div></div>
             <div className="rounded-xl border border-line p-3"><div className="text-neutral-500">Chép lời và chia chương</div><div className="mt-1 font-semibold text-emerald-700">{fromSlides && !rendered ? 'Có sau khi dựng' : `Đã xong · ${art.chapters.length} chương`}</div></div>
           </div>
         </div>
@@ -497,7 +599,7 @@ export function VideoEditor({ art, kit, up, saveText, onRestored }) {
                 <MiniBtn onClick={() => upA((a) => { a.checkpoints[ci].choices.push('') })} className="mt-1"><Plus size={12} />Thêm lựa chọn</MiniBtn></div>)}
               <p className="mb-2 text-[13px] text-neutral-500">Video dừng ở mốc này và hỏi người học. Tua video tới đúng chỗ rồi bấm thêm.</p>
               <button onClick={() => { upA((a) => { a.checkpoints.push({ t: Math.round(t), q: '', choices: ['', ''], correct: 0 }); a.checkpoints.sort((x, y) => x.t - y.t) }); say(`Đã thêm điểm kiểm tra tại ${fmtTime(t)}`) }} className="btn-line btn-sm w-full"><Plus size={14} />Thêm điểm kiểm tra tại {fmtTime(t)}</button></>}
-            {tab === 'vo' && <><p className="mb-3 text-[13px] text-neutral-500">Lời giọng AI đọc cho từng slide. Sửa xong bấm "Dựng lại phần đã sửa": chỉ đoạn đổi được dựng lại, lời thoại và chương tự cập nhật theo thời lượng thật.</p>{art.slides.map((x, si) => <div key={x.id ?? si} className={`mb-3 rounded-lg border p-3 ${si === cur ? 'border-neutral-500' : 'border-line'}`} onFocusCapture={() => setCur(si)}><div className="text-[13px] font-semibold"><Editable value={x.title} className="block" placeholder="Tiêu đề slide" onChange={(v) => upA((a) => { a.slides[si].title = v })} /></div><div className="mt-1 text-[14px] text-neutral-700"><Editable value={x.notes ?? ''} multiline className="block" placeholder="Lời đọc cho đoạn này" onChange={(v) => upA((a) => { a.slides[si].notes = v })} /></div></div>)}</>}
+            {tab === 'vo' && <><p className="mb-3 text-[13px] text-neutral-500">Lời giọng AI đọc cho từng slide. Sửa xong bấm "Dựng lại phần đã sửa": chỉ đoạn đổi được dựng lại, lời thoại và chương tự cập nhật theo thời lượng thật.</p>{art.slides.map((x, si) => <div key={x.id ?? si} className={`mb-3 rounded-lg border p-3 ${si === cur ? 'border-neutral-500' : 'border-line'}`} onFocusCapture={() => setCur(si)}><div className="text-[13px] font-semibold"><Editable value={x.title} className="block" placeholder="Tiêu đề slide" onChange={(v) => upA((a) => { a.slides[si].title = v })} /></div><div className="mt-1 text-[14px] text-neutral-700"><Editable value={x.notes ?? ''} multiline className="block" placeholder="Lời đọc cho đoạn này" onChange={(v) => upA((a) => { a.slides[si].notes = v })} /></div><div className="mt-1.5 flex gap-1.5 text-[12px] text-neutral-500"><span className="shrink-0 font-medium">Cách đọc:</span><Editable value={x.delivery ?? ''} className="block flex-1 italic" placeholder="chưa có" onChange={(v) => upA((a) => { a.slides[si].delivery = v })} /></div></div>)}</>}
             {tab === 'tr' && <>{fromSlides && <p className="mb-3 text-[13px] text-neutral-500">Lời thoại chép từ lời đọc khi dựng. Muốn đổi thì sửa ở tab Lời đọc rồi dựng lại.</p>}
               {!art.transcript.length && <p className="text-[14px] text-neutral-500">Chưa có lời thoại. Dựng video để tạo.</p>}
               {art.transcript.map((x, xi) => <div key={xi} className={`mb-1 flex gap-3 rounded-lg p-2 ${t >= x.t ? 'bg-brand/5' : ''}`}><button onClick={() => seek(x.t)} className="w-12 shrink-0 font-mono text-[12px] text-sky-700">{fmtTime(x.t)}</button>{fromSlides ? <span className="flex-1 text-[14px]">{x.x}</span> : <Editable value={x.x} multiline className="block flex-1 text-[14px]" placeholder="Lời thoại" onChange={(v) => upA((a) => { a.transcript[xi].x = v })} />}</div>)}</>}

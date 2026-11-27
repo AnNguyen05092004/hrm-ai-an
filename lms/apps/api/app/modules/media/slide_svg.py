@@ -4,6 +4,7 @@ import math
 import re
 
 W, H = 1280, 720
+PRESENTER_SPACE = 170  # chừa cho khung người dẫn (≈ đường kính + lề − khoảng sẵn có của chân slide)
 PX = W / 960  # slide trên web thiết kế theo bề ngang 960
 ACCENT = "#ff6119"
 # font chọn trên slide (cùng khóa với slideModel.js); máy chủ chưa cài font Google thì resvg dùng font dự phòng kế tiếp
@@ -229,7 +230,7 @@ def _body(s: dict, items: list[str], pic: str | None) -> str:
     return "".join(_bullet(x, i, layout == "steps") for i, x in enumerate(items[:5]))
 
 
-def _slide_raw(s: dict, n: int, total: int, pic: str | None, pics: dict[str, str]) -> str:
+def _slide_raw(s: dict, n: int, total: int, pic: str | None, pics: dict[str, str], reserve: str | None = None) -> str:
     st = s.get("st") or {}
     layout = s.get("layout")
     dark = layout != "cover" and bool(pics.get("bg")) and s.get("bgTone") == "dark"
@@ -248,11 +249,15 @@ def _slide_raw(s: dict, n: int, total: int, pic: str | None, pics: dict[str, str
         back = f'<image href="{pics["bg"]}" x="0" y="0" width="{W}" height="{H}" preserveAspectRatio="xMidYMid slice"/>{TONE_FILL.get(s.get("bgTone") or "light", TONE_FILL["light"])}' if pics.get("bg") else ""
         body = f'{back}<rect width="11" height="{H}" fill="{ACCENT}"/>{restyle(tone(body, layout in ("two", "table")), st.get("body"), 80, 230)}'
     boxes = "".join(el_svg(b, i, pics) for i, b in enumerate(s.get("boxes") or []))
-    foot = (f'<text x="80" y="{H - 34}" font-size="18" fill="#888">Nội dung do AI tạo, đã được chuyên gia duyệt</text>'
-            f'<text x="{W - 80}" y="{H - 34}" font-size="18" fill="#888" text-anchor="end">{n}/{total}</text>')
+    # có người dẫn ở góc dưới: chân slide lùi khỏi khung tròn để không bị che
+    left = 80 + (PRESENTER_SPACE if reserve == "left" else 0)
+    right = W - 80 - (PRESENTER_SPACE if reserve == "right" else 0)
+    foot = (f'<text x="{left}" y="{H - 34}" font-size="18" fill="#888">Nội dung do AI tạo, đã được chuyên gia duyệt</text>'
+            f'<text x="{right}" y="{H - 34}" font-size="18" fill="#888" text-anchor="end">{n}/{total}</text>')
     family = font_of(s.get("font")) or "Arial, Helvetica, sans-serif"
     return f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" font-family="{family}"><rect width="{W}" height="{H}" fill="{color(s.get("bg")) or "#fff"}"/>{body}{kicker}{head}{boxes}{foot}</svg>'
 
 
-def slide_svg(s: dict, n: int, total: int, accent: str = ACCENT, pic: str | None = None, pics: dict[str, str] | None = None) -> str:
-    return _slide_raw(s, n, total, pic, pics or {}).replace(ACCENT, color(accent) or ACCENT)
+def slide_svg(s: dict, n: int, total: int, accent: str = ACCENT, pic: str | None = None, pics: dict[str, str] | None = None, reserve: str | None = None) -> str:
+    """reserve: "left" | "right" khi video có người dẫn ở góc dưới bên đó"""
+    return _slide_raw(s, n, total, pic, pics or {}, reserve).replace(ACCENT, color(accent) or ACCENT)
