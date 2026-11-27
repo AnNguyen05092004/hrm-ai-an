@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { AlignLeft, AlignCenter, AlignRight, Type, HelpCircle, ChevronLeft, Eye, Sparkles, Plus, ArrowUp, ArrowDown, Copy, Trash2, X, Check, GripVertical, Code2, FileText, Wand2, AlertTriangle } from 'lucide-react'
+import { AlignLeft, AlignCenter, AlignRight, Type, HelpCircle, ChevronLeft, Eye, Sparkles, Plus, ArrowUp, ArrowDown, Copy, Trash2, X, Check, GripVertical, Code2, FileText, Wand2, AlertTriangle, PenLine } from 'lucide-react'
 import { useStore, uid } from '../store'
-import { LEVELS, QTYPES, questionFields } from '../data'
-import { TypePicker } from './QuizSheet'
+import { DIFFS, diffName, QTYPES, questionFields } from '../data'
+import { TypePicker, MatrixEditor } from './QuizSheet'
 import { Tip, SrcChip, Modal, Spinner } from '../ui'
 import { BlockView, BLOCK_SIZES, BLOCK_ALIGNS, BLOCK_BGS, ALIGNABLE } from '../blocks'
 import RichToolbar from '../RichToolbar'
@@ -100,6 +100,26 @@ function BlockStyle({ b, onChange, onClose }) {
   )
 }
 
+/** Chỗ thiếu căn cứ: tìm lại trong tài liệu nguồn bằng AI, hoặc tự viết (đánh dấu chưa có nguồn để người duyệt kiểm tra) */
+function GapFix({ artId, b, onReplace }) {
+  const { say } = useStore()
+  const [busy, setBusy] = useState(false)
+  const retry = async () => {
+    setBusy(true)
+    try {
+      const nb = await post(`/artifacts/${artId}/ai-block`, { instruction: String(b.p || 'Bổ sung nội dung còn thiếu').slice(0, 1000) })
+      if (nb.t === 'gap') say('Tài liệu nguồn vẫn chưa có nội dung này. Tải thêm tài liệu, tự viết, hoặc xóa khối.')
+      else { onReplace({ ...nb, id: b.id }); say('AI đã viết khối từ tài liệu nguồn, kiểm tra lại trước khi chốt') }
+    } catch (e) { say(e.message) } finally { setBusy(false) }
+  }
+  return (
+    <div className="mx-auto mt-3 flex max-w-[680px] flex-wrap gap-2 px-6">
+      <button className="btn-line btn-sm h-8" disabled={busy} onClick={retry}>{busy ? <Spinner size={14} w={2} /> : <Sparkles size={14} className="text-violet-600" />}Tìm lại trong tài liệu nguồn</button>
+      <button className="btn-line btn-sm h-8" disabled={busy} onClick={() => onReplace({ id: b.id, t: 'para', p: '', nosrc: true })}><PenLine size={14} />Tự viết đoạn này</button>
+    </div>
+  )
+}
+
 function LessonEditor({ art, lesson, up, onBack }) {
   const [lib, setLib] = useState(null)
   const [aiAt, setAiAt] = useState(null)
@@ -111,6 +131,19 @@ function LessonEditor({ art, lesson, up, onBack }) {
   const move = (i, dir) => { setFmtAt(null); setAiAt(null); doMove(i, dir) }
   const doMove = (i, dir) => upL((l) => { const j = i + dir; if (j < 0 || j >= l.blocks.length) return; [l.blocks[i], l.blocks[j]] = [l.blocks[j], l.blocks[i]] })
   const insert = (at, b) => { upL((l) => { l.blocks.splice(at, 0, { ...b, id: uid('b') }) }); setLib(null) }
+  // mở từ cảnh báo khi chốt / xuất bản (?b=): cuộn tới đúng khối và làm nổi khối đó
+  const [params] = useSearchParams()
+  const target = params.get('b')
+  const [flash, setFlash] = useState(null)
+  useEffect(() => {
+    if (!target) return undefined
+    const el = document.getElementById(`blk-${target}`)
+    if (!el) return undefined
+    el.scrollIntoView({ block: 'center' })
+    setFlash(target)
+    const t = setTimeout(() => setFlash(null), 2500)
+    return () => clearTimeout(t)
+  }, [target])
   return (
     <div className="min-h-full pb-24">
       <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-white px-4">
@@ -127,7 +160,7 @@ function LessonEditor({ art, lesson, up, onBack }) {
       <div className="mt-10 border-t border-line" />
       {lesson.blocks.length === 0 && <p className="mx-auto mt-10 max-w-[680px] px-6 text-[15px] text-neutral-500">Bài này chưa có nội dung. Bấm "Thêm khối" để bắt đầu.</p>}
       {lesson.blocks.map((b, i) => (
-        <div key={b.id} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} className={`relative border-b border-dashed py-10 ${hover === i ? 'border-neutral-300 bg-neutral-50/40' : 'border-transparent'}`}>
+        <div key={b.id} id={`blk-${b.id}`} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} className={`relative scroll-mt-20 border-b border-dashed py-10 transition-colors duration-700 ${flash === b.id ? 'bg-amber-50' : hover === i ? 'border-neutral-300 bg-neutral-50/40' : 'border-transparent'}`}>
           {(hover === i || fmtAt === i) && <>
             {b.t !== 'image' && b.t !== 'gap' && <div className="absolute left-5 top-4 z-10 flex items-center gap-0.5 rounded-full bg-white px-1.5 py-1 shadow-card">
               <Tip label="Sửa bằng AI" className="h-8 w-8" onClick={() => setAiAt(aiAt === i ? null : i)}><Sparkles size={16} className="text-violet-600" /></Tip>
@@ -144,6 +177,7 @@ function LessonEditor({ art, lesson, up, onBack }) {
           {aiAt === i && <AiEdit artId={art.id} kind="block" value={b} onClose={() => setAiAt(null)} onApply={(nb) => upL((l) => { l.blocks[i] = { ...nb, id: b.id, nosrc: undefined } })} />}
           {b.nosrc && <div className="mx-auto mb-3 max-w-[680px] px-6"><span className="chip bg-amber-50 text-amber-700"><AlertTriangle size={12} />Chưa có nguồn trích dẫn, kiểm tra lại nội dung</span></div>}
           <BlockView b={b} editor onChange={(nb) => upL((l) => { l.blocks[i] = nb })} />
+          {b.t === 'gap' && <GapFix artId={art.id} b={b} onReplace={(nb) => upL((l) => { l.blocks[i] = nb })} />}
           <button onClick={() => setLib(i + 1)} className={`absolute -bottom-4 left-1/2 z-10 grid h-8 w-8 -translate-x-1/2 place-items-center rounded-full bg-ink text-white shadow transition ${hover === i ? 'opacity-100' : 'opacity-0'}`} aria-label="Thêm khối"><Plus size={16} /></button>
         </div>
       ))}
@@ -240,7 +274,7 @@ function AddQuestion({ onAdd }) {
 
 function GenQuestions({ open, onClose, art, onAdd }) {
   const { say } = useStore()
-  const [o, setO] = useState({ level: art.quiz.level, count: 3, focus: '', types: [] })
+  const [o, setO] = useState({ level: 2, count: 3, focus: '', types: [] })
   const [busy, setBusy] = useState(false)
   const run = async () => {
     setBusy(true)
@@ -250,9 +284,9 @@ function GenQuestions({ open, onClose, art, onAdd }) {
     <Modal open={open} onClose={onClose} title="Sinh thêm câu bằng AI" sub="AI soạn nháp câu hỏi, đáp án, giải thích từ tài liệu nguồn của khóa. Mỗi câu gắn nguồn; bạn duyệt từng câu vào ngân hàng đề." w={540}
       footer={<button className="btn-dark h-10" disabled={busy} onClick={run}>{busy ? <Spinner size={18} w={2} /> : <><Sparkles size={16} />Sinh {o.count} câu</>}</button>}>
       <div className="grid grid-cols-2 gap-3 text-[14px]">
-        <label><div className="mb-1 font-medium">Mức</div><select className="field py-2" value={o.level} onChange={(e) => setO({ ...o, level: +e.target.value })}>{LEVELS.map((l) => <option key={l.v} value={l.v}>Mức {l.v} · {l.kinds}</option>)}</select></label>
+        <label><div className="mb-1 font-medium">Độ khó</div><select className="field py-2" value={o.level} onChange={(e) => setO({ ...o, level: +e.target.value })}>{DIFFS.map((d) => <option key={d.v} value={d.v}>{d.name}</option>)}</select></label>
         <label><div className="mb-1 font-medium">Số câu</div><input type="number" min={1} max={10} className="field py-2" value={o.count} onChange={(e) => setO({ ...o, count: Math.max(1, Math.min(10, +e.target.value || 1)) })} /></label>
-        <div className="col-span-2"><div className="mb-1 font-medium">Dạng câu <span className="font-normal text-neutral-500">(không chọn: AI tự chọn theo mức)</span></div><TypePicker value={o.types} onChange={(types) => setO({ ...o, types })} /></div>
+        <div className="col-span-2"><div className="mb-1 font-medium">Dạng câu <span className="font-normal text-neutral-500">(không chọn: AI tự chọn theo độ khó)</span></div><TypePicker value={o.types} onChange={(types) => setO({ ...o, types })} /></div>
         <label className="col-span-2"><div className="mb-1 font-medium">Trọng tâm (tùy chọn)</div><input className="field py-2" value={o.focus} maxLength={300} onChange={(e) => setO({ ...o, focus: e.target.value })} placeholder="Ví dụ: lỗi hay gặp khi dọn dẹp volume" /></label>
       </div>
     </Modal>
@@ -269,7 +303,6 @@ function QuizEditor({ art, up, onBack, exam = false }) {
   const upQ = (fn) => up((a) => fn(a.quiz))
   const q = qz.questions.find((x) => x.id === sel)
   const upCur = (fn) => upQ((z) => fn(z.questions.find((x) => x.id === sel)))
-  const lv = LEVELS.find((l) => l.v === qz.level) ?? LEVELS[0]
   const approved = qz.questions.filter((x) => x.approved).length
   const skillName = skills.find((s) => s.id === qz.skill)?.name ?? 'chưa gắn kỹ năng'
   return (
@@ -277,7 +310,7 @@ function QuizEditor({ art, up, onBack, exam = false }) {
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
         {onBack && <><button className="icon-btn" onClick={onBack} aria-label="Về danh sách bài"><ChevronLeft size={20} /></button><span className="h-7 w-px bg-line" /></>}
         <span className="rounded-lg bg-neutral-100 px-3 py-1.5 text-[14px] font-semibold">{exam ? 'Đề kiểm tra' : 'Bài kiểm tra'}</span>
-        <span className="chip bg-violet-50 text-violet-700">{skillName} · Mức {qz.level}</span>
+        <span className="chip bg-violet-50 text-violet-700">{skillName}</span>
         <span className="text-[13px] text-neutral-500">{approved}/{qz.questions.length} câu trong ngân hàng đề</span>
         <div className="flex-1" />
         {approved < qz.questions.length && <button onClick={() => upQ((z) => { z.questions.forEach((x) => { x.approved = true }) })} className="btn-line btn-sm h-8"><Check size={14} />Duyệt tất cả {qz.questions.length - approved} câu</button>}
@@ -290,13 +323,13 @@ function QuizEditor({ art, up, onBack, exam = false }) {
           {qz.questions.map((x) => (
             <button key={x.id} onClick={() => setSel(x.id)} className={`flex w-full items-start gap-2 border-b border-line px-3 py-3 text-left text-[14px] ${sel === x.id ? 'border-l-4 border-l-ink bg-white' : 'hover:bg-white/60'}`}>
               <GripVertical size={15} className="mt-0.5 shrink-0 text-neutral-400" />
-              <div className="flex-1"><div className="line-clamp-2">{x.q || <span className="text-neutral-400">Câu hỏi chưa có nội dung</span>}</div><div className="mt-1 flex flex-wrap gap-1.5"><span className="chip bg-white">{QTYPES[x.type]}</span><span className="chip bg-white">Mức {x.level}</span>{!x.approved && <span className="chip bg-amber-100 text-amber-700">Chưa duyệt</span>}</div></div>
+              <div className="flex-1"><div className="line-clamp-2">{x.q || <span className="text-neutral-400">Câu hỏi chưa có nội dung</span>}</div><div className="mt-1 flex flex-wrap gap-1.5"><span className="chip bg-white">{QTYPES[x.type]}</span><span className="chip bg-white">{diffName(x.level)}</span>{!x.approved && <span className="chip bg-amber-100 text-amber-700">Chưa duyệt</span>}</div></div>
               <span role="button" title="Xóa câu hỏi" onClick={(e) => { e.stopPropagation(); upQ((z) => { z.questions = z.questions.filter((y) => y.id !== x.id) }); if (sel === x.id) setSel('settings') }} className="shrink-0 rounded p-1 text-neutral-400 hover:bg-neutral-200 hover:text-red-600"><Trash2 size={15} /></span>
             </button>
           ))}
           <div className="space-y-2 p-4">
             <button onClick={() => setGen(true)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-violet-300 bg-white py-2.5 text-[14px] font-semibold text-violet-700"><Wand2 size={16} />Sinh thêm câu bằng AI</button>
-            <AddQuestion onAdd={(t) => { const n = { id: uid('q'), type: t, level: qz.level, approved: false, q: '', ...questionFields(t) }; upQ((z) => { z.questions.push(n) }); setSel(n.id) }} />
+            <AddQuestion onAdd={(t) => { const n = { id: uid('q'), type: t, level: 1, approved: false, q: '', ...questionFields(t) }; upQ((z) => { z.questions.push(n) }); setSel(n.id) }} />
           </div>
         </aside>
         <main className="scroll-thin flex-1 overflow-y-auto">
@@ -305,13 +338,13 @@ function QuizEditor({ art, up, onBack, exam = false }) {
               <h1 className="font-lato text-[44px] font-black leading-tight">{exam ? <Editable value={art.title} className="block" placeholder="Tên đề kiểm tra" onChange={(v) => up((a) => { a.title = v })} /> : 'Bài kiểm tra'}</h1>
               <div className="mt-8 h-1 w-28 bg-brand" />
               {exam && <p className="mt-8 font-serif text-[17px] text-neutral-800"><Editable value={art.summary} multiline className="block" placeholder="Mô tả cho người thi (hiện ở màn mở đầu)" onChange={(v) => up((a) => { a.summary = v })} /></p>}
-              <p className="mt-6 font-serif text-[17px] text-neutral-500">{exam ? 'Đề' : 'Bài kiểm tra'} cho kỹ năng {skillName}, mức {qz.level}. Chỉ câu đã duyệt được xuất. Trong gói đề QTI, mỗi lượt thi rút ngẫu nhiên số câu theo cấu hình, xáo thứ tự câu.</p>
+              <p className="mt-6 font-serif text-[17px] text-neutral-500">{exam ? 'Đề' : 'Bài kiểm tra'} cho kỹ năng {skillName}. Chỉ câu đã duyệt được xuất. {qz.matrix?.length ? 'Trong gói đề QTI, mỗi lượt thi rút ngẫu nhiên đúng số câu của từng ô trong ma trận đề, xáo thứ tự câu.' : 'Trong gói đề QTI, mỗi lượt thi rút ngẫu nhiên số câu theo cấu hình, xáo thứ tự câu.'}</p>
               <div className="card mt-10 divide-y divide-line">
                 <div className="flex items-center gap-4 px-5 py-4"><div className="flex-1"><div className="font-semibold">Loại bài</div><div className="text-[13px] text-neutral-600">Luyện tập: câu chấm tự động được đưa vào gói SCORM. Chính thức: không vào gói SCORM, chỉ xuất riêng dạng đề QTI kèm đáp án</div></div>
                   <div className="flex rounded-lg bg-neutral-100 p-1 text-[14px]">{[['practice', 'Luyện tập'], ['official', 'Thi chính thức']].map(([k, l]) => <button key={k} onClick={() => upQ((z) => { z.mode = k })} className={`rounded-md px-3 py-1.5 ${qz.mode === k ? 'bg-white font-semibold shadow-card' : 'text-neutral-600'}`}>{l}</button>)}</div></div>
-                <div className="flex items-center gap-4 px-5 py-4"><div className="flex-1"><div className="font-semibold">Mức kỹ năng</div><div className="text-[13px] text-neutral-600">Dạng bài theo mức: {lv.kinds}. Mức 4–5 nên đánh giá qua dự án.</div></div>
-                  <select className="field w-28 py-1.5" value={qz.level} onChange={(e) => upQ((z) => { z.level = +e.target.value })}>{LEVELS.map((l) => <option key={l.v} value={l.v}>Mức {l.v}</option>)}</select></div>
-                {[['Số câu mỗi đề', 'pick', 'câu', 1, 50], ['Điểm đạt', 'passScore', '%', 1, 100], ['Số lượt thi', 'attempts', 'lượt', 1, 10], ['Thời gian', 'minutes', 'phút', 1, 240]].map(([l, k, u, min, max]) => (
+                {qz.matrix?.length > 0 && <div className="px-5 py-4"><div className="font-semibold">Ma trận đề</div><div className="mb-3 text-[13px] text-neutral-600">Số câu mỗi lượt thi theo dạng câu và độ khó. Cột Đã duyệt là số câu đã duyệt khớp dạng và độ khó của dòng đó; số màu cam là dòng còn thiếu câu.</div>
+                  <MatrixEditor value={qz.matrix} onChange={(m) => upQ((z) => { z.matrix = m; z.pick = m.reduce((n, c) => n + c.count, 0) })} have={(c) => qz.questions.filter((x) => x.approved && x.type === c.type && (x.level ?? 1) === c.level).length} /></div>}
+                {[...(qz.matrix?.length ? [] : [['Số câu mỗi đề', 'pick', 'câu', 1, 50]]), ['Điểm đạt', 'passScore', '%', 1, 100], ['Số lượt thi', 'attempts', 'lượt', 1, 10], ['Thời gian', 'minutes', 'phút', 1, 240]].map(([l, k, u, min, max]) => (
                   <div key={k} className="flex items-center gap-4 px-5 py-4"><div className="flex-1"><div className="font-semibold">{l}</div>{k === 'pick' && <div className="text-[13px] text-neutral-600">Ngân hàng hiện có {approved} câu đã duyệt</div>}</div><input type="number" min={min} max={max} className="field w-24 py-1.5 text-right" value={qz[k] ?? (k === 'pick' ? approved : '')} onChange={(e) => upQ((z) => { z[k] = Math.max(min, Math.min(max, +e.target.value || min)) })} /><span className="w-10 text-[14px] text-neutral-600">{u}</span></div>
                 ))}
               </div>
@@ -330,7 +363,7 @@ function QuizEditor({ art, up, onBack, exam = false }) {
                 <div className="flex-1 border-b border-line pb-2 text-[17px] font-medium"><Editable value={q.q} multiline className="block" placeholder="Nhập câu hỏi" onChange={(v) => upCur((x) => { x.q = v })} /></div>
               </div>
               <div className="mt-2 flex items-center gap-2"><SrcChip src={q.src} />
-                <select className="chip cursor-pointer outline-none" value={q.level} onChange={(e) => upCur((x) => { x.level = +e.target.value })}>{LEVELS.map((l) => <option key={l.v} value={l.v}>Mức {l.v}</option>)}</select></div>
+                <select aria-label="Độ khó" className="chip cursor-pointer outline-none" value={q.level ?? 1} onChange={(e) => upCur((x) => { x.level = +e.target.value })}>{DIFFS.map((d) => <option key={d.v} value={d.v}>{d.name}</option>)}</select></div>
               <div className="mt-6 flex justify-end"><select className="rounded-lg px-2 py-1 text-[14px] font-semibold outline-none hover:bg-neutral-100" value={q.type} onChange={(e) => upCur((x) => { const t = e.target.value; Object.assign(x, questionFields(t, x)); x.type = t })}>{Object.entries(QTYPES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></div>
               {(q.type === 'mc' || q.type === 'mr' || q.type === 'tf') && q.choices && (<>
                 <table className="mt-2 w-full text-[14px]">
@@ -386,7 +419,7 @@ function AddLesson({ open, onClose, art, onAdd }) {
     setBusy(true)
     try { const r = await post(`/artifacts/${art.id}/lessons/generate`, { title: title.trim(), instruction }); done(r.lesson); say('AI đã soạn bài mới, rà lại nội dung và nguồn trích') } catch (e) { say(e.message) } finally { setBusy(false) }
   }
-  const ground = art.type === 'master' ? 'tài liệu nguồn của khóa' : 'nội dung gốc đã chốt'
+  const ground = art.type === 'master' ? 'tài liệu nguồn của khóa' : 'nội dung đã chốt'
   return (
     <Modal open={open} onClose={onClose} w={540} title="Thêm bài học" sub={`Tạo bài trống để tự viết, hoặc để AI soạn từ ${ground}; mỗi khối ghi rõ nguồn, chỗ không có căn cứ được đánh dấu.`}
       footer={<><button className="btn-line h-10" disabled={busy || title.trim().length < 2} onClick={blank}>Tạo bài trống</button><button className="btn-dark h-10" disabled={busy || title.trim().length < 2} onClick={ai}>{busy ? <Spinner size={18} w={2} /> : <><Sparkles size={16} />AI soạn bài</>}</button></>}>
@@ -419,14 +452,14 @@ export default function CourseEditor({ art, kit, up, saveText, onRestored }) {
           {art.lessons.map((x) => (
             <div key={x.id} className="group/l flex items-center gap-4 border-b border-line py-5">
               {x.kind === 'quiz' ? <HelpCircle size={20} /> : <AlignLeft size={20} />}
-              <div className="min-w-0 flex-1"><div className="text-[18px] font-semibold">{x.kind === 'quiz' ? 'Bài kiểm tra' : <Editable value={x.title} className="block" placeholder="Tên bài học" onChange={(v) => up((a) => { a.lessons.find((y) => y.id === x.id).title = v })} />}</div><div className="text-[13px] text-neutral-500">{x.kind === 'quiz' ? `${art.quiz.mode === 'official' ? 'Thi chính thức' : 'Luyện tập'} · mức ${art.quiz.level} · ${art.quiz.questions.filter((y) => y.approved).length}/${art.quiz.questions.length} câu đã duyệt${art.quiz.proctor ? ' · có giám sát' : ''}` : `Bài học · ${x.blocks.length} khối${x.blocks.some((b) => b.t === 'gap') ? ' · có chỗ thiếu căn cứ' : ''}`}</div></div>
+              <div className="min-w-0 flex-1"><div className="text-[18px] font-semibold">{x.kind === 'quiz' ? 'Bài kiểm tra' : <Editable value={x.title} className="block" placeholder="Tên bài học" onChange={(v) => up((a) => { a.lessons.find((y) => y.id === x.id).title = v })} />}</div><div className="text-[13px] text-neutral-500">{x.kind === 'quiz' ? `${art.quiz.mode === 'official' ? 'Thi chính thức' : 'Luyện tập'} · ${art.quiz.questions.filter((y) => y.approved).length}/${art.quiz.questions.length} câu đã duyệt${art.quiz.proctor ? ' · có giám sát' : ''}` : `Bài học · ${x.blocks.length} khối${x.blocks.some((b) => b.t === 'gap') ? ' · có chỗ thiếu căn cứ' : ''}`}</div></div>
               {x.kind !== 'quiz' && <span className="flex opacity-0 group-hover/l:opacity-100">{[[-1, 'Lên', ArrowUp], [1, 'Xuống', ArrowDown]].map(([d, t, I]) => { const lessons = art.lessons.filter((y) => y.kind === 'lesson'); const at = lessons.indexOf(x); const ok = at + d >= 0 && at + d < lessons.length; return <button key={t} title={`Chuyển bài ${t.toLowerCase()}`} disabled={!ok} onClick={() => up((a) => { const i = a.lessons.findIndex((y) => y.id === x.id); const j = a.lessons.findIndex((y) => y.id === lessons[at + d].id); [a.lessons[i], a.lessons[j]] = [a.lessons[j], a.lessons[i]] })} className="icon-btn h-8 w-8 disabled:opacity-30"><I size={16} /></button> })}</span>}
               {x.kind !== 'quiz' && <button title="Xóa bài" onClick={async () => { if (await confirmBox(`Xóa bài "${x.title}"?`, { ok: 'Xóa', danger: true })) up((a) => { a.lessons = a.lessons.filter((y) => y.id !== x.id) }) }} className="icon-btn h-8 w-8 opacity-0 group-hover/l:opacity-100"><Trash2 size={16} /></button>}
               <button className="btn-line btn-sm h-9" onClick={() => setParams({ l: x.id })}>{x.kind === 'quiz' ? 'Mở bài kiểm tra' : 'Mở bài học'}</button>
             </div>
           ))}
           <button onClick={() => setAdding(true)} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-300 py-3.5 text-[15px] font-semibold text-neutral-700 hover:border-ink hover:text-ink"><Plus size={17} />Thêm bài học</button>
-          {art.type === 'qr' && lessonCount > 3 && <p className="mt-2 text-[13px] text-neutral-500">Tài liệu nhanh nên gọn, khoảng 3 bài. Nội dung dài nên đưa vào Nội dung gốc rồi tạo thêm định dạng khác.</p>}
+          {art.type === 'qr' && lessonCount > 3 && <p className="mt-2 text-[13px] text-neutral-500">Tài liệu nhanh nên gọn, khoảng 3 bài. Nội dung dài nên đưa vào Nội dung rồi tạo thêm định dạng khác.</p>}
         </div>
       </div>
       <PublishModal open={share} art={art} onClose={() => setShare(false)} onChanged={onRestored} />

@@ -114,22 +114,22 @@ export const artifactRoutes: FastifyPluginAsyncZod = async (app) => {
     const u = me(req)
     const a = await getArtifact(u.orgId, req.params.id)
     const existing = (((a.content as { quiz?: { questions?: { q: string }[] } }).quiz?.questions) ?? []).map((q) => q.q)
-    // căn cứ ra câu hỏi: nội dung gốc đã chốt nếu có, không thì tài liệu nguồn
+    // căn cứ ra câu hỏi: nội dung đã chốt nếu có, không thì tài liệu nguồn
     const m = await lockedMaster(a.kitId)
     return { questions: await generateQuestions(await getKit(u.orgId, a.kitId), req.body.level, req.body.count, req.body.focus, existing, { types: req.body.types, hits: m ? masterHits(m.content) : undefined }) }
   })
 
-  // AI soạn thêm một bài học: nội dung gốc soạn từ tài liệu nguồn; Tài liệu nhanh soạn từ nội dung gốc đã chốt
+  // AI soạn thêm một bài học: nội dung soạn từ tài liệu nguồn; Tài liệu nhanh soạn từ nội dung đã chốt
   app.post('/:id/lessons/generate', {
     schema: { params: P, body: z.object({ title: z.string().trim().min(2).max(200), instruction: z.string().trim().max(2000).default('') }) },
   }, async (req) => {
     const u = me(req)
     const a = await getArtifact(u.orgId, req.params.id)
-    if (a.type !== 'master' && a.type !== 'qr') throw badRequest('Chỉ thêm bài học cho Nội dung gốc hoặc Tài liệu nhanh')
+    if (a.type !== 'master' && a.type !== 'qr') throw badRequest('Chỉ thêm bài học cho Nội dung hoặc Tài liệu nhanh')
     return { lesson: await aiLesson(await getKit(u.orgId, a.kitId), a.type, req.body.title, req.body.instruction) }
   })
 
-  // Tạo lại nội dung từ đầu: khi soạn lỗi, hoặc soạn lại theo nội dung gốc mới chốt (force: thay bản nháp; bản đã xuất bản giữ nguyên tới khi xuất bản lại)
+  // Tạo lại nội dung từ đầu: khi soạn lỗi, hoặc soạn lại theo nội dung mới chốt (force: thay bản nháp; bản đã xuất bản giữ nguyên tới khi xuất bản lại)
   app.post('/:id/regenerate', { schema: { params: P, body: z.object({ force: z.boolean().default(false) }).default({ force: false }) } }, async (req) => {
     const u = me(req)
     const a = await getArtifact(u.orgId, req.params.id)

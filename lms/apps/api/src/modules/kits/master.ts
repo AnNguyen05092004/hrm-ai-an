@@ -1,5 +1,5 @@
-// Nội dung gốc của khóa: bản soạn đầy đủ, duyệt nội bộ, không xuất cho người học.
-// "Chốt nội dung" = xuất bản bản nội dung gốc thành một phiên bản; mọi định dạng (Tài liệu nhanh, slide, video,
+// Nội dung của khóa: bản soạn đầy đủ, duyệt nội bộ, không xuất cho người học.
+// "Chốt nội dung" = xuất bản bản nội dung thành một phiên bản; mọi định dạng (Tài liệu nhanh, slide, video,
 // tình huống, đề kiểm tra) chỉ soạn từ phiên bản đã chốt, nên các định dạng luôn khớp nhau và khớp bản đã duyệt.
 import { and, eq } from 'drizzle-orm'
 import { db, schema } from '../../db/client.js'
@@ -9,7 +9,7 @@ import type { Hit } from '../sources/service.js'
 type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 type Artifact = typeof schema.artifacts.$inferSelect
 
-export const MASTER_TITLE = 'Nội dung gốc'
+export const MASTER_TITLE = 'Nội dung'
 const MAX_PASSAGES = 40
 const MAX_CHARS = 1500
 
@@ -20,7 +20,7 @@ export async function masterOf(kitId: string): Promise<Artifact | null> {
 
 export interface LockedMaster { artifact: Artifact; version: number; content: Json }
 
-/** Phiên bản nội dung gốc đã chốt gần nhất; null khi chưa chốt */
+/** Phiên bản nội dung đã chốt gần nhất; null khi chưa chốt */
 export async function lockedMaster(kitId: string): Promise<LockedMaster | null> {
   const a = await masterOf(kitId)
   if (!a?.publishedVersion) return null
@@ -28,10 +28,10 @@ export async function lockedMaster(kitId: string): Promise<LockedMaster | null> 
   return v ? { artifact: a, version: v.version, content: v.content as Json } : null
 }
 
-/** Bắt buộc đã chốt nội dung gốc trước khi soạn định dạng */
+/** Bắt buộc đã chốt nội dung trước khi soạn định dạng */
 export async function requireLocked(kitId: string): Promise<LockedMaster> {
   const m = await lockedMaster(kitId)
-  if (!m) throw badRequest('Chốt nội dung gốc trước khi tạo định dạng cho người học', 'master_not_locked')
+  if (!m) throw badRequest('Chốt nội dung trước khi tạo định dạng cho người học', 'master_not_locked')
   return m
 }
 
@@ -44,7 +44,7 @@ function blockText(b: Json): string {
 }
 
 /**
- * Các đoạn của nội dung gốc dùng làm căn cứ khi soạn định dạng. Khối có trích nguồn giữ nguyên tài liệu và đoạn nguồn gốc,
+ * Các đoạn của nội dung dùng làm căn cứ khi soạn định dạng. Khối có trích nguồn giữ nguyên tài liệu và đoạn nguồn gốc,
  * nên định dạng sinh ra vẫn trích đúng tài liệu nguồn (và vẫn được báo khi tài liệu nguồn đổi).
  */
 export function masterHits(content: Json): Hit[] {
@@ -65,11 +65,11 @@ export function masterHits(content: Json): Hit[] {
   return out.slice(0, MAX_PASSAGES)
 }
 
-/** Tên các bài của nội dung gốc, dùng làm dàn ý mặc định cho định dạng mới */
+/** Tên các bài của nội dung, dùng làm dàn ý mặc định cho định dạng mới */
 export const masterLessons = (content: Json): { t: string; items: string[] }[] =>
   ((content.lessons ?? []) as Json[]).filter((l) => l.kind === 'lesson').map((l) => ({ t: String(l.title), items: [] }))
 
-/** Tạo nội dung gốc từ Tài liệu nhanh có sẵn (khóa tạo trước khi có bước nội dung gốc) */
+/** Tạo nội dung từ Tài liệu nhanh có sẵn (khóa tạo trước khi có bước nội dung) */
 export function masterFromQr(qr: Json): Json {
   return { lessons: ((qr.lessons ?? []) as Json[]).filter((l) => l.kind === 'lesson') }
 }

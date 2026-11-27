@@ -72,7 +72,7 @@ function ExamBank() {
         <div className="flex-1" />
         <button className="btn-dark btn-sm h-9" onClick={() => setCreating(true)}><Plus size={15} />Tạo đề</button>
       </div>
-      <p className="mt-2 text-[13px] text-neutral-500">Mọi đề kiểm tra của công ty. Tạo đề từ khóa học đã chốt nội dung gốc, hoặc thẳng từ tài liệu nguồn.</p>
+      <p className="mt-2 text-[13px] text-neutral-500">Mọi đề kiểm tra của công ty. Tạo đề từ khóa học đã chốt nội dung, hoặc thẳng từ tài liệu nguồn.</p>
       {exams.isLoading ? <div className="mt-6"><Spinner /></div> : !list.length ? <div className="mt-5 rounded-2xl border-2 border-dashed border-line px-6 py-12 text-center text-[15px] text-neutral-500">{q ? 'Không có đề phù hợp.' : 'Chưa có đề nào. Bấm “Tạo đề” để AI soạn ngân hàng câu hỏi.'}</div> : (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[760px] text-[14px]">

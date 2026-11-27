@@ -13,25 +13,37 @@ export function PublishModal({ open, onClose, art, onChanged }) {
   const qc = useQueryClient()
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
+  const nav = useNavigate()
   const check = useQuery({ queryKey: ['check', art?.id, art?.updated], queryFn: () => get(`/artifacts/${art.id}/check`), enabled: open && !!art })
   const full = useQuery({ queryKey: ['artifact-meta', art?.id], queryFn: () => get(`/artifacts/${art.id}`), enabled: open && !!art })
   if (!art) return null
   const published = (full.data?.status ?? art.status) === 'published'
   const refresh = () => { qc.invalidateQueries({ queryKey: ['artifact-meta', art.id] }); qc.invalidateQueries({ queryKey: ['kits'] }); qc.invalidateQueries({ queryKey: ['kit'] }); onChanged?.() }
   const act = async (fn, msg) => { setBusy(true); try { await fn(); refresh(); say(msg) } catch (e) { say(e.message) } finally { setBusy(false) } }
-  const blocking = check.data?.blocking ?? [], warnings = check.data?.warnings ?? []
+  const blocking = check.data?.blocking ?? [], warnings = check.data?.warnings ?? [], spots = check.data?.spots ?? []
   const master = art.type === 'master'
+  const goTo = (x) => { onClose(); nav(`/edit/${art.id}?l=${x.lesson}&b=${x.block}`) }
   return (
-    <Modal open={open} onClose={onClose} w={620} title={master ? 'Chốt nội dung gốc' : 'Xuất bản'}
+    <Modal open={open} onClose={onClose} w={620} title={master ? 'Chốt nội dung' : 'Xuất bản'}
       footer={<>
         {published && !master && <button className="btn-line h-10" disabled={busy} onClick={() => act(() => post(`/artifacts/${art.id}/unpublish`), 'Đã ngừng xuất bản')}>Ngừng xuất bản</button>}
-        <button className="btn-dark h-10" disabled={busy || blocking.length > 0} onClick={() => act(() => post(`/artifacts/${art.id}/publish`, { note }), master ? `Đã chốt nội dung gốc${published ? ' (phiên bản mới)' : ''}` : published ? 'Đã xuất bản phiên bản mới' : 'Đã xuất bản')}>{busy ? <Spinner size={18} w={2} /> : master ? (published ? 'Chốt phiên bản mới' : 'Chốt nội dung') : published ? 'Xuất bản phiên bản mới' : 'Xuất bản'}</button>
+        <button className="btn-dark h-10" disabled={busy || blocking.length > 0} onClick={() => act(() => post(`/artifacts/${art.id}/publish`, { note }), master ? `Đã chốt nội dung${published ? ' (phiên bản mới)' : ''}` : published ? 'Đã xuất bản phiên bản mới' : 'Đã xuất bản')}>{busy ? <Spinner size={18} w={2} /> : master ? (published ? 'Chốt phiên bản mới' : 'Chốt nội dung') : published ? 'Xuất bản phiên bản mới' : 'Xuất bản'}</button>
       </>}>
       <div className="flex items-center gap-2 border-b border-line pb-3 text-[13px]"><FormatGlyph type={art.type} size={14} /><b>{FORMATS[art.type].name}</b>{art.title !== FORMATS[art.type].name && <><span className="h-3 w-px bg-line" /><span className="truncate">{art.title}</span></>}<div className="flex-1" /><Status s={full.data?.status ?? art.status} master={master} /></div>
-      <p className="mt-3 text-[14px]">{master ? 'Chốt lưu nội dung hiện tại thành một phiên bản. Tài liệu nhanh, slide, video, tình huống, đề kiểm tra chỉ soạn từ bản đã chốt. Sửa nội dung gốc sau khi chốt thì chốt lại; các định dạng soạn từ bản cũ sẽ được đánh dấu để soạn lại.' : 'Xuất bản chụp lại nội dung hiện tại thành một phiên bản. Gói SCORM và đề QTI chỉ lấy bản đã xuất bản; bạn vẫn sửa bản nháp mà không ảnh hưởng gói đã xuất.'}</p>
+      <p className="mt-3 text-[14px]">{master ? 'Chốt lưu nội dung hiện tại thành một phiên bản. Tài liệu nhanh, slide, video, tình huống, đề kiểm tra chỉ soạn từ bản đã chốt. Sửa nội dung sau khi chốt thì chốt lại; các định dạng soạn từ bản cũ sẽ được đánh dấu để soạn lại.' : 'Xuất bản chụp lại nội dung hiện tại thành một phiên bản. Gói SCORM và đề QTI chỉ lấy bản đã xuất bản; bạn vẫn sửa bản nháp mà không ảnh hưởng gói đã xuất.'}</p>
       {check.isLoading ? <div className="mt-4"><Spinner size={20} w={2} /></div> : <>
         {blocking.map((x) => <div key={x} className="mt-3 flex gap-2 rounded-lg bg-red-50 px-3 py-2 text-[14px] text-red-700"><AlertTriangle size={16} className="mt-0.5 shrink-0" />{x}</div>)}
         {warnings.map((x) => <div key={x} className="mt-3 flex gap-2 rounded-lg bg-amber-50 px-3 py-2 text-[14px] text-amber-800"><AlertTriangle size={16} className="mt-0.5 shrink-0" />{x}</div>)}
+        {spots.length > 0 && <div className="mt-2 max-h-[220px] divide-y divide-line overflow-y-auto rounded-lg border border-line">
+          {spots.map((x) => (
+            <div key={x.block} className="flex items-center gap-3 px-3 py-2 text-[13px]">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2"><span className={`chip ${x.kind === 'gap' ? 'bg-amber-50 text-amber-800' : 'bg-neutral-100 text-neutral-700'}`}>{x.kind === 'gap' ? 'Thiếu căn cứ' : 'Chưa có nguồn'}</span><span className="truncate font-medium">{x.lessonTitle}</span></div>
+                {x.text && <div className="mt-0.5 truncate text-neutral-600" title={x.text}>{x.text}</div>}
+              </div>
+              <button className="btn-line btn-sm h-8 shrink-0" onClick={() => goTo(x)}>Sửa chỗ này</button>
+            </div>))}
+        </div>}
         {!blocking.length && !warnings.length && <div className="mt-3 flex items-center gap-2 text-[14px] text-emerald-700"><Check size={16} />{master ? 'Sẵn sàng chốt.' : 'Sẵn sàng xuất bản.'}</div>}
       </>}
       <label className="mb-1.5 mt-4 block text-[14px] font-medium">Ghi chú phiên bản</label>
@@ -102,7 +114,7 @@ export function DeviceBar({ device, setDevice, left, right, devices = true }) {
 }
 
 export function DraftBar({ art }) {
-  if (art.type === 'master') return <div className="flex items-center gap-3 border-b border-line bg-neutral-50 px-6 py-2 text-[14px]"><Pencil size={15} className="text-neutral-500" /><span className="flex-1"><b>Nội dung gốc.</b> Bản nội dung đầy đủ để duyệt, không xuất cho người học. Bấm <b>Chốt nội dung</b> rồi mới tạo Tài liệu nhanh, slide, video, tình huống, đề kiểm tra từ bản đã chốt.</span></div>
+  if (art.type === 'master') return <div className="flex items-center gap-3 border-b border-line bg-neutral-50 px-6 py-2 text-[14px]"><Pencil size={15} className="text-neutral-500" /><span className="flex-1"><b>Nội dung.</b> Bản nội dung đầy đủ để duyệt, không xuất cho người học. Bấm <b>Chốt nội dung</b> rồi mới tạo Tài liệu nhanh, slide, video, tình huống, đề kiểm tra từ bản đã chốt.</span></div>
   if (art.status === 'published') return null
   return <div className="flex items-center gap-3 border-b border-line bg-neutral-50 px-6 py-2 text-[14px]"><Pencil size={15} className="text-neutral-500" /><span className="flex-1"><b>Bản nháp.</b> Rà lại nội dung và nguồn trích. Reviewer thấy bản nháp này; gói xuất chỉ lấy nội dung sau khi bạn bấm Xuất bản.</span></div>
 }

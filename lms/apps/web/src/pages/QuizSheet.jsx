@@ -1,6 +1,6 @@
 // Câu hỏi kèm đáp án, giải thích và tiêu chí chấm: người soạn xem trước, reviewer kiểm tra trước khi xuất đề.
-import { Check, X } from 'lucide-react'
-import { QTYPES } from '../data'
+import { Check, X, Plus, Trash2 } from 'lucide-react'
+import { QTYPES, DIFFS, diffName } from '../data'
 
 /** Khóa vị trí dùng cho góp ý review: mỗi câu một vị trí */
 export const questionAnchor = (q, i) => ({ key: `q:${q.id}`, label: `Câu ${i + 1}: ${(q.q ?? '').slice(0, 80)}` })
@@ -37,7 +37,7 @@ export function QuizSheet({ questions, aside }) {
       {questions.map((q, i) => (
         <li key={q.id ?? i} className="rounded-xl border border-line bg-white p-4 text-[14px] leading-relaxed">
           <div className="flex flex-wrap items-center gap-2 text-[12px] text-neutral-500">
-            <span className="font-semibold text-ink">Câu {i + 1}</span><span>{QTYPES[q.type] ?? q.type}</span>{q.level && <span>· Mức {q.level}</span>}
+            <span className="font-semibold text-ink">Câu {i + 1}</span><span>{QTYPES[q.type] ?? q.type}</span>{q.level && <span>· {diffName(q.level)}</span>}
             <span className={`rounded-full px-2 py-0.5 ${q.approved ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>{q.approved ? 'Đã duyệt' : 'Chưa duyệt'}</span>
             <span className="flex-1" />{aside?.(q, i)}
           </div>
@@ -58,3 +58,45 @@ export function TypePicker({ value, onChange }) {
       <button key={k} type="button" aria-pressed={on} onClick={() => toggle(k)} className={`flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[13px] ${on ? 'border-ink bg-ink text-white' : 'border-line hover:bg-neutral-50'}`}>{on && <Check size={13} />}{l}</button>) })}</div>
   )
 }
+
+const cellKey = (c) => `${c.type}:${c.level}`
+/** Ô còn trống đầu tiên (dạng × độ khó chưa có trong ma trận) */
+const freeCell = (rows) => {
+  for (const level of [1, 2, 3]) for (const type of Object.keys(QTYPES)) if (!rows.some((r) => r.type === type && r.level === level)) return { type, level, count: 1 }
+  return null
+}
+
+/**
+ * Ma trận đề: mỗi dòng là một dạng câu ở một độ khó và số câu có trong mỗi lượt thi.
+ * have: hàm (dòng) → số câu đã duyệt khớp ô đó, để thấy ô nào còn thiếu câu.
+ */
+export function MatrixEditor({ value, onChange, have }) {
+  const total = value.reduce((s, c) => s + c.count, 0)
+  const keys = value.map(cellKey)
+  const dup = (c) => keys.filter((k) => k === cellKey(c)).length > 1
+  const set = (i, patch) => onChange(value.map((c, j) => (j === i ? { ...c, ...patch } : c)))
+  const next = freeCell(value)
+  return (
+    <div className="overflow-hidden rounded-xl border border-line">
+      <table className="w-full text-[14px]">
+        <thead className="bg-neutral-50 text-left text-[12px] font-semibold text-neutral-600"><tr><th className="px-3 py-2">Dạng câu</th><th className="px-3 py-2">Độ khó</th><th className="w-[110px] px-3 py-2 text-right">Câu mỗi đề</th>{have && <th className="w-[96px] px-3 py-2 text-right">Đã duyệt</th>}<th className="w-10" /></tr></thead>
+        <tbody>{value.map((c, i) => { const n = have?.(c); return (
+          <tr key={i} className={`border-t border-line ${dup(c) ? 'bg-red-50' : ''}`}>
+            <td className="px-2 py-1.5"><select aria-label="Dạng câu" className="field py-1.5" value={c.type} onChange={(e) => set(i, { type: e.target.value })}>{Object.entries(QTYPES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></td>
+            <td className="px-2 py-1.5"><div className="flex rounded-lg bg-neutral-100 p-0.5 text-[13px]" role="radiogroup" aria-label="Độ khó">{DIFFS.map((d) => <button key={d.v} type="button" role="radio" aria-checked={c.level === d.v} onClick={() => set(i, { level: d.v })} className={`flex-1 whitespace-nowrap rounded-md px-2 py-1 ${c.level === d.v ? 'bg-white font-semibold shadow-card' : 'text-neutral-600'}`}>{d.name}</button>)}</div></td>
+            <td className="px-2 py-1.5"><input type="number" aria-label="Câu mỗi đề" min={1} max={20} className="field py-1.5 text-right" value={c.count} onChange={(e) => set(i, { count: Math.max(1, Math.min(20, +e.target.value || 1)) })} /></td>
+            {have && <td className={`px-3 py-1.5 text-right ${n < c.count ? 'font-semibold text-amber-700' : 'text-neutral-600'}`}>{n}</td>}
+            <td className="px-1 py-1.5"><button type="button" title="Xóa dòng" disabled={value.length < 2} onClick={() => onChange(value.filter((_, j) => j !== i))} className="icon-btn h-8 w-8 disabled:opacity-30"><Trash2 size={15} /></button></td>
+          </tr>) })}</tbody>
+      </table>
+      <div className="flex items-center gap-3 border-t border-line px-3 py-2 text-[13px]">
+        <button type="button" disabled={!next} onClick={() => onChange([...value, next])} className="flex items-center gap-1 font-semibold disabled:opacity-40"><Plus size={14} />Thêm dòng</button>
+        <div className="flex-1" />
+        {keys.length !== new Set(keys).size && <span className="text-red-700">Có dòng trùng dạng câu và độ khó</span>}
+        <span className="text-neutral-600">Mỗi lượt thi: <b className="text-ink">{total} câu</b></span>
+      </div>
+    </div>
+  )
+}
+
+export const matrixOk = (rows) => rows.length > 0 && new Set(rows.map(cellKey)).size === rows.length

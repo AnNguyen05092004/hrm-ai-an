@@ -1,5 +1,5 @@
-// AI soạn khóa học: chi tiết → dàn ý nội dung gốc → nội dung gốc → (sau khi chốt) các định dạng soạn từ nội dung gốc.
-// Mọi đoạn nội dung phải trích một đoạn căn cứ có mã [S#]: đoạn tài liệu nguồn, hoặc đoạn của nội dung gốc đã chốt.
+// AI soạn khóa học: chi tiết → dàn ý nội dung → nội dung → (sau khi chốt) các định dạng soạn từ nội dung.
+// Mọi đoạn nội dung phải trích một đoạn căn cứ có mã [S#]: đoạn tài liệu nguồn, hoặc đoạn của nội dung đã chốt.
 import { z } from 'zod'
 import { aiJson } from '../../lib/ai/index.js'
 import type { Hit } from '../sources/service.js'
@@ -7,7 +7,7 @@ import type { Hit } from '../sources/service.js'
 export const IMAGES = ['server', 'rack', 'desk', 'person', 'screen', 'office', 'meeting', 'team', 'cyber', 'lock', 'mobile', 'dash', 'charts', 'code', 'plan', 'support', 'handshake', 'teamwork', 'terminal', 'devscreen', 'nodes', 'ai', 'ml', 'servers', 'setup', 'devs', 'shop', 'notes', 'writing', 'welcome', 'workshop', 'warehouse'] as const
 export const GEN_TYPES = ['qr', 'deck', 'scenario', 'video'] as const
 export type GenType = typeof GEN_TYPES[number]
-/** Nội dung gốc: bản soạn đầy đủ để duyệt nội bộ, không xuất cho người học; mọi định dạng sinh từ bản này */
+/** Nội dung: bản soạn đầy đủ để duyệt nội bộ, không xuất cho người học; mọi định dạng sinh từ bản này */
 export type DraftType = GenType | 'master'
 
 const RULES = `Bạn là chuyên gia thiết kế đào tạo nội bộ, viết tiếng Việt rõ ràng, câu ngắn, giọng trung tính.
@@ -84,7 +84,7 @@ export const OutlineSchemas = {
   scenario: z.object({ character: z.string().describe('Tên · vai trò'), learner: z.string(), situation: z.string(), goals: z.array(z.string()) }),
 }
 const OUTLINE_HINT: Record<DraftType, string> = {
-  master: 'Dàn ý Nội dung gốc của cả khóa: 3–8 bài (sections) theo trình tự học, mỗi bài 3–6 ý chính (items), bao quát đủ các mục tiêu và điều cần nhớ.',
+  master: 'Dàn ý Nội dung của cả khóa: 3–8 bài (sections) theo trình tự học, mỗi bài 3–6 ý chính (items), bao quát đủ các mục tiêu và điều cần nhớ.',
   qr: 'Dàn ý Tài liệu nhanh: tối đa 3 bài (sections), mỗi bài 2–4 ý chính (items).',
   deck: 'Dàn ý Bộ slide: 6–9 tiêu đề slide, slide đầu là bìa, slide cuối là việc cần làm.',
   video: 'Dàn ý video 5–8 phút: 4–6 chương.',
@@ -129,7 +129,7 @@ export const QUESTION_TYPES = ['mc', 'mr', 'tf', 'fill', 'order', 'match', 'cat'
 export type QuestionType = typeof QUESTION_TYPES[number]
 export const QuestionSchema = z.object({
   type: z.enum(QUESTION_TYPES),
-  level: z.number().int(),
+  level: z.number().int().describe('độ khó: 1 dễ, 2 trung bình, 3 khó'),
   q: z.string(),
   choices: N(z.array(z.object({ t: z.string(), ok: z.boolean(), fb: z.string() }))).describe('mc: 3–4 lựa chọn, đúng 1; mr: 4–5 lựa chọn, đúng từ 2; tf: đúng 2 lựa chọn "Đúng" và "Sai", câu q là một phát biểu'),
   answer: N(z.string()).describe('đáp án câu điền'),
@@ -154,13 +154,13 @@ const LEVEL_KINDS: Record<number, string> = {
 }
 
 const TASK = {
-  master: 'Nhiệm vụ: viết Nội dung gốc của khóa theo dàn ý, mỗi bài (lesson) ứng với một mục dàn ý. Đây là bản nội dung đầy đủ để chuyên gia duyệt; slide, video, tình huống, đề kiểm tra sẽ được soạn từ bản này, nên viết đủ ý, chính xác, có ví dụ. Không viết câu hỏi kiểm tra (questions là mảng rỗng).',
+  master: 'Nhiệm vụ: viết Nội dung của khóa theo dàn ý, mỗi bài (lesson) ứng với một mục dàn ý. Đây là bản nội dung đầy đủ để chuyên gia duyệt; slide, video, tình huống, đề kiểm tra sẽ được soạn từ bản này, nên viết đủ ý, chính xác, có ví dụ. Không viết câu hỏi kiểm tra (questions là mảng rỗng).',
   qr: 'Nhiệm vụ: viết Tài liệu nhanh theo dàn ý, mỗi bài (lesson) ứng với một mục dàn ý, và bộ câu hỏi kiểm tra.',
   lesson: 'Nhiệm vụ: viết đúng một bài học (lesson) theo tên bài và yêu cầu. Không viết câu hỏi kiểm tra (questions là mảng rỗng).',
 }
 export type QrMode = keyof typeof TASK
 
-/** Viết bài học theo dàn ý. mode: master = Nội dung gốc (không có câu hỏi), qr = Tài liệu nhanh kèm câu hỏi, lesson = một bài lẻ */
+/** Viết bài học theo dàn ý. mode: master = Nội dung (không có câu hỏi), qr = Tài liệu nhanh kèm câu hỏi, lesson = một bài lẻ */
 export function draftQr(orgId: string, kit: KitBrief, item: { title: string; summary: string }, outline: { sections: { t: string; items: string[] }[] }, hits: Hit[], mode: QrMode = 'qr'): Promise<QrDraft> {
   const quiz = mode === 'qr'
   return aiJson({

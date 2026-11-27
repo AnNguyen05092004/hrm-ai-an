@@ -46,7 +46,7 @@ export async function aiBlock(kit: Kit, instruction: string): Promise<Record<str
   return blocks[1] ?? blocks[0]
 }
 
-/** Một bài học mới. Nội dung gốc: căn cứ là tài liệu nguồn. Tài liệu nhanh: căn cứ là nội dung gốc đã chốt (chưa chốt thì tài liệu nguồn) */
+/** Một bài học mới. Nội dung: căn cứ là tài liệu nguồn. Tài liệu nhanh: căn cứ là nội dung đã chốt (chưa chốt thì tài liệu nguồn) */
 export async function aiLesson(kit: Kit, type: 'master' | 'qr', title: string, instruction: string): Promise<Record<string, unknown>> {
   const m = type === 'qr' ? await lockedMaster(kit.id) : null
   const query = `${title}. ${instruction}`
@@ -59,8 +59,15 @@ export async function aiLesson(kit: Kit, type: 'master' | 'qr', title: string, i
 }
 
 const Qs = z.object({ questions: z.array(QuestionSchema) })
+/** Độ khó (trường level của câu): 1 dễ, 2 trung bình, 3 khó */
+const DIFF_HOW: Record<number, string> = {
+  1: 'dễ: nhớ và hiểu khái niệm, một bước suy luận, phương án sai dễ loại',
+  2: 'trung bình: áp dụng vào tình huống quen thuộc, cần hiểu vì sao',
+  3: 'khó: phân tích, so sánh phương án, tình huống nhiều bước hoặc phương án sai rất dễ nhầm',
+}
+/** Dạng câu mặc định khi người soạn không chọn dạng */
 const KIND_BY_LEVEL: Record<number, string> = {
-  1: 'trắc nghiệm một đáp án (mc), đúng/sai (tf), điền chỗ trống (fill), ghép cặp (match) hoặc sắp thứ tự (order), kiểm tra hiểu khái niệm',
+  1: 'trắc nghiệm một đáp án (mc), đúng/sai (tf), điền chỗ trống (fill), ghép cặp (match) hoặc sắp thứ tự (order)',
   2: 'trắc nghiệm tình huống (mc), nhiều đáp án (mr), phân loại kéo thả (cat), sắp thứ tự quy trình (order) và tự luận ngắn (essay) có rubric 3 tiêu chí',
   3: 'tự luận tình huống (essay) có rubric, hoặc bài code JavaScript (code) có hàm solve và 3–4 test (args là chuỗi JSON mảng tham số, expected là chuỗi JSON)',
 }
@@ -95,14 +102,14 @@ function mockQuestion(level: number, t: QuestionType, i: number, topic: string, 
 
 export interface QuestionOptions { types?: QuestionType[]; hits?: Hit[] }
 
-/** Sinh câu hỏi theo mức và dạng. hits: đoạn căn cứ (mặc định tìm trong tài liệu nguồn của khóa; khóa đã chốt nội dung gốc thì truyền đoạn của nội dung gốc) */
+/** Sinh câu hỏi theo độ khó (level 1–3) và dạng. hits: đoạn căn cứ (mặc định tìm trong tài liệu nguồn của khóa; khóa đã chốt nội dung thì truyền đoạn của nội dung) */
 export async function generateQuestions(kit: Kit, level: number, count: number, focus: string, existing: string[], o: QuestionOptions = {}): Promise<Record<string, unknown>[]> {
   const hits = o.hits ?? await searchSources(kit.orgId, kit.sourceIds, focus || kit.title, 10)
   const types = o.types?.length ? o.types : null
   const kinds = types ? `chỉ dùng các dạng sau, chia đều: ${types.map((t) => HOW[t]).join('; ')}` : KIND_BY_LEVEL[level] ?? KIND_BY_LEVEL[1]
   const r = await aiJson({
     orgId: kit.orgId, feature: 'gen_questions', schema: Qs, strong: true,
-    system: `Bạn là chuyên gia ra đề. Viết ${count} câu hỏi mức ${level}: ${kinds}. Mỗi câu có src là mã đoạn nguồn [S#] làm căn cứ. Không trùng các câu đã có. Không bịa nội dung ngoài nguồn. Tiếng Việt.`,
+    system: `Bạn là chuyên gia ra đề. Viết ${count} câu hỏi, độ khó ${DIFF_HOW[level] ?? DIFF_HOW[1]}. Mọi câu có level = ${level}. Dạng câu: ${kinds}. Mỗi câu có src là mã đoạn nguồn [S#] làm căn cứ. Không trùng các câu đã có. Không bịa nội dung ngoài nguồn. Tiếng Việt.`,
     input: `Khóa: ${kit.title}\nTrọng tâm: ${focus || 'toàn bộ nội dung'}\nCâu đã có:\n${existing.map((x) => `- ${x}`).join('\n') || '(chưa có)'}\n\nTrích đoạn nguồn:\n${hitsText(hits) || '(không có)'}`,
     mock: () => {
       const pool = types ?? LEVEL_KINDS[level] ?? LEVEL_KINDS[1]
@@ -110,6 +117,7 @@ export async function generateQuestions(kit: Kit, level: number, count: number, 
     },
   })
   const allowed = types ? r.questions.filter((q) => types.includes(q.type)) : r.questions
-  const c = qrContent({ lessons: [], questions: allowed.slice(0, count) }, kit, hits, true)
+  // độ khó do người soạn chọn, không để AI tự đổi
+  const c = qrContent({ lessons: [], questions: allowed.slice(0, count).map((q) => ({ ...q, level })) }, kit, hits, true)
   return (c.quiz as { questions: Record<string, unknown>[] }).questions
 }

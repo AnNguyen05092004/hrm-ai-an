@@ -27,24 +27,24 @@ function GenCard({ a }) {
   )
 }
 
-/** Nội dung gốc: soạn, duyệt, chốt. Các định dạng cho người học chỉ tạo từ bản đã chốt */
+/** Nội dung: soạn, duyệt, chốt. Các định dạng cho người học chỉ tạo từ bản đã chốt */
 function MasterPanel({ kitId, art, master, onLock, onCreate }) {
   const nav = useNavigate()
   if (!art) return (
     <div className="mt-8 flex items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
       <FormatIcon type="master" size={40} />
-      <div className="flex-1 text-[15px]"><b>Khóa này chưa có Nội dung gốc.</b> Khóa được tạo trước khi có bước nội dung gốc. Tạo nội dung gốc (lấy các bài của Tài liệu nhanh nếu có), rà lại và chốt để tạo thêm định dạng.</div>
-      <button className="btn-dark btn-sm h-9 shrink-0" onClick={onCreate}>Tạo nội dung gốc</button>
+      <div className="flex-1 text-[15px]"><b>Khóa này chưa có bản Nội dung.</b> Khóa được tạo trước khi có bước này. Tạo bản Nội dung (lấy các bài của Tài liệu nhanh nếu có), rà lại và chốt để tạo thêm định dạng.</div>
+      <button className="btn-dark btn-sm h-9 shrink-0" onClick={onCreate}>Tạo bản Nội dung</button>
     </div>
   )
-  if (art.status === 'generating') return <div className="card mt-8 flex items-center gap-4 p-5"><Spinner size={28} /><div className="text-[15px]"><b>AI đang soạn nội dung gốc…</b><div className="text-[14px] text-neutral-600">Xong thì rà lại, mời review rồi chốt.</div></div></div>
+  if (art.status === 'generating') return <div className="card mt-8 flex items-center gap-4 p-5"><Spinner size={28} /><div className="text-[15px]"><b>AI đang soạn nội dung…</b><div className="text-[14px] text-neutral-600">Xong thì rà lại, mời review rồi chốt.</div></div></div>
   const locked = master?.lockedVersion
   return (
     <div className="card mt-8 p-5">
       <div className="flex flex-wrap items-center gap-4">
         <FormatIcon type="master" size={44} />
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2"><span className="text-[17px] font-semibold">Nội dung gốc</span><Status s={locked ? 'published' : 'draft'} master />{locked && <span className="text-[13px] text-neutral-500">phiên bản {locked}</span>}{master?.changed && locked && <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[12px] font-semibold text-amber-800">Có thay đổi chưa chốt</span>}</div>
+          <div className="flex flex-wrap items-center gap-2"><span className="text-[17px] font-semibold">Nội dung</span><Status s={locked ? 'published' : 'draft'} master />{locked && <span className="text-[13px] text-neutral-500">phiên bản {locked}</span>}{master?.changed && locked && <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[12px] font-semibold text-amber-800">Có thay đổi chưa chốt</span>}</div>
           <p className="mt-1 text-[14px] text-neutral-600">{locked ? 'Mọi định dạng soạn từ bản đã chốt. Sửa nội dung thì chốt lại; định dạng soạn từ bản cũ được đánh dấu để soạn lại.' : 'Bản nội dung đầy đủ, chỉ dùng nội bộ. Rà lại, mời review, rồi chốt để tạo Tài liệu nhanh, slide, video, tình huống, đề kiểm tra.'}</p>
         </div>
         <div className="flex shrink-0 gap-2">
@@ -64,7 +64,7 @@ export default function KitPage() {
   const qc = useQueryClient()
   const { doc: kit, up, saveState, reload } = useKit(id)
   const skills = useSkills()
-  // theo dõi tài liệu đang được AI soạn và trạng thái chốt của nội dung gốc
+  // theo dõi tài liệu đang được AI soạn và trạng thái chốt của nội dung
   const live = useQuery({
     queryKey: ['kit-live', id], queryFn: () => get(`/kits/${id}`).then((k) => ({ artifacts: k.artifacts, master: k.master, bank: k.bank })),
     refetchInterval: (q) => ((q.state.data?.artifacts ?? kit?.artifacts ?? []).some((a) => a.status === 'generating') ? 2000 : false),
@@ -89,8 +89,8 @@ export default function KitPage() {
   const stale = (a) => locked != null && a.basedOn != null && a.basedOn < locked
   const createMaster = async () => { try { const r = await post(`/kits/${id}/master`); await live.refetch(); nav(`/edit/${r.id}`) } catch (e) { say(e.message) } }
   const refresh = async (a) => {
-    if (!(await confirmBox(`Soạn lại "${a.title}" từ nội dung gốc v${locked}? Bản nháp hiện tại bị thay; bản đã xuất bản giữ nguyên tới khi bạn xuất bản lại.`, { ok: 'Soạn lại' }))) return
-    try { await post(`/artifacts/${a.id}/regenerate`, { force: true }); await live.refetch(); say('AI đang soạn lại từ nội dung gốc mới') } catch (e) { say(e.message) }
+    if (!(await confirmBox(`Soạn lại "${a.title}" từ Nội dung v${locked}? Bản nháp hiện tại bị thay; bản đã xuất bản giữ nguyên tới khi bạn xuất bản lại.`, { ok: 'Soạn lại' }))) return
+    try { await post(`/artifacts/${a.id}/regenerate`, { force: true }); await live.refetch(); say('AI đang soạn lại từ Nội dung mới') } catch (e) { say(e.message) }
   }
   const skill = skills.find((s) => s.id === kit.skill)
   const addArtifact = async (item) => {
@@ -146,7 +146,7 @@ export default function KitPage() {
         <MasterPanel kitId={id} art={masterArt} master={master} onLock={() => setShare(masterArt)} onCreate={createMaster} />
 
         <div className="mt-10 flex items-end gap-3">
-          <div className="flex-1"><h2 className="text-[19px] font-semibold">Định dạng cho người học</h2><p className="mt-0.5 text-[14px] text-neutral-600">{locked ? `Soạn từ nội dung gốc đã chốt (v${locked}). Đây là phần được xuất sang LMS công ty.` : 'Chốt nội dung gốc để tạo các định dạng.'}</p></div>
+          <div className="flex-1"><h2 className="text-[19px] font-semibold">Định dạng cho người học</h2><p className="mt-0.5 text-[14px] text-neutral-600">{locked ? `Soạn từ nội dung đã chốt (v${locked}). Đây là phần được xuất sang LMS công ty.` : 'Chốt nội dung để tạo các định dạng.'}</p></div>
         </div>
         {arts.length > 0 && <div className="mt-4 grid grid-cols-3 gap-4">
           {arts.map((a) => a.status === 'generating' ? <GenCard key={a.id} a={a} /> : (
@@ -163,7 +163,7 @@ export default function KitPage() {
               </div>
               <div className="flex-1" />
               <div className="mt-4 border-t border-line px-4 pb-4 pt-3">
-                {stale(a) && <div className="mb-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[12px] leading-snug text-amber-900">Soạn từ nội dung gốc v{a.basedOn}, đã có v{locked}. <button className="font-semibold underline" onClick={() => refresh(a)}>Soạn lại</button></div>}
+                {stale(a) && <div className="mb-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[12px] leading-snug text-amber-900">Soạn từ Nội dung v{a.basedOn}, đã có v{locked}. <button className="font-semibold underline" onClick={() => refresh(a)}>Soạn lại</button></div>}
                 <div className="flex items-center"><Status s={a.status} /><div className="flex-1" /><button onClick={() => remove(a)} className="icon-btn h-8 w-8 opacity-0 group-hover:opacity-100" aria-label="Xóa tài liệu"><Trash2 size={15} /></button></div>
                 {a.status === 'failed' ? <button onClick={() => regen(a)} className="btn-line mt-3 h-9 w-full"><RotateCw size={15} />Soạn lại</button>
                   : <button onClick={() => setShare(a)} className="btn-line mt-3 h-9 w-full">Xuất bản</button>}
@@ -175,7 +175,7 @@ export default function KitPage() {
         <div className="mb-3 mt-8 text-[15px] font-semibold">Tạo định dạng</div>
         <div className="grid grid-cols-5 gap-3">
           {[...GEN_FORMATS, 'exam'].map((k) => (
-            <button key={k} disabled={!locked} title={locked ? undefined : 'Chốt nội dung gốc trước'} onClick={() => (k === 'exam' ? setExam(true) : setAdd(k))} className="card relative p-3.5 text-left transition enabled:hover:shadow-pop disabled:cursor-not-allowed disabled:opacity-50">
+            <button key={k} disabled={!locked} title={locked ? undefined : 'Chốt nội dung trước'} onClick={() => (k === 'exam' ? setExam(true) : setAdd(k))} className="card relative p-3.5 text-left transition enabled:hover:shadow-pop disabled:cursor-not-allowed disabled:opacity-50">
               <FormatIcon type={k} size={32} r={8} /><Plus size={18} className="absolute right-3 top-4 text-neutral-500" />
               <div className="mt-3 text-[15px] font-semibold leading-tight">{FORMATS[k].name}</div>
               <div className="mt-1 text-[12px] leading-snug text-neutral-600">{FORMATS[k].desc}</div>

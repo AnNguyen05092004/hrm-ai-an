@@ -13,6 +13,7 @@ import { badRequest, notFound } from '../../lib/errors.js'
 import { audit } from '../../lib/audit.js'
 import { publishedContent } from '../artifacts/view.js'
 import { getKit } from './service.js'
+import { DIFF_NAME, TYPE_NAME, cellName, examPick, matrixPools, type Cell } from './matrix.js'
 
 type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -23,9 +24,7 @@ const slugify = (s: string): string => s.normalize('NFD').replace(/[̀-ͯ]/g, ''
 /** mã định danh QTI: bắt đầu bằng chữ, chỉ chữ số gạch */
 const ident = (s: string): string => `I${String(s).replace(/[^A-Za-z0-9_-]/g, '_')}`
 
-export const TYPE_NAME: Record<string, string> = {
-  mc: 'Một đáp án', mr: 'Nhiều đáp án', tf: 'Đúng / Sai', fill: 'Điền chỗ trống', match: 'Ghép cặp', order: 'Sắp thứ tự', cat: 'Phân loại', essay: 'Tự luận', code: 'Bài code JavaScript',
-}
+export { TYPE_NAME }
 /** Cách tính điểm từng dạng câu, giống hệt cách LMS này chấm */
 export const SCORING: Record<string, string> = {
   mc: 'Đúng đáp án được 1 điểm, sai 0.',
@@ -51,7 +50,7 @@ const scorer = (title: string, body: string): string => `    <rubricBlock view="
 /** Một câu hỏi → assessmentItem QTI 2.1 */
 export function itemXml(q: Json): string {
   const t = q.type
-  const title = `${TYPE_NAME[t] ?? t} · mức ${q.level ?? 1}`
+  const title = `${TYPE_NAME[t] ?? t} · ${DIFF_NAME[q.level ?? 1] ?? 'Dễ'}`
   if (t === 'mc' || t === 'mr' || t === 'tf') {
     const choices: Json[] = q.choices ?? []
     const ok = choices.map((c, i) => (c.ok ? `C${i}` : '')).filter(Boolean)
@@ -116,22 +115,29 @@ export function itemXml(q: Json): string {
     + '  </itemBody>\n</assessmentItem>\n'
 }
 
-/** assessmentTest: rút ngẫu nhiên pick câu, xáo thứ tự, giới hạn thời gian; điểm đạt ghi ở outcome PASS_SCORE (%) */
+/** Các phần của đề: có ma trận thì mỗi ô một phần (rút đúng số câu của ô), không thì một phần rút `pick` câu */
+function sectionsOf(quiz: Json, qs: Json[]): { id: string; title: string; select: number; items: Json[] }[] {
+  const m = quiz.matrix as Cell[] | undefined
+  if (!m?.length) return [{ id: 'S1', title: '', select: examPick(quiz, qs), items: qs }]
+  return matrixPools(m, qs).cells.filter((c) => c.pool.length).map((c, i) => ({ id: `S${i + 1}`, title: cellName(c), select: Math.min(c.count, c.pool.length), items: c.pool }))
+}
+
+/** assessmentTest: rút ngẫu nhiên theo từng phần, xáo thứ tự trong phần, giới hạn thời gian; điểm đạt ghi ở outcome PASS_SCORE (%) */
 function testXml(id: string, title: string, quiz: Json, qs: Json[]): string {
-  const pick = Math.min(Number(quiz.pick ?? qs.length), qs.length)
+  const parts = sectionsOf(quiz, qs)
   return `<?xml version="1.0" encoding="UTF-8"?>
 <assessmentTest xmlns="${QTI_NS}" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="${SCHEMA}" identifier="${ident(id)}" title="${x(title)}">
   <outcomeDeclaration identifier="SCORE" cardinality="single" baseType="float"><defaultValue><value>0</value></defaultValue></outcomeDeclaration>
-  <outcomeDeclaration identifier="MAXSCORE" cardinality="single" baseType="float"><defaultValue><value>${pick}</value></defaultValue></outcomeDeclaration>
+  <outcomeDeclaration identifier="MAXSCORE" cardinality="single" baseType="float"><defaultValue><value>${examPick(quiz, qs)}</value></defaultValue></outcomeDeclaration>
   <outcomeDeclaration identifier="PASS_SCORE" cardinality="single" baseType="float"><defaultValue><value>${Number(quiz.passScore ?? 80)}</value></defaultValue></outcomeDeclaration>
   <timeLimits maxTime="${Number(quiz.minutes ?? 30) * 60}" allowLateSubmission="false"/>
   <testPart identifier="P1" navigationMode="nonlinear" submissionMode="simultaneous">
     <itemSessionControl maxAttempts="${Number(quiz.attempts ?? 1)}" allowReview="true" showFeedback="false" showSolution="false"/>
-    <assessmentSection identifier="S1" title="${x(title)}" visible="true">
-      <selection select="${pick}" withReplacement="false"/>
+${parts.map((p) => `    <assessmentSection identifier="${p.id}" title="${x(p.title || title)}" visible="true">
+      <selection select="${p.select}" withReplacement="false"/>
       <ordering shuffle="true"/>
-${qs.map((q) => `      <assessmentItemRef identifier="${ident(q.id)}" href="items/${q.id}.xml"/>`).join('\n')}
-    </assessmentSection>
+${p.items.map((q) => `      <assessmentItemRef identifier="${ident(q.id)}" href="items/${q.id}.xml"/>`).join('\n')}
+    </assessmentSection>`).join('\n')}
   </testPart>
   <outcomeProcessing>
     <setOutcomeValue identifier="SCORE"><sum><testVariables variableIdentifier="SCORE"/></sum></setOutcomeValue>
@@ -183,13 +189,19 @@ Khóa: ${kitTitle}. Xuất lúc ${new Date().toISOString()}.
 | Mục | Giá trị |
 |---|---|
 | Số câu trong ngân hàng | ${qs.length} (${count}) |
-| Mỗi lượt thi rút | ${Math.min(Number(quiz.pick ?? qs.length), qs.length)} câu ngẫu nhiên, xáo thứ tự |
+| Mỗi lượt thi rút | ${examPick(quiz, qs)} câu ngẫu nhiên${quiz.matrix?.length ? ' theo ma trận đề' : ''}, xáo thứ tự |
 | Thời gian | ${quiz.minutes ?? 30} phút |
 | Điểm đạt | ${quiz.passScore ?? 80}% |
 | Số lượt thi | ${quiz.attempts ?? 1} |
 | Mỗi câu | 1 điểm, điểm bài = tổng điểm / số câu × 100 |
 
-## Nhập vào LMS
+${quiz.matrix?.length ? `## Ma trận đề
+
+| Dạng câu | Độ khó | Câu mỗi lượt thi | Câu trong ngân hàng |
+|---|---|---|---|
+${matrixPools(quiz.matrix, qs).cells.map((c) => `| ${TYPE_NAME[c.type] ?? c.type} | ${DIFF_NAME[c.level] ?? c.level} | ${Math.min(c.count, c.pool.length)} | ${c.pool.length} |`).join('\n')}
+
+` : ''}## Nhập vào LMS
 
 - LMS hỗ trợ **IMS QTI 2.1** (Canvas, Blackboard, D2L, TAO; Moodle qua plugin QTI): nhập nguyên tệp .zip. Đáp án, điểm từng phần và giới hạn thời gian nằm trong \`test.xml\` và \`items/\`.
 - LMS không đọc QTI, hoặc có AI riêng: dùng \`exam.json\`. Tệp chứa mọi câu, đáp án, giải thích từng lựa chọn, tiêu chí chấm, test case và cách tính điểm từng dạng câu.
@@ -216,16 +228,19 @@ export async function buildExamPackage(orgId: string, kitId: string, artifactId:
   if (!a.publishedVersion) throw badRequest('Đề kiểm tra chưa được xuất bản')
   const { content, title, version } = await publishedContent(a)
   const quiz: Json = content.quiz ?? {}
-  const qs: Json[] = (quiz.questions ?? []).filter((q: Json) => q.approved)
-  if (!qs.length) throw badRequest('Đề chưa có câu nào được duyệt')
+  const approved: Json[] = (quiz.questions ?? []).filter((q: Json) => q.approved)
+  // có ma trận: chỉ xuất câu thuộc một ô của ma trận (câu ngoài ma trận không bao giờ được rút)
+  const outside = quiz.matrix?.length ? new Set(matrixPools(quiz.matrix, approved).rest) : null
+  const qs = outside ? approved.filter((q) => !outside.has(q)) : approved
+  if (!qs.length) throw badRequest(approved.length ? 'Không có câu đã duyệt nào thuộc ma trận đề' : 'Đề chưa có câu nào được duyệt')
   const exam = {
     format: 'lms-exam', formatVersion: 1, exportedAt: new Date().toISOString(),
     exam: { id: a.id, title, version, kit: { id: k.id, title: k.title } },
-    settings: { passScore: quiz.passScore ?? 80, minutes: quiz.minutes ?? 30, attempts: quiz.attempts ?? 1, pick: Math.min(Number(quiz.pick ?? qs.length), qs.length), shuffle: true, pointsPerQuestion: 1 },
+    settings: { passScore: quiz.passScore ?? 80, minutes: quiz.minutes ?? 30, attempts: quiz.attempts ?? 1, pick: examPick(quiz, qs), shuffle: true, pointsPerQuestion: 1, ...(quiz.matrix?.length ? { matrix: (quiz.matrix as Cell[]).map((c) => ({ type: c.type, difficulty: c.level, difficultyName: DIFF_NAME[c.level], count: c.count })) } : {}) },
     scoring: SCORING,
     aiGrading: { essayPrompt: AI_PROMPT },
     questions: qs.map((q) => ({
-      id: q.id, type: q.type, typeName: TYPE_NAME[q.type] ?? q.type, level: q.level ?? 1, question: q.q, points: 1, source: q.src ?? null,
+      id: q.id, type: q.type, typeName: TYPE_NAME[q.type] ?? q.type, difficulty: q.level ?? 1, difficultyName: DIFF_NAME[q.level ?? 1], question: q.q, points: 1, source: q.src ?? null,
       ...(q.choices ? { choices: q.choices.map((c: Json) => ({ text: c.t, correct: !!c.ok, feedback: c.fb ?? '' })) } : {}),
       ...(q.type === 'fill' ? { accepted: String(q.answer ?? '').split('|').map((s) => s.trim()).filter(Boolean) } : {}),
       ...(q.pairs ? { pairs: q.pairs.map((p: Json) => ({ left: p.l, right: p.r })) } : {}),

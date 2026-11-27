@@ -147,7 +147,11 @@ export default function Dashboard() {
             className="w-full resize-none rounded-2xl bg-transparent px-5 pt-4 text-[16px] leading-relaxed outline-none placeholder:text-neutral-500" />
           <div className="flex items-center gap-2 px-4 pb-3 text-[12px] text-neutral-400"><div className="flex-1" />{goal.length} / 5.000</div>
         </div>
-        <div className="mt-4">
+        <button disabled={goal.trim().length < 5 || starting || uploading} onClick={start} className="mt-4 flex h-14 w-full items-center justify-center gap-2.5 rounded-full bg-ink text-[18px] font-semibold text-white transition hover:bg-neutral-800 disabled:bg-neutral-300">
+          {starting ? <Spinner size={22} w={2} /> : <><Sparkles size={19} className="text-violet-300" />Bắt đầu<ArrowRight size={20} /></>}
+        </button>
+        <p className="mt-3 text-center text-[13px] italic text-neutral-500">{uploading ? 'Đang tải tệp lên…' : 'Tiếp theo, bạn rà lại chi tiết và bổ sung chỗ thiếu trước khi AI tạo nội dung'}</p>
+        <div className="mt-8">
           <div className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold text-neutral-600"><Sparkles size={14} className="text-violet-600" />Thử nhanh với chủ đề mẫu<span className="font-normal text-neutral-400">· điền sẵn mô tả</span><div className="flex-1" />
             {[[ChevronLeft, -1], [ChevronRight, 1]].map(([I, d]) => <button key={d} onClick={() => rowRef.current?.scrollBy({ left: d * 360, behavior: 'smooth' })} className="grid h-7 w-7 place-items-center rounded-full border border-line bg-white hover:bg-neutral-50" aria-label={d < 0 ? 'Trước' : 'Sau'}><I size={15} /></button>)}</div>
           <div ref={rowRef} className="scroll-thin -mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-2 pt-1">
@@ -158,10 +162,6 @@ export default function Dashboard() {
               </button>) })}
           </div>
         </div>
-        <button disabled={goal.trim().length < 5 || starting || uploading} onClick={start} className="mt-5 flex h-14 w-full items-center justify-center gap-2.5 rounded-full bg-ink text-[18px] font-semibold text-white transition hover:bg-neutral-800 disabled:bg-neutral-300">
-          {starting ? <Spinner size={22} w={2} /> : <><Sparkles size={19} className="text-violet-300" />Bắt đầu<ArrowRight size={20} /></>}
-        </button>
-        <p className="mt-3 text-center text-[13px] italic text-neutral-500">{uploading ? 'Đang tải tệp lên…' : 'Tiếp theo, bạn rà lại chi tiết và bổ sung chỗ thiếu trước khi AI tạo nội dung'}</p>
       </div>
 
       <div className="mx-auto mt-16 max-w-[1100px] px-8 pb-24">

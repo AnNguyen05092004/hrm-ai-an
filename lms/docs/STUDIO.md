@@ -12,7 +12,7 @@ Chỉ làm ra khóa học, không vận hành việc học: soạn khóa bằng 
 |---|---|
 | Giữ | Tài liệu nguồn, luồng tạo khóa (chi tiết → dàn ý → AI soạn), các trình soạn (Tài liệu nhanh, Slide, Tình huống, Video, Đề kiểm tra), ảnh, video AI, xuất bản có phiên bản, xuất SCORM 1.2, đề QTI 2.1, trang demo LMS công ty |
 | Bỏ | Vai người học, Khóa học của tôi, trình học trên web, tiến độ học, AI Tutor, thi và giám sát, chấm bài, kế hoạch đào tạo (KPI, khoảng cách kỹ năng, đội ngũ, trợ lý giám đốc), phân tích học tập, giao khóa, đường dẫn chia sẻ, xAPI, webhook |
-| Thêm | Vai admin và reviewer, quản trị người dùng, review khóa học (mời, góp ý theo vị trí, kết luận, nhiều vòng), trang xem câu hỏi kèm đáp án, Nội dung gốc và luồng chốt nội dung, Kho đề, dạng câu Đúng/Sai |
+| Thêm | Vai admin và reviewer, quản trị người dùng, review khóa học (mời, góp ý theo vị trí, kết luận, nhiều vòng), trang xem câu hỏi kèm đáp án, Nội dung và luồng chốt nội dung, Kho đề, dạng câu Đúng/Sai |
 
 Bảng bị bỏ khỏi CSDL: `departments`, `positions`, `user_skills`, `skill_events`, `kpis`, `evidence`, `assignments`, `progress`, `attempts`, `tutor_messages`, `content_chunks`, `outbox`. Bảng `skills` giữ lại làm danh mục kỹ năng để gắn khóa học. Bảng mới: `kit_reviews`, `review_comments`.
 
@@ -45,7 +45,7 @@ Chặn ở API: `requireEditor` (author, admin), `requireAdmin`; reviewer qua ki
 | Migration | Một migration nền mới (`0000_studio_baseline`), DB riêng `lms_studio` | Nhánh là sản phẩm tách riêng. Lỡ chạy nhầm vào DB của bản đầy đủ thì migration báo lỗi bảng đã có và dừng, không xóa dữ liệu |
 | Cổng chạy | 4100 / 5194 / 5196 | Chạy song song với bản đầy đủ (4000 / 5190 / 5192) |
 
-## 5. Luồng tạo khóa: nội dung gốc trước, định dạng sau
+## 5. Luồng tạo khóa: nội dung trước, định dạng sau
 
 **Vấn đề của luồng cũ** (chi tiết → chọn 3–5 định dạng → dàn ý từng định dạng → AI soạn tất cả song song):
 - Mỗi định dạng tự đọc lại tài liệu nguồn nên dễ lệch nhau (thuật ngữ, số liệu, ý có ở slide mà không có ở bài học).
@@ -57,21 +57,38 @@ Chặn ở API: `requireEditor` (author, admin), `requireAdmin`; reviewer qua ki
 | Bước | Ai làm | Kết quả |
 |---|---|---|
 | 1. Chi tiết | AI đề xuất, người soạn sửa | Đối tượng, mục tiêu, kỹ năng và mức. Không còn chọn định dạng ở bước này |
-| 2. Dàn ý nội dung gốc | AI đề xuất, người soạn sửa | 3–8 bài, mỗi bài các ý chính |
-| 3. Nội dung gốc | AI viết, người soạn sửa, reviewer góp ý | Bản nội dung đầy đủ có trích nguồn, chỉ dùng nội bộ |
-| 4. Chốt nội dung | Người soạn | Lưu nội dung gốc thành phiên bản (v1, v2…) |
+| 2. Dàn ý nội dung | AI đề xuất, người soạn sửa | 3–8 bài, mỗi bài các ý chính |
+| 3. Nội dung | AI viết, người soạn sửa, reviewer góp ý | Bản nội dung đầy đủ có trích nguồn, chỉ dùng nội bộ |
+| 4. Chốt nội dung | Người soạn | Lưu nội dung thành phiên bản (v1, v2…) |
 | 5. Định dạng | AI soạn từ bản đã chốt | Tài liệu nhanh, slide, video, tình huống, đề kiểm tra; mỗi định dạng ghi soạn từ phiên bản nào |
 
 Quyết định chi tiết:
-- Định dạng chỉ dùng các đoạn của nội dung gốc đã chốt làm căn cứ; khối trích nguồn giữ nguyên mã tài liệu và đoạn nguồn gốc, nên trích dẫn và cảnh báo "tài liệu nguồn có bản mới" vẫn đúng.
+- Định dạng chỉ dùng các đoạn của nội dung đã chốt làm căn cứ; khối trích nguồn giữ nguyên mã tài liệu và đoạn nguồn gốc, nên trích dẫn và cảnh báo "tài liệu nguồn có bản mới" vẫn đúng.
 - Chưa chốt thì API chặn tạo định dạng, tạo đề, soạn lại (`master_not_locked`), không chỉ khóa nút.
-- Sửa nội dung gốc sau khi chốt không ảnh hưởng định dạng đã có. Chốt lại thì định dạng soạn từ bản cũ hiện "Soạn từ v1, đã có v2 · Soạn lại"; soạn lại chỉ thay bản nháp, bản đã xuất bản giữ nguyên tới khi xuất bản lại.
-- Chỗ thiếu căn cứ trong nội dung gốc là cảnh báo khi chốt (không chặn) và không được dùng khi soạn định dạng.
-- Nội dung gốc không có bài kiểm tra, không vào gói SCORM, không xuất bản cùng "xuất bản cả khóa".
+- Sửa nội dung sau khi chốt không ảnh hưởng định dạng đã có. Chốt lại thì định dạng soạn từ bản cũ hiện "Soạn từ v1, đã có v2 · Soạn lại"; soạn lại chỉ thay bản nháp, bản đã xuất bản giữ nguyên tới khi xuất bản lại.
+- Chỗ thiếu căn cứ trong nội dung là cảnh báo khi chốt (không chặn) và không được dùng khi soạn định dạng.
+- Nội dung không có bài kiểm tra, không vào gói SCORM, không xuất bản cùng "xuất bản cả khóa".
 - Đề trong Kho đề tạo thẳng từ tài liệu nằm trong một khóa ẩn (`details.bank`) để dùng chung luồng soạn, review, xuất QTI; khóa ẩn không hiện trong danh sách khóa học, xóa đề thì xóa luôn khóa ẩn.
-- Tài liệu nhanh bỏ giới hạn cứng 3 bài (chỉ nhắc nên gọn); nội dung gốc tối đa 8 bài khi AI lập dàn ý.
+- Hộp chốt liệt kê từng khối thiếu căn cứ / chưa có nguồn kèm tên bài và nút "Sửa chỗ này" (mở đúng bài, cuộn tới và làm nổi khối). Trên khối thiếu căn cứ: "Tìm lại trong tài liệu nguồn" (AI) hoặc "Tự viết đoạn này" (khối được đánh dấu chưa có nguồn để reviewer kiểm tra).
+- Tên hiển thị là "Nội dung" (migration `0001_master_title` đổi tên các bản đã có, không đổi nội dung).
+- Bỏ "Hình thức triển khai" ở bước Chi tiết: bản Studio không vận hành việc học nên trường này không ảnh hưởng gì.
+- Tài liệu nhanh bỏ giới hạn cứng 3 bài (chỉ nhắc nên gọn); nội dung tối đa 8 bài khi AI lập dàn ý.
 
-## 6. Kiểm thử
+## 6. Đề kiểm tra: ma trận đề
 
-- `npm test`: 51 test API, gồm `kits.test.ts` (luồng nội dung gốc, chặn khi chưa chốt, chốt lại và soạn lại, AI thêm bài học), `bank.test.ts` (kho đề, đề từ khóa / từ tài liệu, dạng Đúng/Sai), `reviews.test.ts` (phạm vi xem của reviewer, mời, góp ý gắn vị trí, trả lời, đã xử lý, kết luận, vòng mới, bỏ reviewer) và `users.test.ts` (chỉ admin, mật khẩu tạm, hết phiên khi đổi vai / khóa, không tự hạ quyền, đổi vai reviewer thì bỏ lời mời).
-- Kiểm tra trên trình duyệt (Chrome không giao diện, hồ sơ tạm, DB riêng): ba vai, luồng mời → góp ý → kết luận → gửi lại → xuất; luồng chi tiết → dàn ý → nội dung gốc → chốt → định dạng → chốt lại → soạn lại; thêm bài học; 9 dạng câu; Kho đề; khóa cũ tạo nội dung gốc.
+Trước đây đề chọn "mức 1–3", mà mỗi mức lại gắn sẵn dạng câu, nên trùng với ô chọn dạng câu và không nói được câu nào dễ, câu nào khó.
+
+| Vấn đề | Chọn | Vì sao |
+|---|---|---|
+| Mức của câu hỏi | Độ khó Dễ / Trung bình / Khó (trường `level` 1–3 của câu) | Tách khỏi mức năng lực của khóa (khung kỹ năng). Câu cũ giữ nguyên số, chỉ đổi cách đọc |
+| Cấu trúc đề | Ma trận: mỗi dòng là dạng câu × độ khó × số câu mỗi lượt thi; không cho hai dòng trùng ô | Đúng cách người ra đề quen dùng; mọi lượt thi cùng cấu trúc |
+| Ngân hàng | Soạn gấp 1–3 lần số câu của ma trận (mặc định gấp đôi) | Mỗi lượt thi rút một bộ khác nhau mà vẫn đúng ma trận |
+| Xuất QTI | Mỗi ô một `assessmentSection` có `selection select` bằng số câu của ô; câu ngoài ma trận không vào gói | LMS nhập QTI rút đúng ma trận, không cần cấu hình thêm |
+| Thiếu câu | Cảnh báo theo từng ô khi xuất bản; bảng ma trận trong cài đặt đề có cột "Đã duyệt" | Người soạn biết ô nào cần duyệt / thêm câu |
+| Giới hạn | Tối đa 50 câu mỗi đề, 100 câu ngân hàng | Giữ thời gian AI soạn và chi phí trong tầm |
+| Đề cũ (chưa có ma trận) | Vẫn chạy như trước: rút ngẫu nhiên `pick` câu | Không phải soạn lại |
+
+## 7. Kiểm thử
+
+- `npm test`: 53 test API, gồm `kits.test.ts` (luồng nội dung, chặn khi chưa chốt, chốt lại và soạn lại, vị trí cảnh báo khi chốt, AI thêm bài học), `bank.test.ts` (kho đề, ma trận đề và gói QTI theo ô, từ chối ma trận trùng ô / quá lớn, đề từ khóa / từ tài liệu, dạng Đúng/Sai), `reviews.test.ts` (phạm vi xem của reviewer, mời, góp ý gắn vị trí, trả lời, đã xử lý, kết luận, vòng mới, bỏ reviewer) và `users.test.ts` (chỉ admin, mật khẩu tạm, hết phiên khi đổi vai / khóa, không tự hạ quyền, đổi vai reviewer thì bỏ lời mời).
+- Kiểm tra trên trình duyệt (Chrome không giao diện, hồ sơ tạm, DB riêng): ba vai, luồng mời → góp ý → kết luận → gửi lại → xuất; luồng chi tiết → dàn ý → nội dung → chốt → định dạng → chốt lại → soạn lại; thêm bài học; 9 dạng câu; Kho đề; khóa cũ tạo nội dung; nút Bắt đầu trên Thử nhanh; hộp chốt dẫn tới đúng khối thiếu căn cứ; tạo đề theo ma trận.

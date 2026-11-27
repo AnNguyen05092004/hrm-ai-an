@@ -8,6 +8,13 @@
       "when": 1795693564132,
       "tag": "0000_studio_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795780000000,
+      "tag": "0001_master_title",
+      "breakpoints": true
     }
   ]
 }

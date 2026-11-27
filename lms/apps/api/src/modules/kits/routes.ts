@@ -60,7 +60,7 @@ export const kitRoutes: FastifyPluginAsyncZod = async (app) => {
     schema: { params: P, body: z.object({
       title: z.string().max(200).optional(), desc: z.string().max(3000).optional(), audience: z.string().max(3000).optional(),
       goals: z.array(z.string().max(500)).max(20).optional(), takeaways: z.array(z.string().max(500)).max(20).optional(), metrics: z.array(z.string().max(500)).max(20).optional(),
-      practice: z.enum(['less', 'balanced', 'more']).optional(), delivery: z.enum(['self', 'live', 'both']).optional(),
+      practice: z.enum(['less', 'balanced', 'more']).optional(),
       skill: z.string().nullable().optional(), level: z.number().int().min(1).max(3).optional(),
       plan: z.array(planItem).max(8).optional(), sourceIds: z.array(z.string()).max(20).optional(), warnings: z.array(z.string()).optional(),
       theme: Theme.optional(), img: z.string().max(300).optional(),
@@ -73,7 +73,7 @@ export const kitRoutes: FastifyPluginAsyncZod = async (app) => {
     if (b.skill) await assertSkill(u.orgId, b.skill)
     let sourceIds = k.sourceIds
     if (b.sourceIds) sourceIds = (await db.select({ id: schema.sources.id }).from(schema.sources).where(and(eq(schema.sources.orgId, u.orgId), inArray(schema.sources.id, b.sourceIds.length ? b.sourceIds : ['-'])))).map((s) => s.id)
-    const details = Object.fromEntries(Object.entries({ theme: b.theme, audience: b.audience, goals: b.goals, takeaways: b.takeaways, metrics: b.metrics, practice: b.practice, delivery: b.delivery, plan: b.plan, warnings: b.warnings }).filter(([, v]) => v !== undefined))
+    const details = Object.fromEntries(Object.entries({ theme: b.theme, audience: b.audience, goals: b.goals, takeaways: b.takeaways, metrics: b.metrics, practice: b.practice, plan: b.plan, warnings: b.warnings }).filter(([, v]) => v !== undefined))
     await patchKit(k.id, {
       ...(b.title !== undefined ? { title: b.title } : {}), ...(b.desc !== undefined ? { goal: b.desc } : {}),
       ...(b.skill !== undefined ? { skillId: b.skill } : {}), ...(b.img !== undefined ? { img: b.img } : {}), ...(b.level !== undefined ? { level: b.level } : {}), sourceIds,
@@ -109,18 +109,18 @@ export const kitRoutes: FastifyPluginAsyncZod = async (app) => {
   })
 
   // Tạo các tài liệu theo dàn ý; mỗi tài liệu một job
-  // Khóa tạo trước khi có bước nội dung gốc: tạo nội dung gốc (bản nháp) từ Tài liệu nhanh đang có, không có thì tạo bản trống
+  // Khóa tạo trước khi có bước nội dung: tạo nội dung (bản nháp) từ Tài liệu nhanh đang có, không có thì tạo bản trống
   app.post('/:id/master', { schema: { params: P } }, async (req) => {
     const u = me(req)
     const k = await getKit(u.orgId, req.params.id)
-    if (await masterOf(k.id)) throw conflict('Khóa đã có nội dung gốc')
+    if (await masterOf(k.id)) throw conflict('Khóa đã có nội dung')
     const [qr] = await db.select().from(schema.artifacts).where(and(eq(schema.artifacts.kitId, k.id), eq(schema.artifacts.type, 'qr'))).limit(1)
     const a = await createArtifact(k, { type: 'master', title: MASTER_TITLE, summary: k.goal }, 'draft', qr ? masterFromQr(qr.content as Record<string, unknown>) : { lessons: [] })
     await audit(u, 'master.create', a.id, { from: qr?.id ?? null })
     return { id: a.id }
   })
 
-  // Soạn nội dung gốc theo dàn ý (một job)
+  // Soạn nội dung theo dàn ý (một job)
   app.post('/:id/generate', { schema: { params: P } }, async (req) => {
     const u = me(req)
     const k = await getKit(u.orgId, req.params.id)
@@ -141,7 +141,7 @@ export const kitRoutes: FastifyPluginAsyncZod = async (app) => {
     return { artifactIds: ids }
   })
 
-  // Thêm định dạng cho người học: AI soạn ngay từ nội dung gốc đã chốt
+  // Thêm định dạng cho người học: AI soạn ngay từ nội dung đã chốt
   app.post('/:id/artifacts', { schema: { params: P, body: planItem } }, async (req) => {
     const u = me(req)
     const k = await getKit(u.orgId, req.params.id)

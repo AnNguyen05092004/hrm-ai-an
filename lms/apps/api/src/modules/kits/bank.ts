@@ -1,4 +1,4 @@
-// Kho đề: mọi đề kiểm tra của công ty ở một chỗ. Tạo đề từ một khóa học (ra đề từ nội dung gốc đã chốt của khóa)
+// Kho đề: mọi đề kiểm tra của công ty ở một chỗ. Tạo đề từ một khóa học (ra đề từ nội dung đã chốt của khóa)
 // hoặc thẳng từ tài liệu nguồn (đề đứng riêng, nằm trong một khóa ẩn chỉ chứa đề đó để dùng chung luồng soạn, review, xuất).
 import { z } from 'zod'
 import { and, desc, eq, inArray } from 'drizzle-orm'
@@ -9,7 +9,7 @@ import { badRequest } from '../../lib/errors.js'
 import { audit } from '../../lib/audit.js'
 import { enqueue } from '../../lib/jobs.js'
 import { artifactMeta, createArtifact, getKit, isBank } from './service.js'
-import { ExamSpec, examPlan } from './exam.js'
+import { ExamSpec, checkMatrix, examPlan } from './exam.js'
 import { requireLocked } from './master.js'
 
 type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -41,6 +41,7 @@ export const examBankRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post('/', { schema: { body: NewExam } }, async (req) => {
     const u = me(req)
     const b = req.body
+    checkMatrix(b)
     let kit
     if (b.from === 'kit') {
       kit = await getKit(u.orgId, b.kitId)
@@ -56,7 +57,7 @@ export const examBankRoutes: FastifyPluginAsyncZod = async (app) => {
     }
     const a = await createArtifact(kit, examPlan(kit, b))
     const job = await enqueue(u.orgId, 'exam.generate', { artifactId: a.id }, u.id)
-    await audit(u, 'exam.create', a.id, { from: b.from, levels: b.levels })
+    await audit(u, 'exam.create', a.id, { from: b.from, matrix: b.matrix ?? null, levels: b.levels ?? null })
     return { id: a.id, kitId: kit.id, jobId: job.id }
   })
 }

@@ -28,7 +28,7 @@ const fmt = (d: Date): string => d.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_
 
 /** Bản tóm tắt tài liệu cho danh sách (không gồm nội dung) */
 export function artifactMeta(a: Artifact): Json {
-  // basedOn: phiên bản nội dung gốc mà định dạng này được soạn từ đó
+  // basedOn: phiên bản nội dung mà định dạng này được soạn từ đó
   const basedOn = ((a.content as Json).plan as Json | undefined)?.basedOn ?? null
   return { id: a.id, kitId: a.kitId, type: a.type, title: a.title, summary: a.summary, status: a.status, img: a.img, publishedVersion: a.publishedVersion, basedOn, updated: fmt(a.updatedAt), updatedAt: a.updatedAt }
 }
@@ -48,10 +48,10 @@ export async function kitDto(k: Kit): Promise<Json> {
   const master = arts.find((a) => a.type === 'master')
   return {
     id: k.id, title: k.title, desc: k.goal, goalText: d.goalText ?? '', audience: d.audience ?? '', goals: d.goals ?? [], takeaways: d.takeaways ?? [],
-    metrics: d.metrics ?? [], practice: d.practice ?? 'balanced', delivery: d.delivery ?? 'self', plan: d.plan ?? [], warnings: d.warnings ?? [],
+    metrics: d.metrics ?? [], practice: d.practice ?? 'balanced', plan: d.plan ?? [], warnings: d.warnings ?? [],
     skill: k.skillId, level: k.level, stage: k.stage, img: k.img, updated: fmt(k.updatedAt), updatedAt: k.updatedAt,
     sources: srcs, sourceIds: k.sourceIds, artifacts: arts.map(artifactMeta), job: d.job ?? null, theme: d.theme ?? null, bank: isBank(k),
-    // nội dung gốc: đã chốt phiên bản nào, bản nháp có thay đổi chưa chốt không
+    // nội dung: đã chốt phiên bản nào, bản nháp có thay đổi chưa chốt không
     master: master ? { id: master.id, status: master.status, lockedVersion: master.publishedVersion, changed: master.status !== 'generating' && await hasUnpublishedChanges(master) } : null,
   }
 }
@@ -138,7 +138,7 @@ defineJob('kit.draft', async ({ job, report }) => {
   return { kitId: k.id }
 })
 
-// ---------- Job: dàn ý nội dung gốc ----------
+// ---------- Job: dàn ý nội dung ----------
 defineJob('kit.outline', async ({ job, report }) => {
   const k = await getKit(job.orgId, String(job.payload.kitId))
   const brief = await briefOf(k)
@@ -165,7 +165,7 @@ const srcRef = (code: string | null | undefined, hits: Hit[]): Json => {
   const m = code?.match(/S(\d+)/)
   const h = m ? hits[Number(m[1]) - 1] : undefined
   if (!h) return {}
-  // đoạn của nội dung gốc không trích tài liệu nguồn nào: chỉ ghi chỗ trong nội dung gốc
+  // đoạn của nội dung không trích tài liệu nguồn nào: chỉ ghi chỗ trong nội dung
   return h.sourceId ? { src: `${h.sourceName} · ${h.section}`, srcRef: { sourceId: h.sourceId, chunkId: h.id, version: h.version } } : { src: `${h.sourceName} · ${h.section}` }
 }
 /** Câu đúng/sai luôn đúng 2 lựa chọn theo thứ tự Đúng, Sai; giữ đáp án và giải thích AI trả về */
@@ -178,7 +178,7 @@ export function tfChoices(cs: { t: string; ok: boolean; fb: string }[] | null | 
 const NEEDS_SRC = new Set(['heading', 'para', 'list', 'flash', 'accordion', 'tabs', 'timeline', 'sorting', 'table', 'code', 'process'])
 const clean = (o: Json): Json => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null && v !== undefined))
 
-/** maxLessons: Tài liệu nhanh tối đa 3 bài; nội dung gốc nhiều hơn. quiz=false: không có bài kiểm tra (nội dung gốc, bài lẻ) */
+/** maxLessons: Tài liệu nhanh tối đa 3 bài; nội dung nhiều hơn. quiz=false: không có bài kiểm tra (nội dung, bài lẻ) */
 export function qrContent(r: QrDraft, kit: Kit, hits: Hit[], hasSources: boolean, o: { maxLessons?: number; quiz?: boolean } = {}): Json {
   const lessons = r.lessons.slice(0, o.maxLessons ?? 3).map((l) => ({
     id: uid('l'), kind: 'lesson', title: l.title,
@@ -253,16 +253,16 @@ defineJob('artifact.generate', async ({ job, report }) => {
     let content: Json
     let plan = p
     if (p.type === 'master') {
-      // nội dung gốc: soạn thẳng từ tài liệu nguồn
+      // nội dung: soạn thẳng từ tài liệu nguồn
       await report(10, 'Tìm đoạn nguồn liên quan')
       const secs = (o.sections ?? []) as { t: string; items: string[] }[]
       const hits = await gather(k.orgId, k.sourceIds, secs.length ? secs.map((s) => `${s.t}. ${s.items.join('. ')}`) : [p.title], 4, 24)
-      await report(30, 'Viết nội dung gốc')
+      await report(30, 'Viết nội dung')
       const r = await draftQr(k.orgId, brief, p, { sections: secs.length ? secs : [{ t: k.title, items: [] }] }, hits, 'master')
       content = qrContent(r, k, hits, k.sourceIds.length > 0, { maxLessons: MAX_MASTER_LESSONS, quiz: false })
     } else {
-      // định dạng cho người học: soạn từ phiên bản nội dung gốc đã chốt
-      await report(10, 'Đọc nội dung gốc đã chốt')
+      // định dạng cho người học: soạn từ phiên bản nội dung đã chốt
+      await report(10, 'Đọc nội dung đã chốt')
       const m = await requireLocked(k.id)
       const hits = masterHits(m.content)
       const lessons = masterLessons(m.content)

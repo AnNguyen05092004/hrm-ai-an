@@ -34,7 +34,7 @@ export const kitPublishRoutes: FastifyPluginAsyncZod = async (app) => {
     const k = await getKit(u.orgId, req.params.id)
     const arts = await db.select().from(schema.artifacts).where(eq(schema.artifacts.kitId, k.id)).orderBy(schema.artifacts.createdAt)
     const published: string[] = [], unchanged: string[] = [], skipped: { id: string; title: string; reasons: string[] }[] = []
-    // nội dung gốc chốt riêng (Chốt nội dung), không xuất bản cùng các định dạng
+    // nội dung chốt riêng (Chốt nội dung), không xuất bản cùng các định dạng
     for (const a of arts.filter((x) => x.type !== 'master' && (!req.body.ids || req.body.ids.includes(x.id)))) {
       const issues = publishIssues(a)
       if (issues.blocking.length) { skipped.push({ id: a.id, title: a.title, reasons: issues.blocking }); continue }
@@ -46,14 +46,14 @@ export const kitPublishRoutes: FastifyPluginAsyncZod = async (app) => {
     return { published, unchanged, skipped }
   })
 
-  // Đề kiểm tra riêng: AI soạn ngân hàng câu theo mức (chạy nền), từ nội dung gốc đã chốt
+  // Đề kiểm tra riêng: AI soạn ngân hàng câu theo mức (chạy nền), từ nội dung đã chốt
   app.post('/:id/exams', { schema: { params: P, body: ExamSpec } }, async (req) => {
     const u = me(req)
     const k = await getKit(u.orgId, req.params.id)
     if (!isBank(k)) await requireLocked(k.id)
     const a = await createArtifact(k, examPlan(k, req.body))
     const job = await enqueue(u.orgId, 'exam.generate', { artifactId: a.id }, u.id)
-    await audit(u, 'exam.create', a.id, { levels: req.body.levels })
+    await audit(u, 'exam.create', a.id, { matrix: req.body.matrix ?? null, levels: req.body.levels ?? null })
     return { id: a.id, jobId: job.id }
   })
 }

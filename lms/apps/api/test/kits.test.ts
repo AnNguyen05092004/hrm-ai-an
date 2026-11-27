@@ -36,14 +36,14 @@ describe('kit authoring flow', () => {
     expect((await ctx.reviewer('POST', '/api/kits', { goal: 'Tạo khóa CI/CD' })).status).toBe(403)
   })
 
-  it('soạn chi tiết, dàn ý rồi nội dung gốc có trích nguồn (chưa có định dạng nào)', async () => {
+  it('soạn chi tiết, dàn ý rồi nội dung có trích nguồn (chưa có định dạng nào)', async () => {
     const c = await ctx.author('POST', '/api/kits', { goal: 'Tạo khóa CI/CD cho dev mới: quy trình triển khai và rollback', sourceIds: [sourceId] })
     expect(c.status).toBe(200)
     kitId = c.body.id
     await drainJobs()
     let k = (await ctx.author('GET', `/api/kits/${kitId}`)).body
     expect(k.stage).toBe('details')
-    expect(k.plan).toEqual([expect.objectContaining({ type: 'master', title: 'Nội dung gốc' })])
+    expect(k.plan).toEqual([expect.objectContaining({ type: 'master', title: 'Nội dung' })])
 
     expect((await ctx.author('POST', `/api/kits/${kitId}/outline`)).status).toBe(200)
     await drainJobs()
@@ -64,13 +64,13 @@ describe('kit authoring flow', () => {
     expect(m.quiz).toBeUndefined()
   })
 
-  it('chưa chốt nội dung gốc thì chưa tạo được định dạng; chốt xong mới soạn từ nội dung gốc', async () => {
+  it('chưa chốt nội dung thì chưa tạo được định dạng; chốt xong mới soạn từ nội dung', async () => {
     const k = (await ctx.author('GET', `/api/kits/${kitId}`)).body
     const item = { type: 'qr', title: 'CI/CD: những điều cần biết', summary: 'Tóm gọn' }
     const early = await ctx.author('POST', `/api/kits/${kitId}/artifacts`, item)
     expect(early.status).toBe(400)
     expect(early.body.error.code).toBe('master_not_locked')
-    expect((await ctx.author('POST', `/api/kits/${kitId}/exams`, { levels: [1] })).status).toBe(400)
+    expect((await ctx.author('POST', `/api/kits/${kitId}/exams`, { matrix: [{ type: 'mc', level: 1, count: 2 }] })).status).toBe(400)
 
     expect((await ctx.author('POST', `/api/artifacts/${k.master.id}/publish`, { note: 'Chốt nội dung' })).status).toBe(200)
     expect((await ctx.author('POST', `/api/kits/${kitId}/artifacts`, item)).status).toBe(200)
@@ -83,16 +83,16 @@ describe('kit authoring flow', () => {
     expect(qr.basedOn).toBe(1)
     expect(deck.basedOn).toBe(1)
     const a = (await ctx.author('GET', `/api/artifacts/${qr.id}`)).body
-    // định dạng soạn từ nội dung gốc vẫn trích đúng tài liệu nguồn gốc
+    // định dạng soạn từ nội dung vẫn trích đúng tài liệu nguồn gốc
     expect(a.lessons[0].blocks.some((b: { src?: string; srcRef?: { sourceId: string } }) => b.src?.startsWith('trien-khai.md · ') && b.srcRef?.sourceId === sourceId)).toBe(true)
     expect(a.quiz.questions.length).toBeGreaterThan(0)
     expect(a.quiz.questions.every((q: { approved: boolean }) => q.approved === false)).toBe(true)
-    // nội dung gốc ở trang xuất: không xuất bản cùng cả khóa
+    // nội dung ở trang xuất: không xuất bản cùng cả khóa
     const st = (await ctx.author('GET', `/api/kits/${kitId}/publish-status`)).body
     expect(st.items.some((x: { type: string }) => x.type === 'master')).toBe(false)
   })
 
-  it('sửa nội dung gốc sau khi chốt: báo có thay đổi; chốt lại thì định dạng cũ biết mình soạn từ bản trước', async () => {
+  it('sửa nội dung sau khi chốt: báo có thay đổi; chốt lại thì định dạng cũ biết mình soạn từ bản trước', async () => {
     const k = (await ctx.author('GET', `/api/kits/${kitId}`)).body
     const m = (await ctx.author('GET', `/api/artifacts/${k.master.id}`)).body
     m.lessons[0].title = 'Chuẩn bị trước khi triển khai'
@@ -108,7 +108,21 @@ describe('kit authoring flow', () => {
     expect((await ctx.author('GET', `/api/kits/${kitId}`)).body.artifacts.find((a: { id: string }) => a.id === qr.id).basedOn).toBe(2)
   })
 
-  it('AI soạn thêm một bài học cho Tài liệu nhanh, căn cứ là nội dung gốc', async () => {
+  it('cảnh báo khi chốt chỉ ra đúng bài và khối thiếu căn cứ để người soạn mở tới', async () => {
+    const k = (await ctx.author('GET', `/api/kits/${kitId}`)).body
+    const m = (await ctx.author('GET', `/api/artifacts/${k.master.id}`)).body
+    const l = m.lessons[1]
+    l.blocks.push({ id: 'b-gap-test', t: 'gap', p: 'Chưa có quy định về <b>thời gian</b> chờ duyệt' }, { id: 'b-nosrc-test', t: 'para', p: 'Tự viết', nosrc: true })
+    await ctx.author('PATCH', `/api/artifacts/${m.id}`, { content: { lessons: m.lessons } })
+    const chk = (await ctx.author('GET', `/api/artifacts/${m.id}/check`)).body
+    expect(chk.spots).toEqual(expect.arrayContaining([
+      { kind: 'gap', lesson: l.id, lessonTitle: l.title, block: 'b-gap-test', text: 'Chưa có quy định về thời gian chờ duyệt' },
+      { kind: 'nosrc', lesson: l.id, lessonTitle: l.title, block: 'b-nosrc-test', text: 'Tự viết' },
+    ]))
+    expect(chk.warnings.some((w: string) => w.includes('thiếu căn cứ'))).toBe(true)
+  })
+
+  it('AI soạn thêm một bài học cho Tài liệu nhanh, căn cứ là nội dung', async () => {
     const k = (await ctx.author('GET', `/api/kits/${kitId}`)).body
     const qr = k.artifacts.find((a: { type: string }) => a.type === 'qr')
     const r = await ctx.author('POST', `/api/artifacts/${qr.id}/lessons/generate`, { title: 'Rollback khi có sự cố', instruction: 'các bước và thời hạn' })

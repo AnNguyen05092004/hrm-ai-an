@@ -2,7 +2,7 @@
 
 export const FORMATS = {
   master: {
-    name: 'Nội dung gốc', en: 'Master Content', bg: '#eceef1', fg: '#20242d',
+    name: 'Nội dung', en: 'Master Content', bg: '#eceef1', fg: '#20242d',
     desc: 'Bản nội dung đầy đủ để duyệt; mọi định dạng soạn từ bản này', long: 'Soạn và duyệt nội dung một lần; chốt xong mới tạo Tài liệu nhanh, slide, video, tình huống, đề kiểm tra', note: 'Chỉ dùng nội bộ, không xuất cho người học',
   },
   qr: {
@@ -35,6 +35,11 @@ export const TYPE_ORDER = ['master', 'qr', 'deck', 'scenario', 'video', 'guide',
 
 /** Dạng câu hỏi, theo thứ tự hiện trong menu */
 export const QTYPES = { mc: 'Một đáp án', mr: 'Nhiều đáp án', tf: 'Đúng / Sai', fill: 'Điền chỗ trống', order: 'Sắp thứ tự', match: 'Ghép cặp', cat: 'Phân loại kéo thả', essay: 'Tự luận', code: 'Bài code' }
+/** Độ khó của câu hỏi (trường level của câu) */
+export const DIFFS = [{ v: 1, name: 'Dễ' }, { v: 2, name: 'Trung bình' }, { v: 3, name: 'Khó' }]
+export const diffName = (v) => DIFFS.find((d) => d.v === v)?.name ?? 'Dễ'
+/** Ma trận đề mặc định: 10 câu mỗi lượt thi, nhiều câu dễ, ít câu khó */
+export const DEFAULT_MATRIX = [{ type: 'mc', level: 1, count: 4 }, { type: 'tf', level: 1, count: 2 }, { type: 'mr', level: 2, count: 2 }, { type: 'order', level: 2, count: 1 }, { type: 'essay', level: 3, count: 1 }]
 const TF = () => [{ t: 'Đúng', ok: true, fb: '' }, { t: 'Sai', ok: false, fb: '' }]
 /** Trường cần có của từng dạng câu (câu mới, hoặc đổi dạng câu đang có): giữ phần đã nhập nếu dùng lại được */
 export function questionFields(t, x = {}) {

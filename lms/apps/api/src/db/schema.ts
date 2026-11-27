@@ -106,7 +106,7 @@ export const images = pgTable('images', {
   createdAt: created(),
 }, (t) => [index('images_org').on(t.orgId)])
 
-// master = Nội dung gốc (chỉ dùng nội bộ, không xuất); các loại còn lại là định dạng cho người học
+// master = Nội dung (chỉ dùng nội bộ, không xuất); các loại còn lại là định dạng cho người học
 export const ARTIFACT_TYPES = ['master', 'qr', 'deck', 'scenario', 'video', 'guide', 'exam'] as const
 export type ArtifactType = typeof ARTIFACT_TYPES[number]
 export const artifacts = pgTable('artifacts', {

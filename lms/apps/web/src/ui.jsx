@@ -116,7 +116,7 @@ const ST = {
   failed: ['Soạn lỗi', 'bg-red-50 text-red-700'],
   published: ['Đã xuất bản', 'bg-sky-50 text-sky-700'],
 }
-// nội dung gốc không "xuất bản" mà "chốt"
+// nội dung không "xuất bản" mà "chốt"
 const MASTER_ST = { published: ['Đã chốt', 'bg-emerald-50 text-emerald-700'], draft: ['Chưa chốt', 'bg-amber-50 text-amber-800'] }
 export const Status = ({ s, master }) => { const x = (master && MASTER_ST[s]) || ST[s] || ST.draft; return <span className={`whitespace-nowrap rounded-md px-2 py-0.5 text-[12px] font-semibold ${x[1]}`}>{x[0]}</span> }
 

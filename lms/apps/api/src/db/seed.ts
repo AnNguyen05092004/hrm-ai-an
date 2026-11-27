@@ -83,13 +83,13 @@ export async function seed(): Promise<SeedIds> {
 
   const artIds: Record<string, string> = {}
   const kitIds: Record<string, string> = {}
-  // nội dung gốc mẫu: lấy các bài của Tài liệu nhanh, đã chốt v1; các định dạng mẫu coi như soạn từ v1
+  // nội dung mẫu: lấy các bài của Tài liệu nhanh, đã chốt v1; các định dạng mẫu coi như soạn từ v1
   const masters = new Map<string, Json>()
   for (const k of P.kits as Json[]) {
     const [kit] = await db.insert(schema.kits).values({
       orgId, title: k.title, goal: k.desc, skillId: k.skill, level: k.level, stage: 'ready', createdBy: author.id,
       img: P.artifacts[k.artifacts[0]]?.img ?? 'server',
-      details: { audience: k.audience, goals: k.goals, takeaways: k.takeaways, metrics: k.metrics, practice: k.practice, delivery: k.delivery },
+      details: { audience: k.audience, goals: k.goals, takeaways: k.takeaways, metrics: k.metrics, practice: k.practice },
       sourceIds: (k.sources as Json[]).map((s) => srcIds[s.name]).filter(Boolean),
     }).returning()
     kitIds[k.id] = kit.id
@@ -114,9 +114,9 @@ export async function seed(): Promise<SeedIds> {
     if (m) {
       const content = link(m)
       const [ma] = await db.insert(schema.artifacts).values({
-        orgId, kitId: kit.id, type: 'master', title: 'Nội dung gốc', summary: k.desc, content, status: 'published', publishedVersion: 1, img: 'notes',
+        orgId, kitId: kit.id, type: 'master', title: 'Nội dung', summary: k.desc, content, status: 'published', publishedVersion: 1, img: 'notes',
       }).returning()
-      await db.insert(schema.artifactVersions).values({ artifactId: ma.id, version: 1, title: 'Nội dung gốc', summary: k.desc, content, publishedBy: author.id, note: 'Chốt nội dung' })
+      await db.insert(schema.artifactVersions).values({ artifactId: ma.id, version: 1, title: 'Nội dung', summary: k.desc, content, publishedBy: author.id, note: 'Chốt nội dung' })
     }
   }
 

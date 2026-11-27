@@ -12,7 +12,7 @@ import { get, post } from '../api'
 export const GEN_FORMATS = ['qr', 'deck', 'scenario', 'video']
 export const useSkills = () => useQuery({ queryKey: ['skills'], queryFn: () => get('/skills'), staleTime: 300_000 }).data ?? []
 
-const KIT_FIELDS = ['title', 'desc', 'audience', 'goals', 'takeaways', 'metrics', 'practice', 'delivery', 'skill', 'level', 'plan', 'sourceIds', 'theme', 'img']
+const KIT_FIELDS = ['title', 'desc', 'audience', 'goals', 'takeaways', 'metrics', 'practice', 'skill', 'level', 'plan', 'sourceIds', 'theme', 'img']
 export const kitBody = (k) => Object.fromEntries(KIT_FIELDS.map((f) => [f, f === 'desc' ? k.desc : k[f]]).filter(([, v]) => v !== undefined && v !== null))
 export const useKit = (id) => useDoc(['kit', id], `/kits/${id}`, kitBody)
 
@@ -27,7 +27,7 @@ export function KitHeader({ kit, step, saveText }) {
       </div>
       {step && (
         <div className="flex h-12 items-center justify-center gap-4 border-b border-line text-[15px]">
-          {['Chi tiết', 'Dàn ý', 'Nội dung gốc'].map((s, i) => (
+          {['Chi tiết', 'Dàn ý', 'Nội dung'].map((s, i) => (
             <span key={s} className="flex items-center gap-4">
               <span className={i === step - 1 ? 'font-medium text-ink' : 'text-neutral-500'}>{s}</span>
               {i < 2 && <ChevronRight size={16} className="text-neutral-400" />}
@@ -45,7 +45,7 @@ export function BottomBar({ children }) {
 
 const STEPS = {
   details: ['Đọc tài liệu nguồn', 'Viết mục tiêu và đối tượng', 'Hoàn tất'],
-  outline: ['Tìm đoạn nguồn liên quan', 'Lập dàn ý nội dung gốc', 'Hoàn tất'],
+  outline: ['Tìm đoạn nguồn liên quan', 'Lập dàn ý nội dung', 'Hoàn tất'],
 }
 
 /** Màn chờ AI: theo dõi job thật, xong thì sang bước tiếp */
@@ -87,7 +87,7 @@ export function KitLoading() {
           </div>
         ) : <>
           <div className="text-center"><Spinner size={56} w={3} /></div>
-          <h2 className="mt-6 text-center text-[22px] font-semibold">{next === 'outline' ? 'Đang lập dàn ý nội dung gốc…' : 'Đang soạn chi tiết khóa học…'}</h2>
+          <h2 className="mt-6 text-center text-[22px] font-semibold">{next === 'outline' ? 'Đang lập dàn ý nội dung…' : 'Đang soạn chi tiết khóa học…'}</h2>
           <p className="mt-2 text-center text-[15px] text-neutral-600">{job?.message || kit.data?.title}</p>
           <div className="mt-6 h-1.5 rounded-full bg-neutral-100"><div className="h-1.5 rounded-full bg-ink transition-all duration-500" style={{ width: `${Math.max(p, 6)}%` }} /></div>
           <div className="mt-6 space-y-2.5">
@@ -152,7 +152,6 @@ export function KitDetails() {
   const [busy, setBusy] = useState(false)
   if (error) return <div className="p-10">{error.message}</div>
   if (!kit) return <Loading />
-  const lv = LEVELS.find((l) => l.v === kit.level) ?? LEVELS[0]
   const toOutline = async () => {
     setBusy(true)
     try { await flush(); const r = await post(`/kits/${id}/outline`); nav(`/kit/${id}/loading?next=outline`, { state: { jobId: r.jobId } }) } catch (e) { say(e.message); setBusy(false) }
@@ -177,14 +176,13 @@ export function KitDetails() {
           ))}
           <div className="mt-6 rounded-2xl border border-violet-200 bg-violet-50/50 p-4">
             <div className="flex items-center gap-2 text-[15px] font-semibold"><Link2 size={16} className="text-violet-600" />Gắn với khung năng lực</div>
-            <p className="mt-1 text-[13px] text-neutral-600">Khóa được gắn kỹ năng và mức. AI soạn nội dung và câu hỏi theo mức này (tối đa mức 3).</p>
+            <p className="mt-1 text-[13px] text-neutral-600">Khóa được gắn kỹ năng và mức năng lực người học cần đạt sau khóa. AI soạn nội dung theo mức này. Độ khó từng câu hỏi (dễ, trung bình, khó) chọn riêng khi tạo đề.</p>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div><div className="mb-1 text-[13px] font-medium">Kỹ năng</div>
                 <select className="field py-2" value={kit.skill ?? ''} onChange={(e) => up((x) => { x.skill = e.target.value || null })}><option value="">Chưa chọn</option>{skills.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-              <div><div className="mb-1 text-[13px] font-medium">Khóa đưa tới</div>
-                <select className="field py-2" value={kit.level ?? 1} onChange={(e) => up((x) => { x.level = +e.target.value })}>{LEVELS.map((l) => <option key={l.v} value={l.v}>Mức {l.v}</option>)}</select></div>
+              <div><div className="mb-1 text-[13px] font-medium">Mức năng lực cần đạt</div>
+                <select className="field py-2" value={kit.level ?? 1} onChange={(e) => up((x) => { x.level = +e.target.value })}>{LEVELS.map((l) => <option key={l.v} value={l.v}>{l.name}</option>)}</select></div>
             </div>
-            <div className="mt-2 text-[13px] text-neutral-600">Dạng bài thi theo mức: <b>{lv.kinds}</b></div>
           </div>
           <div className="mt-6">
             <label className="label">Tài liệu nguồn được phép dùng</label>
@@ -195,10 +193,6 @@ export function KitDetails() {
             <label className="label flex items-center gap-2">Khóa này cần bao nhiêu phần luyện tập? <Info size={15} className="text-neutral-500" /></label>
             <Segmented value={kit.practice} onChange={(v) => up((x) => { x.practice = v })} options={[['less', 'Ít'], ['balanced', 'Cân bằng'], ['more', 'Nhiều']]} />
           </div>
-          <div className="mt-6">
-            <label className="label">Hình thức triển khai?</label>
-            <Segmented value={kit.delivery} onChange={(v) => up((x) => { x.delivery = v })} options={[['self', 'Tự học'], ['live', 'Buổi trực tiếp'], ['both', 'Cả hai']]} />
-          </div>
         </section>
 
         <section className="px-12 py-6">
@@ -207,9 +201,9 @@ export function KitDetails() {
           <p className="mt-2 max-w-[640px] text-[15px]">Soạn và duyệt nội dung một lần, rồi mới làm các định dạng cho người học. Mọi định dạng đều lấy từ cùng một bản nội dung đã chốt nên luôn khớp nhau.</p>
           <ol className="mt-8 max-w-[680px] space-y-4">
             {[
-              ['Dàn ý nội dung gốc', 'AI đề xuất các bài và ý chính từ tài liệu nguồn. Bạn thêm, bớt, sắp lại.'],
-              ['Soạn và duyệt nội dung gốc', 'AI viết đầy đủ từng bài, mỗi đoạn ghi nguồn. Bạn sửa, mời chuyên gia review, rồi bấm Chốt nội dung.'],
-              ['Tạo định dạng từ bản đã chốt', 'Chọn Tài liệu nhanh, Bộ slide, Video, Tình huống, Đề kiểm tra. AI soạn từ nội dung gốc, không đọc lại tài liệu nguồn nên không lệch nhau.'],
+              ['Dàn ý nội dung', 'AI đề xuất các bài và ý chính từ tài liệu nguồn. Bạn thêm, bớt, sắp lại.'],
+              ['Soạn và duyệt nội dung', 'AI viết đầy đủ từng bài, mỗi đoạn ghi nguồn. Bạn sửa, mời chuyên gia review, rồi bấm Chốt nội dung.'],
+              ['Tạo định dạng từ bản đã chốt', 'Chọn Tài liệu nhanh, Bộ slide, Video, Tình huống, Đề kiểm tra. AI soạn từ nội dung, không đọc lại tài liệu nguồn nên không lệch nhau.'],
             ].map(([t, d], i) => (
               <li key={t} className="card flex gap-4 p-5"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-neutral-100 text-[14px] font-semibold">{i + 1}</span><div><div className="text-[16px] font-semibold">{t}</div><p className="mt-1 text-[14px] leading-relaxed text-neutral-600">{d}</p></div></li>
             ))}
@@ -218,7 +212,7 @@ export function KitDetails() {
         </section>
       </div>
       <BottomBar>
-        <button className="btn-dark h-12 px-6 text-[16px]" disabled={!kit.plan.length || busy} onClick={toOutline}>{busy ? <Spinner size={18} w={2} /> : <>Lập dàn ý nội dung gốc<ArrowRight size={18} /></>}</button>
+        <button className="btn-dark h-12 px-6 text-[16px]" disabled={!kit.plan.length || busy} onClick={toOutline}>{busy ? <Spinner size={18} w={2} /> : <>Lập dàn ý nội dung<ArrowRight size={18} /></>}</button>
       </BottomBar>
     </div>
   )
@@ -255,7 +249,7 @@ function OutlineCard({ idx, type, title, summary, o, onDel, onPatch }) {
                 </div>
               ))}
               {secs.length < (type === 'master' ? 8 : 3) && <button onClick={() => setSecs((x) => [...x, { t: '', items: [''] }])} className="mt-4 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[14px] font-medium text-neutral-600 hover:bg-neutral-100 hover:text-ink"><Plus size={15} />Thêm bài</button>}
-              <p className="mt-3 text-[14px] italic text-neutral-500">{type === 'master' ? 'Nội dung gốc tối đa 8 bài, viết đầy đủ để duyệt; các định dạng cho người học được soạn từ bản này sau khi chốt.' : 'Tài liệu nhanh tối đa 3 bài. Bài kiểm tra được tạo từ nội dung, theo mức kỹ năng đã chọn.'} Ý nào không có trong tài liệu nguồn sẽ được đánh dấu thiếu căn cứ.</p>
+              <p className="mt-3 text-[14px] italic text-neutral-500">{type === 'master' ? 'Nội dung tối đa 8 bài, viết đầy đủ để duyệt; các định dạng cho người học được soạn từ bản này sau khi chốt.' : 'Tài liệu nhanh tối đa 3 bài. Bài kiểm tra được tạo từ nội dung, theo mức kỹ năng đã chọn.'} Ý nào không có trong tài liệu nguồn sẽ được đánh dấu thiếu căn cứ.</p>
             </>}
             {type === 'scenario' && <>
               <div className="mt-4 font-semibold">· Nhân vật</div><div className="ml-3 mt-1 flex items-center gap-2"><Avatar text={(o.character || '?')[0]} size={26} color="#475569" /><Editable value={o.character} className="font-semibold" placeholder="Tên · vai trò" onChange={(v) => put({ ...o, character: v })} /></div>
@@ -299,8 +293,8 @@ export function KitOutline() {
     <div className="min-h-full pb-28">
       <KitHeader kit={kit} step={2} saveText={saveLabel(saveState)} />
       <section className="mx-auto max-w-[820px] px-8 py-7">
-        <h2 className="text-[28px] font-semibold">Rà dàn ý nội dung gốc</h2>
-        <p className="mt-1 text-[15px]">Các bài và ý chính AI đề xuất từ tài liệu nguồn. Sửa cho khớp mục tiêu, rồi để AI viết nội dung gốc đầy đủ.</p>
+        <h2 className="text-[28px] font-semibold">Rà dàn ý nội dung</h2>
+        <p className="mt-1 text-[15px]">Các bài và ý chính AI đề xuất từ tài liệu nguồn. Sửa cho khớp mục tiêu, rồi để AI viết nội dung đầy đủ.</p>
         <div className="card mt-6">
           <button onClick={() => setDet(!det)} className="flex w-full items-center gap-3 px-5 py-3.5 text-[16px]">{det ? <ChevronDown size={18} /> : <ChevronRight size={18} />}Chi tiết đào tạo</button>
           {det && <div className="grid grid-cols-2 gap-4 border-t border-line px-5 py-4 text-[14px]">
@@ -317,7 +311,7 @@ export function KitOutline() {
         </div>
       </section>
       <BottomBar>
-        <button className="btn-dark h-12 px-6 text-[16px]" disabled={!kit.plan.length || busy} onClick={gen}>{busy ? <Spinner size={18} w={2} /> : <><Sparkles size={18} className="text-violet-300" />{missing ? 'Lập dàn ý' : 'Soạn nội dung gốc'}</>}</button>
+        <button className="btn-dark h-12 px-6 text-[16px]" disabled={!kit.plan.length || busy} onClick={gen}>{busy ? <Spinner size={18} w={2} /> : <><Sparkles size={18} className="text-violet-300" />{missing ? 'Lập dàn ý' : 'Soạn nội dung'}</>}</button>
       </BottomBar>
     </div>
   )
