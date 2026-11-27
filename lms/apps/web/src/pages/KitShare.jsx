@@ -1,7 +1,7 @@
 // Xuất khóa học: xuất bản cả khóa, gói SCORM 1.2, đề kiểm tra kèm đáp án (QTI 2.1); tạo đề kiểm tra riêng.
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, AlertTriangle, Sparkles, PackageOpen, Download } from 'lucide-react'
+import { Check, AlertTriangle, Sparkles, PackageOpen, Download, Send, RotateCcw, Clock } from 'lucide-react'
 import { useStore } from '../store'
 import { FORMATS, DEFAULT_MATRIX } from '../data'
 import { Modal, Spinner, FormatGlyph } from '../ui'
@@ -35,7 +35,7 @@ export function KitExportModal({ open, onClose, kit, onChanged }) {
       <div className="mx-6 flex items-center gap-2 border-b border-line pb-3 text-[13px]"><b>{kit.title}</b><span className="h-3 w-px bg-line" />{items.length} tài liệu · {pub.length} đã xuất bản</div>
       <div className="grid grid-cols-[190px_1fr] gap-6 px-6 py-4">
         <div className="space-y-1">
-          {[['publish', 'Xuất bản cả khóa', Check], ['scorm', 'Gói SCORM và đề QTI', PackageOpen]].map(([k, l, I]) => (
+          {[['publish', 'Xuất bản cả khóa', Check], ['scorm', 'Tải gói SCORM, đề QTI', PackageOpen], ['lms', 'Gửi sang LMS công ty', Send]].map(([k, l, I]) => (
             <button key={k} onClick={() => setTab(k)} className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[14px] ${tab === k ? 'bg-navsel font-medium text-navtxt' : 'hover:bg-neutral-50'}`}><I size={15} />{l}</button>
           ))}
         </div>
@@ -58,6 +58,7 @@ export function KitExportModal({ open, onClose, kit, onChanged }) {
             </div>
           </>)}
           {tab === 'scorm' && <ScormExport kit={kit} />}
+          {tab === 'lms' && <LmsSend kit={kit} />}
         </div>
       </div>
     </Modal>
@@ -104,6 +105,78 @@ function ExamExport({ kit, exams }) {
       </div>
     </div>
   )
+}
+
+const SEND_ST = {
+  queued: ['Đang chờ gửi', 'bg-neutral-100 text-neutral-600', Clock],
+  sending: ['Đang gửi', 'bg-sky-50 text-sky-700', Clock],
+  sent: ['LMS đã nhận', 'bg-emerald-50 text-emerald-700', Check],
+  failed: ['Gửi lỗi', 'bg-red-50 text-red-600', AlertTriangle],
+}
+
+/** Gửi thẳng sang LMS công ty qua API: gửi đúng phiên bản đang xuất bản lúc xác nhận; worker gửi nền, lưu mã hoặc lỗi LMS trả về */
+function LmsSend({ kit }) {
+  const { say } = useStore()
+  const [confirm, setConfirm] = useState(null) // { kind, artifactId?, title, items }
+  const [ok, setOk] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const info = useQuery({ queryKey: ['scorm-info', kit.id], queryFn: () => get(`/kits/${kit.id}/export/scorm/info`) })
+  const hist = useQuery({
+    queryKey: ['lms-exports', kit.id], queryFn: () => get(`/kits/${kit.id}/lms-exports`),
+    refetchInterval: (q) => (q.state.data?.items ?? []).some((x) => x.status === 'queued' || x.status === 'sending') ? 2000 : false,
+  })
+  if (info.isLoading || hist.isLoading) return <Spinner size={20} w={2} />
+  const lms = hist.data?.lms ?? info.data?.lms ?? { name: 'LMS công ty', configured: false }
+  const inc = info.data?.included ?? [], exams = info.data?.exams ?? []
+  const send = async () => {
+    setBusy(true)
+    try {
+      await post(`/kits/${kit.id}/lms-exports`, confirm.kind === 'qti' ? { kind: 'qti', artifactId: confirm.artifactId } : { kind: 'scorm' })
+      say(`Đang gửi sang ${lms.name}`); setConfirm(null); setOk(false); hist.refetch()
+    } catch (e) { say(e.message) } finally { setBusy(false) }
+  }
+  const retry = async (x) => { try { await post(`/kits/${kit.id}/lms-exports/${x.id}/retry`); hist.refetch() } catch (e) { say(e.message) } }
+  if (!lms.configured) return <div className="rounded-xl bg-neutral-50 px-4 py-4 text-[14px] text-neutral-600">Chưa kết nối API của {lms.name}. Quản trị hệ thống đặt <code>LMS_API_URL</code> và <code>LMS_API_TOKEN</code> rồi chạy lại máy chủ. Trong lúc chờ, dùng mục <b>Tải gói SCORM, đề QTI</b> để tải gói về và nhập tay.</div>
+  return (<>
+    <p className="text-[14px]">Studio gửi gói thẳng sang <b>{lms.name}</b> qua API, đúng phiên bản đang xuất bản lúc bạn xác nhận. Sửa và xuất bản lại sau đó không làm đổi gói đã gửi. Người quản trị LMS duyệt và giao khóa cho nhân viên bên đó.</p>
+    <div className="mt-3 divide-y divide-line rounded-xl border border-line">
+      <div className="flex items-center gap-3 px-4 py-3 text-[14px]">
+        <PackageOpen size={16} className="shrink-0 text-neutral-500" />
+        <div className="min-w-0 flex-1"><div className="font-medium">Khóa học (gói SCORM 1.2)</div><div className="text-[12px] text-neutral-500">{inc.length ? `${inc.length} tài liệu đã xuất bản` : 'Chưa có tài liệu nào đã xuất bản'}</div></div>
+        <button className="btn-line btn-sm" disabled={!inc.length} onClick={() => setConfirm({ kind: 'scorm', title: kit.title, items: inc })}><Send size={14} />Gửi khóa</button>
+      </div>
+      {exams.map((e) => (
+        <div key={e.id} className="flex items-center gap-3 px-4 py-3 text-[14px]">
+          <FormatGlyph type="exam" size={15} />
+          <div className="min-w-0 flex-1"><div className="truncate font-medium">{e.title}</div><div className="text-[12px] text-neutral-500">Đề QTI 2.1 kèm đáp án · v{e.version} · {e.questions} câu đã duyệt</div></div>
+          <button className="btn-line btn-sm" disabled={!e.questions} onClick={() => setConfirm({ kind: 'qti', artifactId: e.id, title: e.title, items: [{ id: e.id, type: 'exam', title: e.title, version: e.version }] })}><Send size={14} />Gửi đề</button>
+        </div>
+      ))}
+    </div>
+    {confirm && (
+      <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50/60 px-4 py-3">
+        <div className="text-[14px] font-semibold">Xác nhận gửi {confirm.kind === 'qti' ? 'đề' : 'khóa'} “{confirm.title}” sang {lms.name}</div>
+        <ul className="mt-2 space-y-1 text-[13px] text-neutral-700">{confirm.items.map((x) => <li key={x.id} className="flex items-center gap-2"><FormatGlyph type={x.type} size={13} /><span className="flex-1 truncate">{x.title}</span><span className="text-neutral-500">phiên bản {x.version}</span></li>)}</ul>
+        {confirm.kind === 'qti' && <label className="mt-3 flex items-center gap-2 text-[13px]"><input type="checkbox" checked={ok} onChange={(ev) => setOk(ev.target.checked)} />Gói có đáp án; chỉ người quản trị {lms.name} xem được</label>}
+        <div className="mt-3 flex justify-end gap-2"><button className="btn-line btn-sm" onClick={() => { setConfirm(null); setOk(false) }}>Hủy</button><button className="btn-dark btn-sm" disabled={busy || (confirm.kind === 'qti' && !ok)} onClick={send}>{busy ? <Spinner size={16} w={2} /> : <><Send size={14} />Gửi đúng các phiên bản này</>}</button></div>
+      </div>
+    )}
+    <div className="mt-5 text-[14px] font-semibold">Lần gửi gần đây</div>
+    <div className="mt-2 rounded-xl border border-line">
+      {!(hist.data?.items ?? []).length && <div className="px-4 py-3 text-[13px] text-neutral-500">Chưa gửi lần nào.</div>}
+      {(hist.data?.items ?? []).map((x) => { const [l, cls, I] = SEND_ST[x.status] ?? SEND_ST.queued; return (
+        <div key={x.id} className="border-b border-line px-4 py-2.5 text-[13px] last:border-0">
+          <div className="flex items-center gap-2">
+            <span className="w-14 shrink-0 font-semibold text-neutral-500">{x.kind === 'qti' ? 'Đề' : 'Khóa'}</span>
+            <span className="min-w-0 flex-1 truncate">{x.title}</span>
+            <span className={`flex items-center gap-1 rounded-md px-2 py-0.5 font-semibold ${cls}`}><I size={12} />{l}</span>
+            {x.status === 'failed' && <button className="btn-line btn-sm" onClick={() => retry(x)}><RotateCcw size={13} />Gửi lại</button>}
+          </div>
+          <div className="ml-16 mt-0.5 text-[12px] text-neutral-500">{new Date(x.createdAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })} · {x.by}{x.remoteId ? ` · mã bên LMS: ${x.remoteId}` : ''}</div>
+          {x.error && <div className="ml-16 mt-0.5 text-[12px] text-red-600">{x.error}</div>}
+        </div>) })}
+    </div>
+  </>)
 }
 
 /**

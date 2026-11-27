@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { ArrowUpRight, BarChart3, BookOpen, ClipboardCheck, Info, LibraryBig, Menu, Upload, X } from 'lucide-react'
 import { Courses, Reports } from './Admin'
 import ImportModal from './Import'
+import Inbox, { markImported } from './Inbox'
 import MyCourses from './Learner'
 import Player from './Player'
 import ExamPlayer from './Exam'
@@ -30,6 +31,7 @@ export default function App() {
   const [role, setRole] = useState(readRole)
   const [page, setPage] = useState(() => (readRole() === 'admin' ? 'courses' : 'mine'))
   const [importing, setImporting] = useState(false)
+  const [inboxFile, setInboxFile] = useState(null) // gói nhận qua API đang mở để nhập
   const [play, setPlay] = useState(null) // { pkg, browse }
   const [exam, setExam] = useState(null) // { pkg, preview }
   const [menu, setMenu] = useState(false)
@@ -90,14 +92,14 @@ export default function App() {
             <p>Trang demo: mô phỏng LMS có sẵn của công ty (kiểu Moodle, SAP SuccessFactors) nhận gói SCORM 1.2 xuất từ <a className="text-link" href={LMS_URL} target="_blank" rel="noopener noreferrer">LMS</a>. Chạy ở cổng riêng, dữ liệu lưu trên trình duyệt này.</p>
           </div>
           {workerErr && <p role="alert" className="rounded-lg border border-danger-line bg-danger-surface px-3 py-2.5 text-[13px] text-danger-text">Không mở được gói: {workerErr}</p>}
-          {current[0] === 'courses' && <><Flow onImport={() => setImporting(true)} /><Courses onImport={() => setImporting(true)} onPreview={(p) => open(p, true)} /></>}
+          {current[0] === 'courses' && <><Flow onImport={() => setImporting(true)} /><Inbox onOpen={(f, id) => { setInboxFile({ f, id }); setImporting(true) }} /><Courses onImport={() => setImporting(true)} onPreview={(p) => open(p, true)} /></>}
           {current[0] === 'reports' && <Reports />}
           {current[0] === 'grading' && <GradingQueue />}
           {current[0] === 'mine' && <MyCourses learner={learner} onOpen={(p) => open(p, false)} />}
         </main>
       </div>
 
-      <ImportModal open={importing} onClose={() => setImporting(false)} />
+      <ImportModal open={importing} file={inboxFile?.f ?? null} onImported={() => inboxFile && markImported(inboxFile.id)} onClose={() => { setImporting(false); setInboxFile(null) }} />
       {exam && (exam.preview ? <ExamPreview pkg={exam.pkg} onClose={() => setExam(null)} /> : <ExamPlayer pkg={exam.pkg} learner={learner} onClose={() => setExam(null)} />)}
       {play && <Player pkg={play.pkg} browse={play.browse} learner={learner} onClose={closed} />}
       <Toaster />

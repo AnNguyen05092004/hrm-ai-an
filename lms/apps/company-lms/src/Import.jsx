@@ -1,5 +1,5 @@
 // Nhập gói SCORM: chọn .zip → cổng kiểm tra manifest → đặt tên, giao cho nhân viên → lưu tệp
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, CheckCircle2, FileArchive, Loader2, Upload, XCircle } from 'lucide-react'
 import { deletePackage, ensureWorker, fmtSize, readPackage, savePackage } from './pkg'
 import { LEARNERS, update, useData } from './store'
@@ -8,7 +8,7 @@ import { toast } from './toast'
 
 const newId = () => `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 
-export default function ImportModal({ open, onClose }) {
+export default function ImportModal({ open, onClose, file = null, onImported }) {
   const [step, setStep] = useState('pick') // pick | reading | review | saving
   const [err, setErr] = useState('')
   const [res, setRes] = useState(null)
@@ -17,6 +17,9 @@ export default function ImportModal({ open, onClose }) {
   const [over, setOver] = useState(false)
   const input = useRef(null)
   const { packages } = useData()
+
+  // gói nhận qua API: đọc ngay khi mở
+  useEffect(() => { if (open && file) pick(file) }, [open, file]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const reset = () => { setStep('pick'); setErr(''); setRes(null); setProg([0, 0]) }
   const close = () => { if (step === 'saving') return; reset(); onClose() }
@@ -53,6 +56,7 @@ export default function ImportModal({ open, onClose }) {
         return { ...d, packages: old ? d.packages.map((p) => (p.id === id ? pkg : p)) : [pkg, ...d.packages] }
       })
       toast(form.replace ? `Đã cập nhật ${res.info.kind === 'qti' ? 'đề' : 'khóa'}, giữ nguyên kết quả của học viên` : `Đã đưa "${meta.title}" lên cổng đào tạo`)
+      onImported?.()
       reset(); onClose()
     } catch (e) { setErr(`Không lưu được gói: ${e.message}`); setStep('review') }
   }

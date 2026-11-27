@@ -8,6 +8,7 @@ import { FormatIcon, FormatGlyph, Spinner, Thumb, Avatar, Status, Modal, Tip } f
 import { KitHeader, AddArtifact, GEN_FORMATS, useKit, useSkills } from './KitFlow'
 import { PublishModal } from './Common'
 import { KitExportModal, ExamCreateModal } from './KitShare'
+import NotificationBell from '../Notifications'
 import { ReviewBadge } from './Review'
 import { KitThemeModal } from './KitTheme'
 import { ChangeImage } from '../blocks'
@@ -116,6 +117,8 @@ export default function KitPage() {
         <button onClick={() => nav(`/review/${id}`)} className="btn-line btn-sm mr-1 h-9"><MessageSquare size={15} />Review{review?.open > 0 && <span className="ml-0.5 rounded-full bg-brand px-1.5 text-[11px] font-semibold text-white">{review.open}</span>}</button>
         <button onClick={() => setExporting(true)} className="btn-dark btn-sm mr-1 h-9"><PackageOpen size={15} />Xuất khóa học</button>
         <Tip label="Xóa khóa học" onClick={delKit}><Trash2 size={19} /></Tip>
+        <span className="mx-1 h-6 w-px bg-line" aria-hidden />
+        <NotificationBell />
       </div>
       <div className="mx-auto max-w-[880px] px-6 pt-10">
         <button onClick={() => nav(`/review/${id}`)} className="mb-5 flex w-full items-center gap-3 rounded-xl border border-line px-4 py-3 text-left text-[14px] hover:bg-neutral-50">

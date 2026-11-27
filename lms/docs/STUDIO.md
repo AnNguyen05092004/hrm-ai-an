@@ -12,24 +12,25 @@ Chỉ làm ra khóa học, không vận hành việc học: soạn khóa bằng 
 |---|---|
 | Giữ | Tài liệu nguồn, luồng tạo khóa (chi tiết → dàn ý → AI soạn), các trình soạn (Tài liệu nhanh, Slide, Tình huống, Video, Đề kiểm tra), ảnh, video AI, xuất bản có phiên bản, xuất SCORM 1.2, đề QTI 2.1, trang demo LMS công ty |
 | Bỏ | Vai người học, Khóa học của tôi, trình học trên web, tiến độ học, AI Tutor, thi và giám sát, chấm bài, kế hoạch đào tạo (KPI, khoảng cách kỹ năng, đội ngũ, trợ lý giám đốc), phân tích học tập, giao khóa, đường dẫn chia sẻ, xAPI, webhook |
-| Thêm | Vai admin và reviewer, quản trị người dùng, review khóa học (mời, góp ý theo vị trí, kết luận, nhiều vòng), trang xem câu hỏi kèm đáp án, Nội dung và luồng chốt nội dung, Kho đề, dạng câu Đúng/Sai |
+| Thêm | Vai admin và reviewer, quản trị người dùng, review khóa học (mời, góp ý theo vị trí, kết luận, nhiều vòng), trang xem câu hỏi kèm đáp án, Nội dung và luồng chốt nội dung, Kho đề, dạng câu Đúng/Sai, thông báo (chuông + email), gửi gói sang LMS công ty qua API |
 
-Bảng bị bỏ khỏi CSDL: `departments`, `positions`, `user_skills`, `skill_events`, `kpis`, `evidence`, `assignments`, `progress`, `attempts`, `tutor_messages`, `content_chunks`, `outbox`. Bảng `skills` giữ lại làm danh mục kỹ năng để gắn khóa học. Bảng mới: `kit_reviews`, `review_comments`.
+Bảng bị bỏ khỏi CSDL: `departments`, `positions`, `user_skills`, `skill_events`, `kpis`, `evidence`, `assignments`, `progress`, `attempts`, `tutor_messages`, `content_chunks`, `outbox`. Bảng `skills` giữ lại làm danh mục kỹ năng để gắn khóa học. Bảng mới: `kit_reviews`, `review_comments`, `notifications`, `lms_exports`.
 
 ## 3. Phân quyền
 
 | Việc | admin | author | reviewer |
 |---|:-:|:-:|:-:|
 | Tạo, soạn, xóa khóa học; tài liệu nguồn; ảnh; video | ✓ | ✓ | |
-| Xuất bản, xuất SCORM, tải đề QTI kèm đáp án | ✓ | ✓ | |
+| Xuất bản, xuất SCORM, tải đề QTI kèm đáp án, gửi gói sang LMS | ✓ | ✓ | |
 | Mời / bỏ reviewer, gửi lại review | ✓ | ✓ | |
 | Xem bản nháp, câu hỏi và đáp án | mọi khóa | mọi khóa | khóa được mời |
 | Góp ý, trả lời | ✓ | ✓ | khóa được mời |
 | Đánh dấu góp ý đã xử lý | ✓ | ✓ | góp ý của mình |
 | Kết luận Duyệt / Cần sửa | | | ✓ (khóa được mời) |
 | Người dùng, đổi hạn mức AI, nhật ký | ✓ | | |
+| Thông báo của mình | ✓ | ✓ | ✓ |
 
-Chặn ở API: `requireEditor` (author, admin), `requireAdmin`; reviewer qua kiểm tra lời mời (`kit_reviews`) ở từng route review và route xem tài liệu `/api/view/:id`. Quản trị không tự hạ quyền hay khóa chính mình, và luôn còn ít nhất một quản trị đang hoạt động.
+Chặn ở API: `require_editor` (author, admin), `require_admin`; reviewer qua kiểm tra lời mời (`kit_reviews`) ở từng route review và route xem tài liệu `/api/view/:id`. Quản trị không tự hạ quyền hay khóa chính mình, và luôn còn ít nhất một quản trị đang hoạt động.
 
 ## 4. Quyết định
 
@@ -42,7 +43,11 @@ Chặn ở API: `requireEditor` (author, admin), `requireAdmin`; reviewer qua ki
 | Vòng review | Gửi lại đặt người "Cần sửa" về "Đang chờ", tăng số vòng; góp ý ghi vòng | Thấy được góp ý thuộc lần nào, không mất lịch sử |
 | Xuất có cần đã duyệt không | Không chặn, chỉ hiện tình trạng review trên thẻ khóa và trang khóa | Có khóa không cần review (cập nhật nhỏ); chặn cứng sẽ cần thêm luồng ngoại lệ |
 | Đổi vai reviewer sang vai khác | Bỏ các lời mời review đang có, giữ góp ý | Không để lời mời "mồ côi"; góp ý vẫn là lịch sử của khóa |
-| Migration | Một migration nền mới (`0000_studio_baseline`), DB riêng `lms_studio` | Nhánh là sản phẩm tách riêng. Lỡ chạy nhầm vào DB của bản đầy đủ thì migration báo lỗi bảng đã có và dừng, không xóa dữ liệu |
+| Migration | Alembic. `0001_baseline` tạo bảng từ SQL nền khi DB trống, bỏ qua khi đã có bảng (giữ nguyên dữ liệu `lms_studio` tạo từ bản Node trước); `0002_master_title`, `0003_notifications_lms_exports`, `0004_notification_grouping`. DB riêng `lms_studio` | Chuyển backend không phải tạo lại dữ liệu. Các bước sau chỉ thêm, không xóa |
+| Backend | Python 3.12 + FastAPI, thay hẳn bản Node/Fastify, giữ nguyên hợp đồng API (đường dẫn, dữ liệu, mã lỗi) nên web không phải sửa | Hệ sinh thái AI và xử lý tài liệu của Python; chia module nghiệp vụ + adapter rõ ràng ([C4](C4.md)) |
+| Việc chạy nền | Background Worker là tiến trình riêng, hàng đợi trong bảng `jobs` | API khởi động lại không mất việc đang chạy; chưa cần Redis |
+| Thông báo | Lưu trong CSDL, chuông ở góc trên bên phải (polling 30 giây); email gửi bằng job nền. Reviewer nhận lời mời và nhắc hạn; người soạn nhận kết luận, góp ý (gộp theo người khi chưa đọc), kết quả gửi LMS | Request không chờ SMTP; lỗi email không làm hỏng thao tác chính. Email kiểm lại lời mời còn hiệu lực trước khi gửi |
+| Gửi sang LMS | Ghim phiên bản lúc người soạn xác nhận; worker dựng gói từ đúng các phiên bản đó | Xuất bản lại sau khi bấm gửi không làm đổi gói đang gửi. Gửi lại dùng cùng `Idempotency-Key` nên LMS không nhận trùng |
 | Cổng chạy | 4100 / 5194 / 5196 | Chạy song song với bản đầy đủ (4000 / 5190 / 5192) |
 
 ## 5. Luồng tạo khóa: nội dung trước, định dạng sau
@@ -70,7 +75,7 @@ Quyết định chi tiết:
 - Nội dung không có bài kiểm tra, không vào gói SCORM, không xuất bản cùng "xuất bản cả khóa".
 - Đề trong Kho đề tạo thẳng từ tài liệu nằm trong một khóa ẩn (`details.bank`) để dùng chung luồng soạn, review, xuất QTI; khóa ẩn không hiện trong danh sách khóa học, xóa đề thì xóa luôn khóa ẩn.
 - Hộp chốt liệt kê từng khối thiếu căn cứ / chưa có nguồn kèm tên bài và nút "Sửa chỗ này" (mở đúng bài, cuộn tới và làm nổi khối). Trên khối thiếu căn cứ: "Tìm lại trong tài liệu nguồn" (AI) hoặc "Tự viết đoạn này" (khối được đánh dấu chưa có nguồn để reviewer kiểm tra).
-- Tên hiển thị là "Nội dung" (migration `0001_master_title` đổi tên các bản đã có, không đổi nội dung).
+- Tên hiển thị là "Nội dung" (migration `0002_master_title` đổi tên các bản đã có, không đổi nội dung).
 - Bỏ "Hình thức triển khai" ở bước Chi tiết: bản Studio không vận hành việc học nên trường này không ảnh hưởng gì.
 - Tài liệu nhanh bỏ giới hạn cứng 3 bài (chỉ nhắc nên gọn); nội dung tối đa 8 bài khi AI lập dàn ý.
 
@@ -90,5 +95,11 @@ Trước đây đề chọn "mức 1–3", mà mỗi mức lại gắn sẵn d�
 
 ## 7. Kiểm thử
 
-- `npm test`: 53 test API, gồm `kits.test.ts` (luồng nội dung, chặn khi chưa chốt, chốt lại và soạn lại, vị trí cảnh báo khi chốt, AI thêm bài học), `bank.test.ts` (kho đề, ma trận đề và gói QTI theo ô, từ chối ma trận trùng ô / quá lớn, đề từ khóa / từ tài liệu, dạng Đúng/Sai), `reviews.test.ts` (phạm vi xem của reviewer, mời, góp ý gắn vị trí, trả lời, đã xử lý, kết luận, vòng mới, bỏ reviewer) và `users.test.ts` (chỉ admin, mật khẩu tạm, hết phiên khi đổi vai / khóa, không tự hạ quyền, đổi vai reviewer thì bỏ lời mời).
-- Kiểm tra trên trình duyệt (Chrome không giao diện, hồ sơ tạm, DB riêng): ba vai, luồng mời → góp ý → kết luận → gửi lại → xuất; luồng chi tiết → dàn ý → nội dung → chốt → định dạng → chốt lại → soạn lại; thêm bài học; 9 dạng câu; Kho đề; khóa cũ tạo nội dung; nút Bắt đầu trên Thử nhanh; hộp chốt dẫn tới đúng khối thiếu căn cứ; tạo đề theo ma trận.
+- `npm test`: 69 test pytest (FastAPI TestClient, DB `lms_studio_test`, AI / email / LMS đều giả lập), gồm toàn bộ test chuyển từ bản Node và các phần mới:
+  - `test_kits.py`: luồng nội dung, chặn khi chưa chốt, chốt lại và soạn lại, vị trí cảnh báo khi chốt, AI thêm bài học.
+  - `test_bank.py`: Kho đề, ma trận đề và gói QTI theo ô, từ chối ma trận trùng ô / quá lớn, đề từ khóa / từ tài liệu, dạng Đúng/Sai.
+  - `test_reviews.py`, `test_users.py`: phạm vi xem của reviewer, mời, góp ý, kết luận, vòng mới; chỉ admin quản trị, hết phiên khi đổi vai / khóa.
+  - `test_export.py`: gói SCORM (có test Nội dung không vào gói), đề QTI.
+  - `test_notifications.py`: thông báo khi mời, mời lại, kết luận, góp ý; gộp góp ý liên tiếp tới khi đọc; email qua job nền; không gửi khi lời mời đã bị bỏ; nhắc hạn một lần mỗi vòng; chỉ xem và đánh dấu thông báo của mình.
+  - `test_lms_export.py`: gửi đúng phiên bản đã ghim kể cả khi xuất bản v2 sau đó, header và token, LMS từ chối (4xx, không thử lại), LMS lỗi (5xx, thử lại rồi báo lỗi), gửi lại, chưa cấu hình, phân quyền.
+- Kiểm tra trên trình duyệt (Chrome không giao diện, hồ sơ tạm, DB riêng, API Python + worker): ba vai, luồng mời → góp ý → kết luận → gửi lại; luồng chi tiết → dàn ý → nội dung → chốt → định dạng; tạo đề theo ma trận; chuông thông báo và email trong Mailpit; gửi khóa sang LMS demo → "LMS đã nhận" → LMS demo **Xem và nhập**.

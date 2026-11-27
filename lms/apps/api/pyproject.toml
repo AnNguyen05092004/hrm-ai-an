@@ -1,0 +1,42 @@
+[project]
+name = "lms-studio-api"
+version = "2.0.0"
+description = "LMS Studio API: soạn khóa học bằng AI, review, xuất sang LMS công ty"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi==0.165.0",
+  "uvicorn[standard]==0.54.0",
+  "sqlalchemy==2.1.9",
+  "psycopg[binary]==3.3.9",
+  "pgvector==0.5.1",
+  "alembic==1.20.1",
+  "pydantic==2.14.4",
+  "pydantic-settings==2.16.3",
+  "bcrypt==5.0.0",
+  "openai==3.60.0",
+  "httpx==0.29.0",
+  "pypdf==7.2.0",
+  "mammoth==1.13.0",
+  "python-multipart==0.0.34",
+  "resvg-py==0.5.0",
+]
+
+[dependency-groups]
+dev = ["pytest==9.2.0", "ruff==0.15.4"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "tests"]
+addopts = "-q -p no:cacheprovider"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 200
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501", "B008", "E731"]

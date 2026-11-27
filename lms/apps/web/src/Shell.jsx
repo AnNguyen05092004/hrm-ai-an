@@ -6,6 +6,7 @@ import { Logo, Avatar, Spinner } from './ui'
 import { useMe, initials } from './store'
 import { get, post } from './api'
 import { useWide } from './hooks'
+import NotificationBell from './Notifications'
 
 export default function Shell() {
   const nav = useNavigate()
@@ -99,6 +100,7 @@ export default function Shell() {
 export const TopOrg = ({ children }) => { const { me } = useMe(); return (
   <div className="sticky top-0 z-20 flex h-16 items-center border-b border-line/70 bg-white/80 px-4 backdrop-blur md:px-10">
     <span className="text-[16px] font-medium">{me?.orgName}</span>
-    <div className="flex-1" />{children}
+    <div className="flex-1" />
+    <div className="flex items-center gap-2">{children}<NotificationBell /></div>
   </div>
 ) }

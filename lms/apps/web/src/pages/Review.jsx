@@ -9,6 +9,7 @@ import { FORMATS, TYPE_ORDER } from '../data'
 import { Avatar, FormatGlyph, Modal, Spinner, Thumb } from '../ui'
 import { questionAnchor } from './QuizSheet'
 import { TopOrg } from '../Shell'
+import NotificationBell from '../Notifications'
 import { get, post, patch, del } from '../api'
 
 export const REVIEW_STATE = {
@@ -262,6 +263,8 @@ export function ReviewPage() {
         <div className="min-w-0 flex-1"><div className="truncate text-[15px] font-semibold">Review · {d.kit.title}</div></div>
         {d.mine && <><StateChip s={d.mine.status} mine /><button className="btn-dark btn-sm h-9" onClick={() => setDecide(d.mine.status === 'pending' ? 'approved' : d.mine.status)}>{d.mine.status === 'pending' ? 'Kết luận review' : 'Đổi kết luận'}</button></>}
         {d.canEdit && <>{changes.length > 0 && <button className="btn-line btn-sm h-9" onClick={requestAgain}><RotateCcw size={15} />Đã sửa, gửi lại review</button>}<button className="btn-dark btn-sm h-9" onClick={() => setInvite(true)}><UserPlus size={15} />Mời review</button></>}
+        <span className="mx-1 h-6 w-px bg-line" aria-hidden />
+        <NotificationBell />
       </header>
       <div className="scroll-thin grid flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[1fr_440px] lg:overflow-hidden">
         <div className="scroll-thin px-6 py-6 lg:overflow-y-auto lg:px-10">
