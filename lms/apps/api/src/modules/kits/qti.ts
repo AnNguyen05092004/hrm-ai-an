@@ -24,12 +24,13 @@ const slugify = (s: string): string => s.normalize('NFD').replace(/[̀-ͯ]/g, ''
 const ident = (s: string): string => `I${String(s).replace(/[^A-Za-z0-9_-]/g, '_')}`
 
 export const TYPE_NAME: Record<string, string> = {
-  mc: 'Một đáp án', mr: 'Nhiều đáp án', fill: 'Điền chỗ trống', match: 'Ghép cặp', order: 'Sắp thứ tự', cat: 'Phân loại', essay: 'Tự luận', code: 'Bài code JavaScript',
+  mc: 'Một đáp án', mr: 'Nhiều đáp án', tf: 'Đúng / Sai', fill: 'Điền chỗ trống', match: 'Ghép cặp', order: 'Sắp thứ tự', cat: 'Phân loại', essay: 'Tự luận', code: 'Bài code JavaScript',
 }
 /** Cách tính điểm từng dạng câu, giống hệt cách LMS này chấm */
 export const SCORING: Record<string, string> = {
   mc: 'Đúng đáp án được 1 điểm, sai 0.',
   mr: 'Chọn đúng và đủ mọi đáp án đúng được 1 điểm, còn lại 0.',
+  tf: 'Chọn đúng Đúng/Sai được 1 điểm.',
   fill: 'Khớp một trong các đáp án chấp nhận được 1 điểm. So khớp không phân biệt hoa thường, dấu tiếng Việt và khoảng trắng đầu cuối.',
   match: 'Mỗi cặp ghép đúng được 1/số cặp điểm.',
   order: 'Mỗi mục đứng đúng vị trí được 1/số mục điểm.',
@@ -51,13 +52,13 @@ const scorer = (title: string, body: string): string => `    <rubricBlock view="
 export function itemXml(q: Json): string {
   const t = q.type
   const title = `${TYPE_NAME[t] ?? t} · mức ${q.level ?? 1}`
-  if (t === 'mc' || t === 'mr') {
+  if (t === 'mc' || t === 'mr' || t === 'tf') {
     const choices: Json[] = q.choices ?? []
     const ok = choices.map((c, i) => (c.ok ? `C${i}` : '')).filter(Boolean)
     return head(q.id, title)
       + `  <responseDeclaration identifier="RESPONSE" cardinality="${t === 'mr' ? 'multiple' : 'single'}" baseType="identifier"><correctResponse>${ok.map((v) => `<value>${v}</value>`).join('')}</correctResponse></responseDeclaration>\n`
       + score()
-      + `  <itemBody>\n    <choiceInteraction responseIdentifier="RESPONSE" shuffle="true" maxChoices="${t === 'mr' ? 0 : 1}">\n${prompt(q)}`
+      + `  <itemBody>\n    <choiceInteraction responseIdentifier="RESPONSE" shuffle="${t === 'tf' ? 'false' : 'true'}" maxChoices="${t === 'mr' ? 0 : 1}">\n${prompt(q)}`
       + choices.map((c, i) => `      <simpleChoice identifier="C${i}">${x(c.t)}</simpleChoice>\n`).join('')
       + '    </choiceInteraction>\n  </itemBody>\n' + MATCH_CORRECT + '</assessmentItem>\n'
   }

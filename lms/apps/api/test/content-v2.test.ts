@@ -42,7 +42,7 @@ describe('Ảnh, giao diện khóa, đề có câu kéo thả', () => {
 
   it('đề có câu ghép cặp, sắp thứ tự, phân loại: xuất bản được, bản xem trước có đáp án', async () => {
     const kits = (await ctx.author('GET', '/api/kits')).body as { id: string }[]
-    const ex = await ctx.author('POST', `/api/kits/${kits[0].id}/exams`, { levels: [1, 2], perLevel: 3, proctor: false, mode: 'practice' })
+    const ex = await ctx.author('POST', `/api/kits/${kits[0].id}/exams`, { levels: [1, 2], perLevel: 3, mode: 'practice', types: ['match', 'order', 'cat'] })
     await drainJobs()
     const e = (await ctx.author('GET', `/api/artifacts/${ex.body.id}`)).body
     const types = e.quiz.questions.map((q: { type: string }) => q.type)

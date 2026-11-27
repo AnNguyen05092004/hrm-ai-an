@@ -137,7 +137,7 @@ export function Player({ art, preview, start }) {
   const { done, mark } = useProgress(art, preview)
   return (
     <>
-      {art.type === 'qr' && <CoursePlayer key={start || 'cover'} art={art} start={start} preview={preview} />}
+      {(art.type === 'qr' || art.type === 'master') && <CoursePlayer key={start || 'cover'} art={art} start={start} preview={preview} />}
       {art.type === 'video' && <VideoPlayer art={art} preview={preview} />}
       {art.type === 'scenario' && <div className="h-[calc(100vh-56px)]"><ScenarioPlay art={art} onExit={() => { if (!done.includes('end')) mark('end'); if (off) off.onExit(); else nav(-1) }} /></div>}
       {art.type === 'deck' && <DeckViewer art={art} preview={preview} />}

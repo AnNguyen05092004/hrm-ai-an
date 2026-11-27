@@ -8,7 +8,8 @@ import { audit } from '../../lib/audit.js'
 import { enqueue } from '../../lib/jobs.js'
 import { publishIssues } from '../artifacts/validate.js'
 import { hasUnpublishedChanges, publishArtifact } from '../artifacts/publish.js'
-import { createArtifact, getKit } from './service.js'
+import { createArtifact, getKit, isBank } from './service.js'
+import { requireLocked } from './master.js'
 import { ExamSpec, examPlan } from './exam.js'
 
 const P = z.object({ id: z.string() })
@@ -20,7 +21,7 @@ export const kitPublishRoutes: FastifyPluginAsyncZod = async (app) => {
     const k = await getKit(u.orgId, req.params.id)
     const arts = await db.select().from(schema.artifacts).where(eq(schema.artifacts.kitId, k.id)).orderBy(schema.artifacts.createdAt)
     return {
-      items: await Promise.all(arts.map(async (a) => ({
+      items: await Promise.all(arts.filter((a) => a.type !== 'master').map(async (a) => ({
         id: a.id, type: a.type, title: a.title, status: a.status, publishedVersion: a.publishedVersion,
         changed: a.status !== 'generating' && await hasUnpublishedChanges(a), issues: publishIssues(a),
       }))),
@@ -33,7 +34,8 @@ export const kitPublishRoutes: FastifyPluginAsyncZod = async (app) => {
     const k = await getKit(u.orgId, req.params.id)
     const arts = await db.select().from(schema.artifacts).where(eq(schema.artifacts.kitId, k.id)).orderBy(schema.artifacts.createdAt)
     const published: string[] = [], unchanged: string[] = [], skipped: { id: string; title: string; reasons: string[] }[] = []
-    for (const a of arts.filter((x) => !req.body.ids || req.body.ids.includes(x.id))) {
+    // nội dung gốc chốt riêng (Chốt nội dung), không xuất bản cùng các định dạng
+    for (const a of arts.filter((x) => x.type !== 'master' && (!req.body.ids || req.body.ids.includes(x.id)))) {
       const issues = publishIssues(a)
       if (issues.blocking.length) { skipped.push({ id: a.id, title: a.title, reasons: issues.blocking }); continue }
       if (!(await hasUnpublishedChanges(a))) { unchanged.push(a.id); continue }
@@ -44,10 +46,11 @@ export const kitPublishRoutes: FastifyPluginAsyncZod = async (app) => {
     return { published, unchanged, skipped }
   })
 
-  // Đề kiểm tra riêng: AI soạn ngân hàng câu theo mức (chạy nền)
+  // Đề kiểm tra riêng: AI soạn ngân hàng câu theo mức (chạy nền), từ nội dung gốc đã chốt
   app.post('/:id/exams', { schema: { params: P, body: ExamSpec } }, async (req) => {
     const u = me(req)
     const k = await getKit(u.orgId, req.params.id)
+    if (!isBank(k)) await requireLocked(k.id)
     const a = await createArtifact(k, examPlan(k, req.body))
     const job = await enqueue(u.orgId, 'exam.generate', { artifactId: a.id }, u.id)
     await audit(u, 'exam.create', a.id, { levels: req.body.levels })

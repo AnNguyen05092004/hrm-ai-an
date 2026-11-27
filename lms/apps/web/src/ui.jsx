@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, BookOpen, Presentation, ListChecks, Network, Video, ClipboardCheck } from 'lucide-react'
+import { X, BookOpen, Presentation, ListChecks, Network, Video, ClipboardCheck, FileText } from 'lucide-react'
 import { FORMATS, IMG } from './data'
 import { useStore } from './store'
 
@@ -8,7 +8,7 @@ export const Logo = ({ size = 28 }) => (
   <div className="grid place-items-center rounded-lg bg-ink text-white font-display font-bold" style={{ width: size, height: size, fontSize: size * 0.55 }}>V</div>
 )
 
-const FICON = { qr: BookOpen, deck: Presentation, guide: ListChecks, scenario: Network, video: Video, exam: ClipboardCheck }
+const FICON = { master: FileText, qr: BookOpen, deck: Presentation, guide: ListChecks, scenario: Network, video: Video, exam: ClipboardCheck }
 export function FormatIcon({ type, size = 36, r = 10 }) {
   const f = FORMATS[type]; const I = FICON[type]
   return (
@@ -116,7 +116,9 @@ const ST = {
   failed: ['Soạn lỗi', 'bg-red-50 text-red-700'],
   published: ['Đã xuất bản', 'bg-sky-50 text-sky-700'],
 }
-export const Status = ({ s }) => { const x = ST[s] ?? ST.draft; return <span className={`whitespace-nowrap rounded-md px-2 py-0.5 text-[12px] font-semibold ${x[1]}`}>{x[0]}</span> }
+// nội dung gốc không "xuất bản" mà "chốt"
+const MASTER_ST = { published: ['Đã chốt', 'bg-emerald-50 text-emerald-700'], draft: ['Chưa chốt', 'bg-amber-50 text-amber-800'] }
+export const Status = ({ s, master }) => { const x = (master && MASTER_ST[s]) || ST[s] || ST.draft; return <span className={`whitespace-nowrap rounded-md px-2 py-0.5 text-[12px] font-semibold ${x[1]}`}>{x[0]}</span> }
 
 export function Toast() {
   const { toast } = useStore()

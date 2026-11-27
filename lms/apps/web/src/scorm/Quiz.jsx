@@ -8,7 +8,7 @@ const fold = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').rep
 
 /** Điểm 0..1 cho một câu, cách chấm giống máy chủ */
 export function gradeLocal(q, a) {
-  if (q.type === 'mc' || q.type === 'mr') {
+  if (q.type === 'mc' || q.type === 'mr' || q.type === 'tf') {
     const picked = new Set([].concat(a ?? []).map(Number))
     const ok = q.choices.map((c, i) => (c.ok ? i : -1)).filter((i) => i >= 0)
     return picked.size === ok.length && ok.every((i) => picked.has(i)) ? 1 : 0
@@ -23,7 +23,7 @@ export function gradeLocal(q, a) {
 export function OfflineQuiz({ art, onDone, onBack }) {
   const quiz = art.offlineQuiz
   const qs = useMemo(() => quiz.questions.map((q) => ({
-    ...q, choices: q.choices ? shuffle(q.choices) : q.choices,
+    ...q, choices: q.choices && q.type !== 'tf' ? shuffle(q.choices) : q.choices,
     left: q.pairs?.map((p) => p.l), opts: q.type === 'match' ? shuffle(q.pairs.map((p) => p.r)) : q.type === 'order' ? shuffle(q.items) : q.type === 'cat' ? shuffle(q.groups.flatMap((g) => g.items)) : undefined,
     groupNames: q.groups?.map((g) => g.name),
   })), [quiz])
@@ -54,7 +54,7 @@ export function OfflineQuiz({ art, onDone, onBack }) {
           <div key={q.id} className="mt-8 border-t border-line pt-8">
             <div className="text-[13px] text-neutral-500">Câu {i + 1}/{qs.length}</div>
             <div className="mt-2 font-lato text-[20px] font-bold">{q.q}</div>
-            {(q.type === 'mc' || q.type === 'mr') && <div className="mt-4 space-y-2.5">{q.choices.map((c, j) => { const on = q.type === 'mr' ? [].concat(ans[q.id] ?? []).includes(j) : ans[q.id] === j; return (
+            {(q.type === 'mc' || q.type === 'mr' || q.type === 'tf') && <div className="mt-4 space-y-2.5">{q.choices.map((c, j) => { const on = q.type === 'mr' ? [].concat(ans[q.id] ?? []).includes(j) : ans[q.id] === j; return (
               <button key={j} onClick={() => set(q.id, q.type === 'mr' ? (on ? [].concat(ans[q.id] ?? []).filter((x) => x !== j) : [...[].concat(ans[q.id] ?? []), j]) : j)} className={`flex w-full items-center gap-3 rounded-md border px-4 py-3 text-left font-serif text-[15px] ${on ? 'border-brand bg-brand/5' : 'border-line'}`}>
                 <span className={`h-4 w-4 shrink-0 border-2 ${q.type === 'mr' ? 'rounded' : 'rounded-full'} ${on ? 'border-brand bg-brand' : 'border-neutral-400'}`} />{c.t}</button>) })}</div>}
             {q.type === 'fill' && <input className="field mt-4" value={ans[q.id] ?? ''} onChange={(e) => set(q.id, e.target.value)} placeholder="Nhập đáp án" />}

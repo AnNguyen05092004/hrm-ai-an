@@ -12,6 +12,7 @@ import { kitPublishRoutes } from './publish.js'
 import { scormRoutes } from './scorm.js'
 import { examExportRoutes } from './qti.js'
 import { briefOf, createArtifact, getKit, kitDto, listKits, patchKit, type PlanItem } from './service.js'
+import { MASTER_TITLE, masterFromQr, masterOf, requireLocked } from './master.js'
 
 const P = z.object({ id: z.string() })
 // giao diện khóa: màu nhấn và bộ font
@@ -108,6 +109,18 @@ export const kitRoutes: FastifyPluginAsyncZod = async (app) => {
   })
 
   // Tạo các tài liệu theo dàn ý; mỗi tài liệu một job
+  // Khóa tạo trước khi có bước nội dung gốc: tạo nội dung gốc (bản nháp) từ Tài liệu nhanh đang có, không có thì tạo bản trống
+  app.post('/:id/master', { schema: { params: P } }, async (req) => {
+    const u = me(req)
+    const k = await getKit(u.orgId, req.params.id)
+    if (await masterOf(k.id)) throw conflict('Khóa đã có nội dung gốc')
+    const [qr] = await db.select().from(schema.artifacts).where(and(eq(schema.artifacts.kitId, k.id), eq(schema.artifacts.type, 'qr'))).limit(1)
+    const a = await createArtifact(k, { type: 'master', title: MASTER_TITLE, summary: k.goal }, 'draft', qr ? masterFromQr(qr.content as Record<string, unknown>) : { lessons: [] })
+    await audit(u, 'master.create', a.id, { from: qr?.id ?? null })
+    return { id: a.id }
+  })
+
+  // Soạn nội dung gốc theo dàn ý (một job)
   app.post('/:id/generate', { schema: { params: P } }, async (req) => {
     const u = me(req)
     const k = await getKit(u.orgId, req.params.id)
@@ -128,10 +141,11 @@ export const kitRoutes: FastifyPluginAsyncZod = async (app) => {
     return { artifactIds: ids }
   })
 
-  // Thêm tài liệu vào khóa đã tạo: AI soạn ngay theo tên và mục đích
+  // Thêm định dạng cho người học: AI soạn ngay từ nội dung gốc đã chốt
   app.post('/:id/artifacts', { schema: { params: P, body: planItem } }, async (req) => {
     const u = me(req)
     const k = await getKit(u.orgId, req.params.id)
+    await requireLocked(k.id)
     const a = await createArtifact(k, req.body)
     const job = await enqueue(u.orgId, 'artifact.generate', { artifactId: a.id }, u.id)
     return { id: a.id, jobId: job.id }

@@ -13,7 +13,7 @@ function quizIssues(quiz: Json | undefined, blocking: string[], warnings: string
   const pending = qs.length - approved.length
   if (required && approved.length && pending) warnings.push(`${pending} câu chưa duyệt sẽ không vào đề.`)
   for (const q of approved) {
-    if ((q.type === 'mc' || q.type === 'mr') && !(q.choices ?? []).some((x: Json) => x.ok)) blocking.push(`Câu "${String(q.q).slice(0, 40)}…" chưa có đáp án đúng.`)
+    if ((q.type === 'mc' || q.type === 'mr' || q.type === 'tf') && !(q.choices ?? []).some((x: Json) => x.ok)) blocking.push(`Câu "${String(q.q).slice(0, 40)}…" chưa có đáp án đúng.`)
     if (q.type === 'code' && !(q.tests ?? []).length) blocking.push(`Câu code "${String(q.q).slice(0, 40)}…" chưa có test case.`)
     if (q.type === 'essay' && !(q.rubric ?? []).length) blocking.push(`Câu tự luận "${String(q.q).slice(0, 40)}…" chưa có rubric.`)
     const name = `"${String(q.q).slice(0, 40)}…"`
@@ -42,14 +42,14 @@ export function publishIssues(a: typeof schema.artifacts.$inferSelect): Issues {
   const blocking: string[] = [], warnings: string[] = []
   if (a.status === 'generating') blocking.push('Tài liệu đang được AI soạn.')
   if (!a.title.trim()) blocking.push('Tài liệu chưa có tên.')
-  if (a.type === 'qr') {
+  if (a.type === 'qr' || a.type === 'master') {
     const lessons = (c.lessons ?? []).filter((l: Json) => l.kind === 'lesson')
     if (!lessons.length) blocking.push('Chưa có bài học nào.')
     const gaps = lessons.flatMap((l: Json) => l.blocks ?? []).filter((b: Json) => b.t === 'gap').length
     const nosrc = lessons.flatMap((l: Json) => l.blocks ?? []).filter((b: Json) => b.nosrc).length
-    if (gaps) warnings.push(`Còn ${gaps} chỗ thiếu căn cứ trong tài liệu nguồn (người học không thấy các khối này).`)
+    if (gaps) warnings.push(a.type === 'master' ? `Còn ${gaps} chỗ thiếu căn cứ. Các khối này không được dùng khi soạn định dạng; nên bổ sung trước khi chốt.` : `Còn ${gaps} chỗ thiếu căn cứ trong tài liệu nguồn (người học không thấy các khối này).`)
     if (nosrc) warnings.push(`${nosrc} khối chưa có nguồn trích dẫn.`)
-    quizIssues(c.quiz, blocking, warnings, false)
+    if (a.type === 'qr') quizIssues(c.quiz, blocking, warnings, false)
   }
   if (a.type === 'exam') {
     if (!c.quiz) blocking.push('Đề kiểm tra chưa có ngân hàng câu hỏi.')

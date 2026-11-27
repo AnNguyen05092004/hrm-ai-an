@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Target, TrendingUp, Plus, FileWarning, ArrowRight, Link2, AlertTriangle, RotateCw, Trash2, PackageOpen, Palette, MessageSquare } from 'lucide-react'
 import { useStore, useMe } from '../store'
@@ -27,6 +27,36 @@ function GenCard({ a }) {
   )
 }
 
+/** Nội dung gốc: soạn, duyệt, chốt. Các định dạng cho người học chỉ tạo từ bản đã chốt */
+function MasterPanel({ kitId, art, master, onLock, onCreate }) {
+  const nav = useNavigate()
+  if (!art) return (
+    <div className="mt-8 flex items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+      <FormatIcon type="master" size={40} />
+      <div className="flex-1 text-[15px]"><b>Khóa này chưa có Nội dung gốc.</b> Khóa được tạo trước khi có bước nội dung gốc. Tạo nội dung gốc (lấy các bài của Tài liệu nhanh nếu có), rà lại và chốt để tạo thêm định dạng.</div>
+      <button className="btn-dark btn-sm h-9 shrink-0" onClick={onCreate}>Tạo nội dung gốc</button>
+    </div>
+  )
+  if (art.status === 'generating') return <div className="card mt-8 flex items-center gap-4 p-5"><Spinner size={28} /><div className="text-[15px]"><b>AI đang soạn nội dung gốc…</b><div className="text-[14px] text-neutral-600">Xong thì rà lại, mời review rồi chốt.</div></div></div>
+  const locked = master?.lockedVersion
+  return (
+    <div className="card mt-8 p-5">
+      <div className="flex flex-wrap items-center gap-4">
+        <FormatIcon type="master" size={44} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2"><span className="text-[17px] font-semibold">Nội dung gốc</span><Status s={locked ? 'published' : 'draft'} master />{locked && <span className="text-[13px] text-neutral-500">phiên bản {locked}</span>}{master?.changed && locked && <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[12px] font-semibold text-amber-800">Có thay đổi chưa chốt</span>}</div>
+          <p className="mt-1 text-[14px] text-neutral-600">{locked ? 'Mọi định dạng soạn từ bản đã chốt. Sửa nội dung thì chốt lại; định dạng soạn từ bản cũ được đánh dấu để soạn lại.' : 'Bản nội dung đầy đủ, chỉ dùng nội bộ. Rà lại, mời review, rồi chốt để tạo Tài liệu nhanh, slide, video, tình huống, đề kiểm tra.'}</p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <button className="btn-line btn-sm h-9" onClick={() => nav(`/review/${kitId}?a=${art.id}`)}>Review</button>
+          <button className="btn-line btn-sm h-9" onClick={() => nav(`/edit/${art.id}`)}>Mở để sửa</button>
+          {(!locked || master?.changed) && <button className="btn-dark btn-sm h-9" onClick={onLock}>{locked ? 'Chốt lại' : 'Chốt nội dung'}</button>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function KitPage() {
   const { id } = useParams(); const nav = useNavigate()
   const { say, confirmBox } = useStore()
@@ -34,10 +64,10 @@ export default function KitPage() {
   const qc = useQueryClient()
   const { doc: kit, up, saveState, reload } = useKit(id)
   const skills = useSkills()
-  // theo dõi tài liệu đang được AI soạn
+  // theo dõi tài liệu đang được AI soạn và trạng thái chốt của nội dung gốc
   const live = useQuery({
-    queryKey: ['kit-artifacts', id], queryFn: () => get(`/kits/${id}`).then((k) => k.artifacts),
-    refetchInterval: (q) => ((q.state.data ?? kit?.artifacts ?? []).some((a) => a.status === 'generating') ? 2000 : false),
+    queryKey: ['kit-live', id], queryFn: () => get(`/kits/${id}`).then((k) => ({ artifacts: k.artifacts, master: k.master, bank: k.bank })),
+    refetchInterval: (q) => ((q.state.data?.artifacts ?? kit?.artifacts ?? []).some((a) => a.status === 'generating') ? 2000 : false),
   })
   const changes = useQuery({ queryKey: ['source-changes', id], queryFn: () => get(`/kits/${id}/source-changes`) })
   const [share, setShare] = useState(null)
@@ -48,8 +78,20 @@ export default function KitPage() {
   const [exam, setExam] = useState(false)
   const [theme, setTheme] = useState(false)
   if (!kit) return <div className="grid h-full place-items-center"><Spinner /></div>
+  // đề trong Kho đề tạo từ tài liệu: không phải khóa học, về Kho đề
+  if (kit.bank) return <Navigate to="/library?tab=exams" replace />
+  const all = live.data?.artifacts ?? kit.artifacts
+  const masterArt = all.find((a) => a.type === 'master')
+  const master = live.data ? live.data.master : kit.master
+  const locked = master?.lockedVersion ?? null
   // cùng thứ tự với trình học trong gói SCORM
-  const arts = [...(live.data ?? kit.artifacts)].sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type))
+  const arts = all.filter((a) => a.type !== 'master').sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type))
+  const stale = (a) => locked != null && a.basedOn != null && a.basedOn < locked
+  const createMaster = async () => { try { const r = await post(`/kits/${id}/master`); await live.refetch(); nav(`/edit/${r.id}`) } catch (e) { say(e.message) } }
+  const refresh = async (a) => {
+    if (!(await confirmBox(`Soạn lại "${a.title}" từ nội dung gốc v${locked}? Bản nháp hiện tại bị thay; bản đã xuất bản giữ nguyên tới khi bạn xuất bản lại.`, { ok: 'Soạn lại' }))) return
+    try { await post(`/artifacts/${a.id}/regenerate`, { force: true }); await live.refetch(); say('AI đang soạn lại từ nội dung gốc mới') } catch (e) { say(e.message) }
+  }
   const skill = skills.find((s) => s.id === kit.skill)
   const addArtifact = async (item) => {
     setAdd(null)
@@ -101,7 +143,12 @@ export default function KitPage() {
           ))}
         </div>
 
-        <div className="mt-8 grid grid-cols-3 gap-4">
+        <MasterPanel kitId={id} art={masterArt} master={master} onLock={() => setShare(masterArt)} onCreate={createMaster} />
+
+        <div className="mt-10 flex items-end gap-3">
+          <div className="flex-1"><h2 className="text-[19px] font-semibold">Định dạng cho người học</h2><p className="mt-0.5 text-[14px] text-neutral-600">{locked ? `Soạn từ nội dung gốc đã chốt (v${locked}). Đây là phần được xuất sang LMS công ty.` : 'Chốt nội dung gốc để tạo các định dạng.'}</p></div>
+        </div>
+        {arts.length > 0 && <div className="mt-4 grid grid-cols-3 gap-4">
           {arts.map((a) => a.status === 'generating' ? <GenCard key={a.id} a={a} /> : (
             <div key={a.id} className="group card flex flex-col overflow-hidden transition hover:shadow-pop">
               <div role="button" tabIndex={0} onClick={() => a.status !== 'failed' && nav(`/edit/${a.id}`)} onKeyDown={(e) => { if (e.key === 'Enter' && a.status !== 'failed') nav(`/edit/${a.id}`) }} className="cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-sky-400">
@@ -116,19 +163,19 @@ export default function KitPage() {
               </div>
               <div className="flex-1" />
               <div className="mt-4 border-t border-line px-4 pb-4 pt-3">
+                {stale(a) && <div className="mb-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[12px] leading-snug text-amber-900">Soạn từ nội dung gốc v{a.basedOn}, đã có v{locked}. <button className="font-semibold underline" onClick={() => refresh(a)}>Soạn lại</button></div>}
                 <div className="flex items-center"><Status s={a.status} /><div className="flex-1" /><button onClick={() => remove(a)} className="icon-btn h-8 w-8 opacity-0 group-hover:opacity-100" aria-label="Xóa tài liệu"><Trash2 size={15} /></button></div>
                 {a.status === 'failed' ? <button onClick={() => regen(a)} className="btn-line mt-3 h-9 w-full"><RotateCw size={15} />Soạn lại</button>
                   : <button onClick={() => setShare(a)} className="btn-line mt-3 h-9 w-full">Xuất bản</button>}
               </div>
             </div>
           ))}
-        </div>
+        </div>}
 
-        <div className="my-10 h-px bg-line" />
-        <div className="mb-3 text-[15px] font-semibold">Thêm tài liệu</div>
+        <div className="mb-3 mt-8 text-[15px] font-semibold">Tạo định dạng</div>
         <div className="grid grid-cols-5 gap-3">
           {[...GEN_FORMATS, 'exam'].map((k) => (
-            <button key={k} onClick={() => (k === 'exam' ? setExam(true) : setAdd(k))} className="card relative p-3.5 text-left transition hover:shadow-pop">
+            <button key={k} disabled={!locked} title={locked ? undefined : 'Chốt nội dung gốc trước'} onClick={() => (k === 'exam' ? setExam(true) : setAdd(k))} className="card relative p-3.5 text-left transition enabled:hover:shadow-pop disabled:cursor-not-allowed disabled:opacity-50">
               <FormatIcon type={k} size={32} r={8} /><Plus size={18} className="absolute right-3 top-4 text-neutral-500" />
               <div className="mt-3 text-[15px] font-semibold leading-tight">{FORMATS[k].name}</div>
               <div className="mt-1 text-[12px] leading-snug text-neutral-600">{FORMATS[k].desc}</div>
@@ -137,7 +184,7 @@ export default function KitPage() {
         </div>
       </div>
 
-      <PublishModal open={!!share} art={share} onClose={() => setShare(null)} onChanged={() => { live.refetch(); reload() }} />
+      <PublishModal open={!!share} art={share} onClose={() => setShare(null)} onChanged={() => { live.refetch(); reload(); qc.invalidateQueries({ queryKey: ['kits'] }) }} />
       <KitThemeModal open={theme} kit={kit} onClose={() => setTheme(false)} onSave={(v) => { up((k) => { k.theme = v.theme; k.img = v.img }); say('Đã lưu giao diện khóa') }} />
       <KitExportModal open={exporting} kit={kit} onClose={() => setExporting(false)} onChanged={() => { live.refetch(); reload() }} />
       <ExamCreateModal open={exam} kit={kit} onClose={() => setExam(false)} onCreated={() => live.refetch()} />

@@ -10,11 +10,16 @@ import {
   draftDetails, draftOutline, draftQr, draftDeck, draftScenario,
   type DeckDraft, type GenType, type KitBrief, type QrDraft, type ScenarioDraft,
 } from './ai.js'
+import type { DraftType } from './ai.js'
+import { MASTER_TITLE, masterHits, masterLessons, requireLocked } from './master.js'
+import { hasUnpublishedChanges } from '../artifacts/publish.js'
+
+const MAX_MASTER_LESSONS = 8
 
 type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 export type Kit = typeof schema.kits.$inferSelect
 export type Artifact = typeof schema.artifacts.$inferSelect
-export interface PlanItem { type: GenType | 'exam'; title: string; summary: string; outline?: Json }
+export interface PlanItem { type: GenType | 'exam' | 'master'; title: string; summary: string; outline?: Json; basedOn?: number }
 
 export const getKit = async (orgId: string, id: string): Promise<Kit> =>
   must((await db.select().from(schema.kits).where(and(eq(schema.kits.id, id), eq(schema.kits.orgId, orgId))))[0], 'Khóa học')
@@ -23,7 +28,9 @@ const fmt = (d: Date): string => d.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_
 
 /** Bản tóm tắt tài liệu cho danh sách (không gồm nội dung) */
 export function artifactMeta(a: Artifact): Json {
-  return { id: a.id, kitId: a.kitId, type: a.type, title: a.title, summary: a.summary, status: a.status, img: a.img, publishedVersion: a.publishedVersion, updated: fmt(a.updatedAt), updatedAt: a.updatedAt }
+  // basedOn: phiên bản nội dung gốc mà định dạng này được soạn từ đó
+  const basedOn = ((a.content as Json).plan as Json | undefined)?.basedOn ?? null
+  return { id: a.id, kitId: a.kitId, type: a.type, title: a.title, summary: a.summary, status: a.status, img: a.img, publishedVersion: a.publishedVersion, basedOn, updated: fmt(a.updatedAt), updatedAt: a.updatedAt }
 }
 
 /** Tài liệu đầy đủ cho màn soạn: nội dung trải phẳng như prototype */
@@ -38,13 +45,19 @@ export async function kitDto(k: Kit): Promise<Json> {
     k.sourceIds.length ? db.select({ id: schema.sources.id, name: schema.sources.name, version: schema.sources.version, status: schema.sources.status, sensitive: schema.sources.sensitive })
       .from(schema.sources).where(inArray(schema.sources.id, k.sourceIds)) : Promise.resolve([]),
   ])
+  const master = arts.find((a) => a.type === 'master')
   return {
     id: k.id, title: k.title, desc: k.goal, goalText: d.goalText ?? '', audience: d.audience ?? '', goals: d.goals ?? [], takeaways: d.takeaways ?? [],
     metrics: d.metrics ?? [], practice: d.practice ?? 'balanced', delivery: d.delivery ?? 'self', plan: d.plan ?? [], warnings: d.warnings ?? [],
     skill: k.skillId, level: k.level, stage: k.stage, img: k.img, updated: fmt(k.updatedAt), updatedAt: k.updatedAt,
-    sources: srcs, sourceIds: k.sourceIds, artifacts: arts.map(artifactMeta), job: d.job ?? null, theme: d.theme ?? null,
+    sources: srcs, sourceIds: k.sourceIds, artifacts: arts.map(artifactMeta), job: d.job ?? null, theme: d.theme ?? null, bank: isBank(k),
+    // nội dung gốc: đã chốt phiên bản nào, bản nháp có thay đổi chưa chốt không
+    master: master ? { id: master.id, status: master.status, lockedVersion: master.publishedVersion, changed: master.status !== 'generating' && await hasUnpublishedChanges(master) } : null,
   }
 }
+
+/** Khóa ẩn chứa một đề trong Kho đề tạo thẳng từ tài liệu nguồn (không phải khóa học) */
+export const isBank = (k: { details: unknown }): boolean => !!(k.details as Json)?.bank
 
 /** Giao diện khóa (màu nhấn, font) lưu trong details */
 export const themeOf = (k: { details: unknown }): Json | null => ((k.details as Json)?.theme as Json) ?? null
@@ -70,7 +83,7 @@ export async function listKits(orgId: string): Promise<Json[]> {
     db.select().from(schema.artifacts).where(eq(schema.artifacts.orgId, orgId)).orderBy(schema.artifacts.createdAt),
     reviewSummaries(orgId),
   ])
-  return kits.map(({ k, by }) => ({
+  return kits.filter(({ k }) => !isBank(k)).map(({ k, by }) => ({
     id: k.id, title: k.title, desc: k.goal, skill: k.skillId, level: k.level, stage: k.stage, img: k.img, createdBy: by ?? '',
     updated: fmt(k.updatedAt), updatedAt: k.updatedAt, artifacts: arts.filter((a) => a.kitId === k.id).map(artifactMeta), review: reviews.get(k.id) ?? null,
   }))
@@ -120,14 +133,12 @@ defineJob('kit.draft', async ({ job, report }) => {
     level: k.level ?? Math.min(3, Math.max(1, r.level)),
   }, {
     audience: r.audience, goals: r.goals, takeaways: r.takeaways, metrics: r.metrics, practice: r.practice,
-    plan: ensureQr(r.plan).slice(0, 5), warnings: r.warnings, job: null,
+    plan: [{ type: 'master', title: MASTER_TITLE, summary: r.desc }], warnings: r.warnings, job: null,
   })
   return { kitId: k.id }
 })
 
-const ensureQr = (plan: PlanItem[]): PlanItem[] => plan.some((p) => p.type === 'qr') ? plan : [{ type: 'qr', title: 'Những điều cần biết', summary: 'Tài liệu nhanh tối đa 3 bài, kèm bài kiểm tra.' }, ...plan]
-
-// ---------- Job: dàn ý ----------
+// ---------- Job: dàn ý nội dung gốc ----------
 defineJob('kit.outline', async ({ job, report }) => {
   const k = await getKit(job.orgId, String(job.payload.kitId))
   const brief = await briefOf(k)
@@ -137,7 +148,7 @@ defineJob('kit.outline', async ({ job, report }) => {
   const out = await Promise.all(plan.map(async (p) => {
     if (p.outline || p.type === 'exam') return p
     const hits = await gather(k.orgId, k.sourceIds, [`${p.title}. ${p.summary}`, ...brief.goals.slice(0, 2)], 5, 10)
-    const outline = await draftOutline(k.orgId, p.type, brief, p, hits)
+    const outline = await draftOutline(k.orgId, p.type as DraftType, brief, p, hits)
     done++
     await report(10 + Math.round((85 * done) / plan.length), `Đã lập dàn ý: ${p.title}`)
     return { ...p, outline }
@@ -153,13 +164,23 @@ defineJob('kit.outline', async ({ job, report }) => {
 const srcRef = (code: string | null | undefined, hits: Hit[]): Json => {
   const m = code?.match(/S(\d+)/)
   const h = m ? hits[Number(m[1]) - 1] : undefined
-  return h ? { src: `${h.sourceName} · ${h.section}`, srcRef: { sourceId: h.sourceId, chunkId: h.id, version: h.version } } : {}
+  if (!h) return {}
+  // đoạn của nội dung gốc không trích tài liệu nguồn nào: chỉ ghi chỗ trong nội dung gốc
+  return h.sourceId ? { src: `${h.sourceName} · ${h.section}`, srcRef: { sourceId: h.sourceId, chunkId: h.id, version: h.version } } : { src: `${h.sourceName} · ${h.section}` }
+}
+/** Câu đúng/sai luôn đúng 2 lựa chọn theo thứ tự Đúng, Sai; giữ đáp án và giải thích AI trả về */
+export function tfChoices(cs: { t: string; ok: boolean; fb: string }[] | null | undefined): Json[] {
+  const isTrue = cs?.find((c) => /^đúng/i.test(c.t.trim()))
+  const isFalse = cs?.find((c) => /^sai/i.test(c.t.trim()))
+  const trueOk = isTrue ? isTrue.ok : isFalse ? !isFalse.ok : true
+  return [{ t: 'Đúng', ok: trueOk, fb: isTrue?.fb ?? '' }, { t: 'Sai', ok: !trueOk, fb: isFalse?.fb ?? '' }]
 }
 const NEEDS_SRC = new Set(['heading', 'para', 'list', 'flash', 'accordion', 'tabs', 'timeline', 'sorting', 'table', 'code', 'process'])
 const clean = (o: Json): Json => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null && v !== undefined))
 
-export function qrContent(r: QrDraft, kit: Kit, hits: Hit[], hasSources: boolean): Json {
-  const lessons = r.lessons.slice(0, 3).map((l) => ({
+/** maxLessons: Tài liệu nhanh tối đa 3 bài; nội dung gốc nhiều hơn. quiz=false: không có bài kiểm tra (nội dung gốc, bài lẻ) */
+export function qrContent(r: QrDraft, kit: Kit, hits: Hit[], hasSources: boolean, o: { maxLessons?: number; quiz?: boolean } = {}): Json {
+  const lessons = r.lessons.slice(0, o.maxLessons ?? 3).map((l) => ({
     id: uid('l'), kind: 'lesson', title: l.title,
     blocks: [{ id: uid('b'), t: 'image', img: l.img, cap: l.title }, ...l.blocks.filter((b) => b.t !== 'image').map((b) => {
       const { accordion, timeline, src, ...rest } = b
@@ -173,10 +194,11 @@ export function qrContent(r: QrDraft, kit: Kit, hits: Hit[], hasSources: boolean
   }))
   const questions = r.questions.map((q) => clean({
     id: uid('q'), type: q.type, level: Math.min(3, Math.max(1, q.level)), approved: false, q: q.q,
-    choices: q.choices ?? undefined, answer: q.answer, rubric: q.rubric, starter: q.starter,
+    choices: q.type === 'tf' ? tfChoices(q.choices) : q.choices ?? undefined, answer: q.answer, rubric: q.rubric, starter: q.starter,
     pairs: q.type === 'match' ? q.pairs : undefined, items: q.type === 'order' ? q.order : undefined, groups: q.type === 'cat' ? q.groups : undefined,
     tests: q.tests?.map((t) => ({ name: t.name, args: t.args, expected: t.expected })), ...srcRef(q.src, hits),
   }))
+  if (o.quiz === false) return { lessons }
   return {
     lessons: [...lessons, { id: 'quiz', kind: 'quiz', title: 'Bài kiểm tra' }],
     quiz: { mode: 'practice', skill: kit.skillId, level: kit.level ?? 1, passScore: 80, attempts: 3, minutes: 20, proctor: false, pick: Math.min(10, questions.length), questions },
@@ -210,7 +232,7 @@ export function scenarioContent(r: ScenarioDraft): Json {
   }
 }
 
-const IMG_OF: Record<string, string> = { qr: 'office', deck: 'desk', scenario: 'person', video: 'video', guide: 'screen', exam: 'desk' }
+const IMG_OF: Record<string, string> = { master: 'notes', qr: 'office', deck: 'desk', scenario: 'person', video: 'video', guide: 'screen', exam: 'desk' }
 
 export async function createArtifact(k: Kit, p: PlanItem, status: 'generating' | 'draft' = 'generating', content: Json = {}): Promise<Artifact> {
   const [a] = await db.insert(schema.artifacts).values({
@@ -228,26 +250,39 @@ defineJob('artifact.generate', async ({ job, report }) => {
   const p = (a.content as Json).plan as PlanItem
   const o = p.outline ?? {}
   try {
-    await report(10, 'Tìm đoạn nguồn liên quan')
     let content: Json
-    if (p.type === 'qr') {
+    let plan = p
+    if (p.type === 'master') {
+      // nội dung gốc: soạn thẳng từ tài liệu nguồn
+      await report(10, 'Tìm đoạn nguồn liên quan')
       const secs = (o.sections ?? []) as { t: string; items: string[] }[]
-      const hits = await gather(k.orgId, k.sourceIds, secs.length ? secs.map((s) => `${s.t}. ${s.items.join('. ')}`) : [p.title], 4, 16)
-      await report(30, 'Viết bài học và câu hỏi')
-      content = qrContent(await draftQr(k.orgId, brief, p, { sections: secs.length ? secs : [{ t: p.title, items: [] }] }, hits), k, hits, k.sourceIds.length > 0)
-    } else if (p.type === 'deck' || p.type === 'video') {
-      const titles = ((p.type === 'deck' ? o.slides : o.chapters) ?? [p.title]) as string[]
-      const hits = await gather(k.orgId, k.sourceIds, titles, 3, 14)
-      await report(30, p.type === 'deck' ? 'Viết slide và ghi chú' : 'Viết kịch bản video')
-      const r = await draftDeck(k.orgId, brief, p, titles, hits, p.type === 'video')
-      content = p.type === 'deck' ? deckContent(r, hits) : videoContent(r, hits)
+      const hits = await gather(k.orgId, k.sourceIds, secs.length ? secs.map((s) => `${s.t}. ${s.items.join('. ')}`) : [p.title], 4, 24)
+      await report(30, 'Viết nội dung gốc')
+      const r = await draftQr(k.orgId, brief, p, { sections: secs.length ? secs : [{ t: k.title, items: [] }] }, hits, 'master')
+      content = qrContent(r, k, hits, k.sourceIds.length > 0, { maxLessons: MAX_MASTER_LESSONS, quiz: false })
     } else {
-      const so = { character: o.character ?? 'Chị Lan · Trưởng nhóm', learner: o.learner ?? brief.audience, situation: o.situation ?? p.summary, goals: o.goals ?? [p.title] }
-      const hits = await gather(k.orgId, k.sourceIds, [so.situation, ...so.goals], 3, 12)
-      await report(30, 'Viết lời thoại và lựa chọn')
-      content = scenarioContent(await draftScenario(k.orgId, brief, p, so, hits))
+      // định dạng cho người học: soạn từ phiên bản nội dung gốc đã chốt
+      await report(10, 'Đọc nội dung gốc đã chốt')
+      const m = await requireLocked(k.id)
+      const hits = masterHits(m.content)
+      const lessons = masterLessons(m.content)
+      plan = { ...p, basedOn: m.version }
+      if (p.type === 'qr') {
+        const secs = (o.sections ?? []) as { t: string; items: string[] }[]
+        await report(30, 'Tóm gọn thành bài học và câu hỏi')
+        content = qrContent(await draftQr(k.orgId, brief, p, { sections: secs.length ? secs : lessons.slice(0, 3) }, hits), k, hits, true)
+      } else if (p.type === 'deck' || p.type === 'video') {
+        const titles = ((p.type === 'deck' ? o.slides : o.chapters) ?? [k.title, ...lessons.map((l) => l.t)]) as string[]
+        await report(30, p.type === 'deck' ? 'Viết slide và ghi chú' : 'Viết kịch bản video')
+        const r = await draftDeck(k.orgId, brief, p, titles, hits, p.type === 'video')
+        content = p.type === 'deck' ? deckContent(r, hits) : videoContent(r, hits)
+      } else {
+        const so = { character: o.character ?? 'Chị Lan · Trưởng nhóm', learner: o.learner ?? brief.audience, situation: o.situation ?? p.summary, goals: o.goals ?? lessons.slice(0, 3).map((l) => l.t) }
+        await report(30, 'Viết lời thoại và lựa chọn')
+        content = scenarioContent(await draftScenario(k.orgId, brief, p, so, hits))
+      }
     }
-    await db.update(schema.artifacts).set({ content: { ...content, plan: p }, status: a.publishedVersion ? 'published' : 'draft', updatedAt: new Date() }).where(eq(schema.artifacts.id, a.id))
+    await db.update(schema.artifacts).set({ content: { ...content, plan }, status: a.publishedVersion ? 'published' : 'draft', updatedAt: new Date() }).where(eq(schema.artifacts.id, a.id))
     return { artifactId: a.id }
   } catch (e) {
     if (job.attempts >= 2) await db.update(schema.artifacts).set({ status: 'failed', updatedAt: new Date() }).where(eq(schema.artifacts.id, a.id))

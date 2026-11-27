@@ -5,7 +5,10 @@ import { eq } from 'drizzle-orm'
 import { db, schema } from '../../db/client.js'
 import { defineJob } from '../../lib/jobs.js'
 import { generateQuestions } from '../artifacts/ai-edit.js'
+import { QUESTION_TYPES } from './ai.js'
+import type { Hit } from '../sources/service.js'
 import { getKit, type Kit } from './service.js'
+import { lockedMaster, masterHits } from './master.js'
 
 type Json = Record<string, unknown>
 
@@ -19,7 +22,9 @@ export const ExamSpec = z.object({
   minutes: z.number().int().min(5).max(240).default(30),
   passScore: z.number().int().min(1).max(100).default(80),
   attempts: z.number().int().min(1).max(10).default(2),
-  proctor: z.boolean().default(true),
+  proctor: z.boolean().default(false),
+  // dạng câu muốn có; bỏ trống thì AI chọn theo mức
+  types: z.array(z.enum(QUESTION_TYPES)).max(QUESTION_TYPES.length).optional(),
 })
 export type ExamSpec = z.infer<typeof ExamSpec>
 
@@ -34,11 +39,11 @@ export function examPlan(k: Kit, spec: ExamSpec): { type: 'exam'; title: string;
 }
 
 /** Soạn ngân hàng câu: lần lượt từng mức để AI tránh câu trùng */
-export async function buildExam(k: Kit, spec: ExamSpec, report: (p: number, m: string) => Promise<void>): Promise<Json> {
+export async function buildExam(k: Kit, spec: ExamSpec, report: (p: number, m: string) => Promise<void>, hits?: Hit[]): Promise<Json> {
   const questions: Json[] = []
   for (const [i, level] of spec.levels.entries()) {
     await report(10 + Math.round((80 * i) / spec.levels.length), `AI soạn câu hỏi mức ${level}`)
-    const qs = await generateQuestions(k, level, spec.perLevel, spec.focus, questions.map((q) => String(q.q)))
+    const qs = await generateQuestions(k, level, spec.perLevel, spec.focus, questions.map((q) => String(q.q)), { types: spec.types, hits })
     questions.push(...qs)
   }
   return {
@@ -54,8 +59,10 @@ defineJob('exam.generate', async ({ job, report }) => {
   if (!a) return
   const plan = (a.content as Json).plan as { outline: unknown }
   try {
-    const content = await buildExam(await getKit(a.orgId, a.kitId), ExamSpec.parse(plan.outline), report)
-    await db.update(schema.artifacts).set({ content: { ...content, plan }, status: 'draft', updatedAt: new Date() }).where(eq(schema.artifacts.id, a.id))
+    // khóa đã chốt nội dung gốc: ra đề từ nội dung gốc; đề trong kho đề tạo từ tài liệu: ra đề từ tài liệu nguồn
+    const m = await lockedMaster(a.kitId)
+    const content = await buildExam(await getKit(a.orgId, a.kitId), ExamSpec.parse(plan.outline), report, m ? masterHits(m.content) : undefined)
+    await db.update(schema.artifacts).set({ content: { ...content, plan: { ...plan, ...(m ? { basedOn: m.version } : {}) } }, status: a.publishedVersion ? 'published' : 'draft', updatedAt: new Date() }).where(eq(schema.artifacts.id, a.id))
     return { artifactId: a.id }
   } catch (e) {
     if (job.attempts >= 2) await db.update(schema.artifacts).set({ status: 'failed', updatedAt: new Date() }).where(eq(schema.artifacts.id, a.id))

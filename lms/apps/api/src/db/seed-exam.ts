@@ -55,7 +55,7 @@ const QUESTIONS: Json[] = [
 const QUIZ = { mode: 'official', pick: 6, level: 2, skill: 'sec', minutes: 20, attempts: 2, passScore: 80, questions: QUESTIONS }
 const CONTENT = {
   plan: {
-    type: 'exam', title: EXAM_TITLE, summary: 'Đề kiểm tra · mức 1, 2 · 20 phút · đạt từ 80%',
+    type: 'exam', basedOn: 1, title: EXAM_TITLE, summary: 'Đề kiểm tra · mức 1, 2 · 20 phút · đạt từ 80%',
     outline: { mode: 'official', pick: 6, focus: '', title: '', levels: [1, 2], minutes: 20, attempts: 2, perLevel: 3, passScore: 80 },
   },
   quiz: QUIZ,

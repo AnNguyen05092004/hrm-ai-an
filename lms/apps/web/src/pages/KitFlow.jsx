@@ -27,7 +27,7 @@ export function KitHeader({ kit, step, saveText }) {
       </div>
       {step && (
         <div className="flex h-12 items-center justify-center gap-4 border-b border-line text-[15px]">
-          {['Chi tiết', 'Dàn ý', 'Bản nháp'].map((s, i) => (
+          {['Chi tiết', 'Dàn ý', 'Nội dung gốc'].map((s, i) => (
             <span key={s} className="flex items-center gap-4">
               <span className={i === step - 1 ? 'font-medium text-ink' : 'text-neutral-500'}>{s}</span>
               {i < 2 && <ChevronRight size={16} className="text-neutral-400" />}
@@ -44,8 +44,8 @@ export function BottomBar({ children }) {
 }
 
 const STEPS = {
-  details: ['Đọc tài liệu nguồn', 'Viết mục tiêu, đối tượng và kế hoạch tài liệu', 'Hoàn tất'],
-  outline: ['Tìm đoạn nguồn liên quan', 'Lập dàn ý từng tài liệu', 'Hoàn tất'],
+  details: ['Đọc tài liệu nguồn', 'Viết mục tiêu và đối tượng', 'Hoàn tất'],
+  outline: ['Tìm đoạn nguồn liên quan', 'Lập dàn ý nội dung gốc', 'Hoàn tất'],
 }
 
 /** Màn chờ AI: theo dõi job thật, xong thì sang bước tiếp */
@@ -87,7 +87,7 @@ export function KitLoading() {
           </div>
         ) : <>
           <div className="text-center"><Spinner size={56} w={3} /></div>
-          <h2 className="mt-6 text-center text-[22px] font-semibold">{next === 'outline' ? 'Đang lập dàn ý…' : 'Đang soạn chi tiết khóa học…'}</h2>
+          <h2 className="mt-6 text-center text-[22px] font-semibold">{next === 'outline' ? 'Đang lập dàn ý nội dung gốc…' : 'Đang soạn chi tiết khóa học…'}</h2>
           <p className="mt-2 text-center text-[15px] text-neutral-600">{job?.message || kit.data?.title}</p>
           <div className="mt-6 h-1.5 rounded-full bg-neutral-100"><div className="h-1.5 rounded-full bg-ink transition-all duration-500" style={{ width: `${Math.max(p, 6)}%` }} /></div>
           <div className="mt-6 space-y-2.5">
@@ -149,7 +149,6 @@ export function KitDetails() {
   const { say } = useStore()
   const { doc: kit, up, saveState, flush, error } = useKit(id)
   const skills = useSkills()
-  const [add, setAdd] = useState(null)
   const [busy, setBusy] = useState(false)
   if (error) return <div className="p-10">{error.message}</div>
   if (!kit) return <Loading />
@@ -204,46 +203,29 @@ export function KitDetails() {
 
         <section className="px-12 py-6">
           <span className="grid h-8 w-8 place-items-center rounded-full bg-sky-600 text-[15px] font-semibold text-white">2</span>
-          <h2 className="mt-4 text-[28px] font-semibold">Rà kế hoạch tài liệu</h2>
-          <p className="mt-2 text-[15px]">Xem từng tài liệu và xác nhận mục đích, trọng tâm đúng với điều bạn muốn tạo.</p>
-          <div className="mt-8 grid max-w-[780px] grid-cols-2 gap-4">
-            {kit.plan.map((p, i) => (
-              <div key={i} className="group card p-5">
-                <div className="flex items-center gap-2.5">
-                  <FormatIcon type={p.type} size={30} r={8} />
-                  <span className="text-[14px] font-medium">{FORMATS[p.type].name}</span>
-                  <div className="flex-1" />
-                  <button onClick={() => up((x) => { x.plan.splice(i, 1) })} className="grid h-8 w-8 place-items-center rounded-lg bg-red-50 text-red-600 opacity-0 transition group-hover:opacity-100" aria-label="Bỏ tài liệu"><Trash2 size={16} /></button>
-                </div>
-                <div className="mt-4 text-[17px] font-semibold leading-snug"><Editable value={p.title} className="block" placeholder="Tên tài liệu" onChange={(v) => up((x) => { x.plan[i].title = v })} /></div>
-                <div className="mt-2 text-[14px] leading-relaxed"><Editable value={p.summary} multiline className="block" placeholder="Mục đích, trọng tâm" onChange={(v) => up((x) => { x.plan[i].summary = v })} /></div>
-                <div className="mt-3 flex items-center gap-2 border-t border-line pt-3 text-[13px] text-neutral-600"><FileText size={14} />{kit.sources.length ? `${kit.sources.length} nguồn` : 'Không có nguồn'}</div>
-              </div>
+          <h2 className="mt-4 text-[28px] font-semibold">Khóa sẽ được soạn thế nào</h2>
+          <p className="mt-2 max-w-[640px] text-[15px]">Soạn và duyệt nội dung một lần, rồi mới làm các định dạng cho người học. Mọi định dạng đều lấy từ cùng một bản nội dung đã chốt nên luôn khớp nhau.</p>
+          <ol className="mt-8 max-w-[680px] space-y-4">
+            {[
+              ['Dàn ý nội dung gốc', 'AI đề xuất các bài và ý chính từ tài liệu nguồn. Bạn thêm, bớt, sắp lại.'],
+              ['Soạn và duyệt nội dung gốc', 'AI viết đầy đủ từng bài, mỗi đoạn ghi nguồn. Bạn sửa, mời chuyên gia review, rồi bấm Chốt nội dung.'],
+              ['Tạo định dạng từ bản đã chốt', 'Chọn Tài liệu nhanh, Bộ slide, Video, Tình huống, Đề kiểm tra. AI soạn từ nội dung gốc, không đọc lại tài liệu nguồn nên không lệch nhau.'],
+            ].map(([t, d], i) => (
+              <li key={t} className="card flex gap-4 p-5"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-neutral-100 text-[14px] font-semibold">{i + 1}</span><div><div className="text-[16px] font-semibold">{t}</div><p className="mt-1 text-[14px] leading-relaxed text-neutral-600">{d}</p></div></li>
             ))}
-          </div>
-          <div className="my-8 h-px max-w-[780px] bg-line" />
-          <div className="mb-3 text-[15px] font-semibold">Thêm tài liệu</div>
-          <div className="grid max-w-[780px] grid-cols-4 gap-3">
-            {GEN_FORMATS.map((k) => (
-              <button key={k} onClick={() => setAdd(k)} className="card relative p-3.5 text-left transition hover:shadow-pop">
-                <FormatIcon type={k} size={32} r={8} /><Plus size={18} className="absolute right-3 top-4 text-neutral-500" />
-                <div className="mt-3 text-[15px] font-semibold leading-tight">{FORMATS[k].name}</div>
-                <div className="mt-1 text-[12px] leading-snug text-neutral-600">{FORMATS[k].desc}</div>
-              </button>
-            ))}
-          </div>
+          </ol>
+          <div className="mt-6 flex max-w-[680px] flex-wrap gap-2">{['qr', 'deck', 'video', 'scenario', 'exam'].map((k) => <span key={k} className="flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-[13px]"><FormatIcon type={k} size={22} r={6} />{FORMATS[k].name}</span>)}</div>
         </section>
       </div>
       <BottomBar>
-        <button className="btn-dark h-12 px-6 text-[16px]" disabled={!kit.plan.length || busy} onClick={toOutline}>{busy ? <Spinner size={18} w={2} /> : <>Tạo dàn ý<ArrowRight size={18} /></>}</button>
+        <button className="btn-dark h-12 px-6 text-[16px]" disabled={!kit.plan.length || busy} onClick={toOutline}>{busy ? <Spinner size={18} w={2} /> : <>Lập dàn ý nội dung gốc<ArrowRight size={18} /></>}</button>
       </BottomBar>
-      <AddArtifact kitId={id} open={!!add} initial={add || 'deck'} onClose={() => setAdd(null)} onAdd={(item) => { setAdd(null); up((x) => { x.plan.push(item) }); say('Đã thêm tài liệu vào kế hoạch') }} />
     </div>
   )
 }
 
 // Dàn ý sửa tại chỗ: bấm vào dòng nào sửa dòng đó, Enter thêm ý, lưu ngay vào kế hoạch
-function OutlineCard({ idx, type, title, summary, o, sel, onSel, onDel, onPatch }) {
+function OutlineCard({ idx, type, title, summary, o, onDel, onPatch }) {
   const f = FORMATS[type]
   const put = (outline) => onPatch({ outline })
   const secs = o.sections ?? []
@@ -251,15 +233,15 @@ function OutlineCard({ idx, type, title, summary, o, sel, onSel, onDel, onPatch 
   const key = type === 'deck' ? 'slides' : 'chapters'
   const list = o[key] ?? []
   return (
-    <div id={`o-${idx}`} className="group/card relative" onMouseDown={onSel}>
-      <div className={`card ${sel ? 'ring-1 ring-violet-300' : ''}`}>
+    <div id={`o-${idx}`} className="group/card relative">
+      <div className="card">
         <div className="flex gap-4 p-5">
           <FormatIcon type={type} size={40} />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 text-[15px] text-neutral-600">{f.name}<div className="flex-1" /><button onClick={onDel} title="Bỏ tài liệu này khỏi kế hoạch" className="icon-btn h-8 w-8 opacity-0 group-hover/card:opacity-100"><Trash2 size={16} /></button></div>
+            <div className="flex items-center gap-1.5 text-[15px] text-neutral-600">{f.name}<div className="flex-1" />{onDel && <button onClick={onDel} title="Bỏ tài liệu này khỏi kế hoạch" className="icon-btn h-8 w-8 opacity-0 group-hover/card:opacity-100"><Trash2 size={16} /></button>}</div>
             <div className="mt-1 text-[19px] font-semibold"><Editable value={title} className="block" placeholder="Tên tài liệu" onChange={(v) => onPatch({ title: v })} /></div>
             <div className="mt-1 text-[15px] leading-relaxed"><Editable value={summary} multiline className="block" placeholder="Mục đích, trọng tâm của tài liệu" onChange={(v) => onPatch({ summary: v })} /></div>
-            {type === 'qr' && <>
+            {(type === 'qr' || type === 'master') && <>
               {secs.map((s, i) => (
                 <div key={i} className="group/l mt-4">
                   <div className="flex items-center gap-2 font-semibold"><span className="h-1 w-1 shrink-0 rounded-full bg-ink" /><Editable value={s.t} className="block flex-1" placeholder={`Tên bài ${i + 1}`} onChange={(v) => setSecs((x) => { x[i].t = v; return x })} />
@@ -272,8 +254,8 @@ function OutlineCard({ idx, type, title, summary, o, sel, onSel, onDel, onPatch 
                   <div className="ml-2 mt-1.5 border-l-2 border-line pl-3"><EditableList items={s.items.length ? s.items : ['']} placeholder="Ý chính" itemClass="block py-1 text-[15px]" onChange={(v) => setSecs((x) => { x[i].items = v; return x })} render={(el) => el} /></div>
                 </div>
               ))}
-              {secs.length < 3 && <button onClick={() => setSecs((x) => [...x, { t: '', items: [''] }])} className="mt-4 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[14px] font-medium text-neutral-600 hover:bg-neutral-100 hover:text-ink"><Plus size={15} />Thêm bài</button>}
-              <p className="mt-3 text-[14px] italic text-neutral-500">Tài liệu nhanh tối đa 3 bài. Bài kiểm tra được tạo từ nội dung, theo mức kỹ năng đã chọn. Ý nào không có trong tài liệu nguồn sẽ được đánh dấu thiếu căn cứ.</p>
+              {secs.length < (type === 'master' ? 8 : 3) && <button onClick={() => setSecs((x) => [...x, { t: '', items: [''] }])} className="mt-4 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[14px] font-medium text-neutral-600 hover:bg-neutral-100 hover:text-ink"><Plus size={15} />Thêm bài</button>}
+              <p className="mt-3 text-[14px] italic text-neutral-500">{type === 'master' ? 'Nội dung gốc tối đa 8 bài, viết đầy đủ để duyệt; các định dạng cho người học được soạn từ bản này sau khi chốt.' : 'Tài liệu nhanh tối đa 3 bài. Bài kiểm tra được tạo từ nội dung, theo mức kỹ năng đã chọn.'} Ý nào không có trong tài liệu nguồn sẽ được đánh dấu thiếu căn cứ.</p>
             </>}
             {type === 'scenario' && <>
               <div className="mt-4 font-semibold">· Nhân vật</div><div className="ml-3 mt-1 flex items-center gap-2"><Avatar text={(o.character || '?')[0]} size={26} color="#475569" /><Editable value={o.character} className="font-semibold" placeholder="Tên · vai trò" onChange={(v) => put({ ...o, character: v })} /></div>
@@ -299,9 +281,7 @@ export function KitOutline() {
   const qc = useQueryClient()
   const { doc: kit, up, saveState, flush } = useKit(id)
   const skills = useSkills()
-  const [sel, setSel] = useState(0)
   const [det, setDet] = useState(false)
-  const [add, setAdd] = useState(null)
   const [busy, setBusy] = useState(false)
   if (!kit) return <Loading />
   const missing = kit.plan.filter((p) => !p.outline).length
@@ -318,39 +298,27 @@ export function KitOutline() {
   return (
     <div className="min-h-full pb-28">
       <KitHeader kit={kit} step={2} saveText={saveLabel(saveState)} />
-      <div className="grid grid-cols-[280px_1fr]">
-        <aside className="sticky top-[104px] self-start px-6 py-6">
-          {kit.plan.map((p, i) => (
-            <button key={i} onClick={() => { setSel(i); document.getElementById(`o-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }} className={`mb-1 flex w-full gap-3 rounded-xl border p-2.5 text-left ${sel === i ? 'border-neutral-400' : 'border-transparent hover:bg-neutral-50'}`}>
-              <FormatIcon type={p.type} size={32} r={8} />
-              <div><div className="text-[12px] text-neutral-500">{FORMATS[p.type].name}</div><div className="text-[15px] font-medium leading-snug">{p.title || 'Chưa đặt tên'}</div></div>
-            </button>
-          ))}
-          <button onClick={() => setAdd('deck')} className="btn-line mt-4 h-11 w-full"><Plus size={18} />Thêm tài liệu</button>
-        </aside>
-        <section className="max-w-[780px] px-8 py-7">
-          <h2 className="text-[28px] font-semibold">Rà dàn ý</h2>
-          <p className="mt-1 text-[15px]">Xem từng dàn ý và sửa cho khớp với mục tiêu của bạn.</p>
-          <div className="card mt-6">
-            <button onClick={() => setDet(!det)} className="flex w-full items-center gap-3 px-5 py-3.5 text-[16px]">{det ? <ChevronDown size={18} /> : <ChevronRight size={18} />}Chi tiết đào tạo</button>
-            {det && <div className="grid grid-cols-2 gap-4 border-t border-line px-5 py-4 text-[14px]">
-              <div><b>Đối tượng</b><p className="mt-1">{kit.audience}</p></div>
-              <div><b>Kỹ năng</b><p className="mt-1">{skills.find((s) => s.id === kit.skill)?.name ?? 'Chưa chọn'} · đưa tới mức {kit.level}</p></div>
-              <div><b>Mục tiêu</b>{kit.goals.map((g) => <p key={g}>· {g}</p>)}</div>
-              <div><b>Chỉ số thành công</b>{kit.metrics.map((g) => <p key={g}>· {g}</p>)}</div>
-            </div>}
-          </div>
-          <div className="mt-8 space-y-8">
-            {kit.plan.map((p, i) => p.outline
-              ? <OutlineCard key={i} idx={i} {...p} o={p.outline} sel={sel === i} onSel={() => setSel(i)} onDel={() => up((x) => { x.plan.splice(i, 1) })} onPatch={(ch) => up((x) => { Object.assign(x.plan[i], ch) })} />
-              : <div key={i} id={`o-${i}`} className="card flex items-center gap-4 p-5"><FormatIcon type={p.type} size={40} /><div className="flex-1"><div className="text-[17px] font-semibold">{p.title}</div><div className="text-[14px] text-neutral-500">Chưa có dàn ý. Bấm nút dưới để AI lập dàn ý cho tài liệu mới thêm.</div></div><button onClick={() => up((x) => { x.plan.splice(i, 1) })} className="icon-btn" aria-label="Bỏ"><Trash2 size={16} /></button></div>)}
-          </div>
-        </section>
-      </div>
+      <section className="mx-auto max-w-[820px] px-8 py-7">
+        <h2 className="text-[28px] font-semibold">Rà dàn ý nội dung gốc</h2>
+        <p className="mt-1 text-[15px]">Các bài và ý chính AI đề xuất từ tài liệu nguồn. Sửa cho khớp mục tiêu, rồi để AI viết nội dung gốc đầy đủ.</p>
+        <div className="card mt-6">
+          <button onClick={() => setDet(!det)} className="flex w-full items-center gap-3 px-5 py-3.5 text-[16px]">{det ? <ChevronDown size={18} /> : <ChevronRight size={18} />}Chi tiết đào tạo</button>
+          {det && <div className="grid grid-cols-2 gap-4 border-t border-line px-5 py-4 text-[14px]">
+            <div><b>Đối tượng</b><p className="mt-1">{kit.audience}</p></div>
+            <div><b>Kỹ năng</b><p className="mt-1">{skills.find((s) => s.id === kit.skill)?.name ?? 'Chưa chọn'} · đưa tới mức {kit.level}</p></div>
+            <div><b>Mục tiêu</b>{kit.goals.map((g) => <p key={g}>· {g}</p>)}</div>
+            <div><b>Chỉ số thành công</b>{kit.metrics.map((g) => <p key={g}>· {g}</p>)}</div>
+          </div>}
+        </div>
+        <div className="mt-8 space-y-8">
+          {kit.plan.map((p, i) => p.outline
+            ? <OutlineCard key={i} idx={i} {...p} o={p.outline} onDel={kit.plan.length > 1 ? () => up((x) => { x.plan.splice(i, 1) }) : undefined} onPatch={(ch) => up((x) => { Object.assign(x.plan[i], ch) })} />
+            : <div key={i} id={`o-${i}`} className="card flex items-center gap-4 p-5"><FormatIcon type={p.type} size={40} /><div className="flex-1"><div className="text-[17px] font-semibold">{p.title}</div><div className="text-[14px] text-neutral-500">Chưa có dàn ý. Bấm nút dưới để AI lập dàn ý.</div></div></div>)}
+        </div>
+      </section>
       <BottomBar>
-        <button className="btn-dark h-12 px-6 text-[16px]" disabled={!kit.plan.length || busy} onClick={gen}>{busy ? <Spinner size={18} w={2} /> : <><Sparkles size={18} className="text-violet-300" />{missing ? `Lập dàn ý cho ${missing} tài liệu mới` : `Tạo ${kit.plan.length} tài liệu`}</>}</button>
+        <button className="btn-dark h-12 px-6 text-[16px]" disabled={!kit.plan.length || busy} onClick={gen}>{busy ? <Spinner size={18} w={2} /> : <><Sparkles size={18} className="text-violet-300" />{missing ? 'Lập dàn ý' : 'Soạn nội dung gốc'}</>}</button>
       </BottomBar>
-      <AddArtifact kitId={id} open={!!add} initial={add || 'deck'} onClose={() => setAdd(null)} onAdd={(item) => { setAdd(null); up((x) => { x.plan.push(item) }); say('Đã thêm, bấm "Lập dàn ý" để AI soạn dàn ý cho tài liệu này') }} />
     </div>
   )
 }

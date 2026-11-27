@@ -20,7 +20,7 @@ import { getKit, themeOf } from './service.js'
 
 type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 const ORDER = ['qr', 'deck', 'scenario', 'video', 'guide']
-const AUTO = new Set(['mc', 'mr', 'fill', 'match', 'order', 'cat'])
+const AUTO = new Set(['mc', 'mr', 'tf', 'fill', 'match', 'order', 'cat'])
 const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' }
 
 const playerDir = (): string => process.env.SCORM_PLAYER_DIR ?? path.resolve(process.cwd(), '../web/dist-scorm')

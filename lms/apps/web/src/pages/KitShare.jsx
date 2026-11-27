@@ -5,6 +5,7 @@ import { Check, AlertTriangle, Sparkles, PackageOpen, Download } from 'lucide-re
 import { useStore } from '../store'
 import { FORMATS, LEVELS } from '../data'
 import { Modal, Spinner, FormatGlyph } from '../ui'
+import { TypePicker } from './QuizSheet'
 import { get, post } from '../api'
 
 export function KitExportModal({ open, onClose, kit, onChanged }) {
@@ -105,25 +106,58 @@ function ExamExport({ kit, exams }) {
   )
 }
 
-/** Đề kiểm tra riêng: AI soạn ngân hàng câu theo mức, mỗi người thi một đề rút ngẫu nhiên */
+/**
+ * Tạo đề kiểm tra: AI soạn ngân hàng câu theo mức và dạng câu.
+ * Có kit: ra đề từ nội dung gốc đã chốt của khóa đó. Không có kit (Kho đề): chọn một khóa học, hoặc chọn thẳng tài liệu nguồn.
+ */
 export function ExamCreateModal({ open, onClose, kit, onCreated }) {
   const { say } = useStore()
-  const top = Math.min(3, kit.level ?? 2)
-  const [o, setO] = useState(() => ({ title: '', focus: '', levels: [...new Set([Math.max(1, top - 1), top])], perLevel: 5, pick: 8, mode: 'official', minutes: 30, passScore: 80, attempts: 2, proctor: false }))
+  const [from, setFrom] = useState('kit')
+  const [kitId, setKitId] = useState('')
+  const [sourceIds, setSourceIds] = useState([])
+  const kits = useQuery({ queryKey: ['kits'], queryFn: () => get('/kits'), enabled: open && !kit })
+  const sources = useQuery({ queryKey: ['sources'], queryFn: () => get('/sources'), enabled: open && !kit && from === 'sources' })
+  // khóa có thể ra đề: đã chốt nội dung gốc
+  const ready = (kits.data ?? []).filter((k) => k.artifacts.some((a) => a.type === 'master' && a.publishedVersion))
+  const chosen = kit ?? ready.find((k) => k.id === kitId)
+  const top = Math.min(3, chosen?.level ?? 2)
+  const [o, setO] = useState(() => ({ title: '', focus: '', levels: [...new Set([Math.max(1, top - 1), top])], perLevel: 5, pick: 8, mode: 'official', minutes: 30, passScore: 80, attempts: 2, types: [] }))
   const [busy, setBusy] = useState(false)
   const set = (k, v) => setO((x) => ({ ...x, [k]: v }))
   const total = o.levels.length * o.perLevel
+  const bySources = !kit && from === 'sources'
+  const canRun = o.levels.length > 0 && (kit || (bySources ? sourceIds.length > 0 && o.title.trim().length >= 3 : !!kitId))
   const run = async () => {
     setBusy(true)
-    try { await post(`/kits/${kit.id}/exams`, { ...o, pick: Math.min(o.pick, total) }); say('AI đang soạn đề kiểm tra'); onCreated(); onClose() } catch (e) { say(e.message) } finally { setBusy(false) }
+    const spec = { ...o, pick: Math.min(o.pick, total) }
+    try {
+      const r = await post('/exams', bySources ? { ...spec, from: 'sources', sourceIds } : { ...spec, from: 'kit', kitId: kit?.id ?? kitId })
+      say('AI đang soạn đề kiểm tra'); onCreated(r); onClose()
+    } catch (e) { say(e.message) } finally { setBusy(false) }
   }
   const num = (k, l, u, min, max) => <label className="text-[14px]"><div className="mb-1 font-medium">{l}</div><div className="flex items-center gap-2"><input type="number" min={min} max={max} className="field py-1.5 text-right" value={o[k]} onChange={(e) => set(k, Math.max(min, Math.min(max, +e.target.value || min)))} /><span className="w-10 text-neutral-500">{u}</span></div></label>
+  const ground = kit ? 'nội dung gốc đã chốt của khóa' : bySources ? 'tài liệu nguồn bạn chọn' : 'nội dung gốc đã chốt của khóa học bạn chọn'
   return (
-    <Modal open={open} onClose={onClose} w={600} title="Tạo đề kiểm tra" sub="AI soạn ngân hàng câu hỏi theo mức từ tài liệu nguồn của khóa, mỗi câu gắn nguồn. Bạn duyệt từng câu rồi xuất đề kèm đáp án (QTI 2.1) cho LMS công ty; mỗi lượt thi rút ngẫu nhiên từ các câu đã duyệt."
-      footer={<button className="btn-dark h-10" disabled={busy || !o.levels.length} onClick={run}>{busy ? <Spinner size={18} w={2} /> : <><Sparkles size={16} />Soạn {total} câu</>}</button>}>
+    <Modal open={open} onClose={onClose} w={620} title="Tạo đề kiểm tra" sub={`AI soạn ngân hàng câu hỏi từ ${ground}, mỗi câu gắn nguồn. Bạn duyệt từng câu rồi xuất đề kèm đáp án (QTI 2.1) cho LMS công ty; mỗi lượt thi rút ngẫu nhiên từ các câu đã duyệt.`}
+      footer={<button className="btn-dark h-10" disabled={busy || !canRun} onClick={run}>{busy ? <Spinner size={18} w={2} /> : <><Sparkles size={16} />Soạn {total} câu</>}</button>}>
       <div className="space-y-4 text-[14px]">
-        <label className="block"><div className="mb-1 font-medium">Tên đề</div><input className="field py-2" value={o.title} maxLength={200} onChange={(e) => set('title', e.target.value)} placeholder={`Đề kiểm tra: ${kit.title}`} /></label>
-        <div><div className="mb-1 font-medium">Mức câu hỏi</div><div className="flex flex-wrap gap-2">{LEVELS.filter((l) => l.v <= 3).map((l) => { const on = o.levels.includes(l.v); return <button key={l.v} onClick={() => set('levels', on ? o.levels.filter((x) => x !== l.v) : [...o.levels, l.v].sort())} className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-left ${on ? 'border-ink bg-ink text-white' : 'border-line hover:bg-neutral-50'}`}>{on && <Check size={14} />}<b>Mức {l.v}</b> <span className={`text-[12px] ${on ? 'text-white/70' : 'text-neutral-500'}`}>{l.kinds}</span></button> })}</div></div>
+        {!kit && <div>
+          <div className="mb-1 font-medium">Ra đề từ</div>
+          <div className="grid grid-cols-2 gap-2">{[['kit', 'Khóa học có sẵn', 'Dùng nội dung gốc đã chốt'], ['sources', 'Tài liệu nguồn', 'Đề đứng riêng, không thuộc khóa nào']].map(([k, t, d]) => (
+            <button key={k} type="button" onClick={() => setFrom(k)} className={`rounded-xl border px-3 py-2.5 text-left ${from === k ? 'border-ink bg-neutral-50' : 'border-line hover:bg-neutral-50'}`}><div className="font-semibold">{t}</div><div className="text-[12px] text-neutral-600">{d}</div></button>))}</div>
+          {from === 'kit' && <>
+            <select className="field mt-2 py-2" value={kitId} onChange={(e) => setKitId(e.target.value)} aria-label="Khóa học"><option value="">Chọn khóa học</option>{ready.map((k) => <option key={k.id} value={k.id}>{k.title}</option>)}</select>
+            {kits.data && ready.length < kits.data.length && <p className="mt-1 text-[12px] text-neutral-500">Chỉ hiện khóa đã chốt nội dung gốc ({ready.length}/{kits.data.length} khóa).</p>}
+          </>}
+          {from === 'sources' && <div className="mt-2 max-h-[180px] divide-y divide-line overflow-y-auto rounded-xl border border-line">
+            {sources.isLoading && <div className="p-3"><Spinner size={18} w={2} /></div>}
+            {(sources.data ?? []).map((x) => <label key={x.id} className={`flex items-center gap-2 px-3 py-2 ${x.status === 'ready' ? '' : 'opacity-50'}`}><input type="checkbox" disabled={x.status !== 'ready'} checked={sourceIds.includes(x.id)} onChange={(e) => setSourceIds((v) => (e.target.checked ? [...v, x.id] : v.filter((y) => y !== x.id)))} /><span className="flex-1 truncate">{x.name}</span><span className="text-[12px] text-neutral-500">v{x.version}</span></label>)}
+            {sources.data?.length === 0 && <p className="p-3 text-neutral-500">Chưa có tài liệu nguồn. Tải lên ở Thư viện → Tài liệu nguồn.</p>}
+          </div>}
+        </div>}
+        <label className="block"><div className="mb-1 font-medium">Tên đề{bySources && ' (bắt buộc)'}</div><input className="field py-2" value={o.title} maxLength={200} onChange={(e) => set('title', e.target.value)} placeholder={chosen ? `Đề kiểm tra: ${chosen.title}` : 'Ví dụ: Đề kiểm tra quy định an toàn thông tin'} /></label>
+        <div><div className="mb-1 font-medium">Mức câu hỏi</div><div className="flex flex-wrap gap-2">{LEVELS.filter((l) => l.v <= 3).map((l) => { const on = o.levels.includes(l.v); return <button key={l.v} type="button" onClick={() => set('levels', on ? o.levels.filter((x) => x !== l.v) : [...o.levels, l.v].sort())} className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-left ${on ? 'border-ink bg-ink text-white' : 'border-line hover:bg-neutral-50'}`}>{on && <Check size={14} />}<b>Mức {l.v}</b> <span className={`text-[12px] ${on ? 'text-white/70' : 'text-neutral-500'}`}>{l.kinds}</span></button> })}</div></div>
+        <div><div className="mb-1 font-medium">Dạng câu <span className="font-normal text-neutral-500">(không chọn: AI tự chọn theo mức)</span></div><TypePicker value={o.types} onChange={(v) => set('types', v)} /></div>
         <div className="grid grid-cols-3 gap-3">{num('perLevel', 'Câu mỗi mức', 'câu', 1, 10)}{num('pick', 'Câu mỗi đề', 'câu', 1, 50)}{num('minutes', 'Thời gian', 'phút', 5, 240)}{num('passScore', 'Điểm đạt', '%', 1, 100)}{num('attempts', 'Số lượt thi', 'lượt', 1, 10)}</div>
         <label className="block"><div className="mb-1 font-medium">Trọng tâm (tùy chọn)</div><input className="field py-2" value={o.focus} maxLength={500} onChange={(e) => set('focus', e.target.value)} placeholder="Ví dụ: chọn kiến trúc phù hợp cho từng tình huống" /></label>
       </div>

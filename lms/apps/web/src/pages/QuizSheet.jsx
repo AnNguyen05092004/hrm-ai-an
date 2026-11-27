@@ -1,13 +1,12 @@
 // Câu hỏi kèm đáp án, giải thích và tiêu chí chấm: người soạn xem trước, reviewer kiểm tra trước khi xuất đề.
 import { Check, X } from 'lucide-react'
-
-export const QUESTION_KIND = { mc: 'Một đáp án', mr: 'Nhiều đáp án', fill: 'Điền chỗ trống', match: 'Ghép cặp', order: 'Sắp thứ tự', cat: 'Phân loại', essay: 'Tự luận', code: 'Bài code' }
+import { QTYPES } from '../data'
 
 /** Khóa vị trí dùng cho góp ý review: mỗi câu một vị trí */
 export const questionAnchor = (q, i) => ({ key: `q:${q.id}`, label: `Câu ${i + 1}: ${(q.q ?? '').slice(0, 80)}` })
 
 function Answer({ q }) {
-  if (q.type === 'mc' || q.type === 'mr') return (
+  if (q.type === 'mc' || q.type === 'mr' || q.type === 'tf') return (
     <ul className="mt-2 space-y-1.5">
       {(q.choices ?? []).map((c, i) => (
         <li key={i} className={`rounded-lg border px-3 py-2 ${c.ok ? 'border-emerald-300 bg-emerald-50' : 'border-line'}`}>
@@ -38,7 +37,7 @@ export function QuizSheet({ questions, aside }) {
       {questions.map((q, i) => (
         <li key={q.id ?? i} className="rounded-xl border border-line bg-white p-4 text-[14px] leading-relaxed">
           <div className="flex flex-wrap items-center gap-2 text-[12px] text-neutral-500">
-            <span className="font-semibold text-ink">Câu {i + 1}</span><span>{QUESTION_KIND[q.type] ?? q.type}</span>{q.level && <span>· Mức {q.level}</span>}
+            <span className="font-semibold text-ink">Câu {i + 1}</span><span>{QTYPES[q.type] ?? q.type}</span>{q.level && <span>· Mức {q.level}</span>}
             <span className={`rounded-full px-2 py-0.5 ${q.approved ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>{q.approved ? 'Đã duyệt' : 'Chưa duyệt'}</span>
             <span className="flex-1" />{aside?.(q, i)}
           </div>
@@ -48,5 +47,14 @@ export function QuizSheet({ questions, aside }) {
         </li>
       ))}
     </ol>
+  )
+}
+
+/** Chọn các dạng câu muốn AI soạn; không chọn dạng nào thì AI tự chọn theo mức */
+export function TypePicker({ value, onChange }) {
+  const toggle = (k) => onChange(value.includes(k) ? value.filter((x) => x !== k) : [...value, k])
+  return (
+    <div className="flex flex-wrap gap-1.5">{Object.entries(QTYPES).map(([k, l]) => { const on = value.includes(k); return (
+      <button key={k} type="button" aria-pressed={on} onClick={() => toggle(k)} className={`flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[13px] ${on ? 'border-ink bg-ink text-white' : 'border-line hover:bg-neutral-50'}`}>{on && <Check size={13} />}{l}</button>) })}</div>
   )
 }

@@ -1,9 +1,13 @@
 // Hằng số giao diện: dạng tài liệu, mức kỹ năng, ảnh minh họa.
 
 export const FORMATS = {
+  master: {
+    name: 'Nội dung gốc', en: 'Master Content', bg: '#eceef1', fg: '#20242d',
+    desc: 'Bản nội dung đầy đủ để duyệt; mọi định dạng soạn từ bản này', long: 'Soạn và duyệt nội dung một lần; chốt xong mới tạo Tài liệu nhanh, slide, video, tình huống, đề kiểm tra', note: 'Chỉ dùng nội bộ, không xuất cho người học',
+  },
   qr: {
     name: 'Tài liệu nhanh', en: 'Quick Reference', bg: '#e3f1fd', fg: '#1e88e5',
-    desc: 'Những điều cốt lõi trong một khóa ngắn', long: 'Một khóa ngắn bao quát toàn bộ chủ đề', note: 'Tối đa 3 bài',
+    desc: 'Những điều cốt lõi trong một khóa ngắn', long: 'Một khóa ngắn bao quát toàn bộ chủ đề', note: 'Nên gọn, khoảng 3 bài',
   },
   deck: {
     name: 'Bộ slide', en: 'Training Deck', bg: '#fff1dc', fg: '#e8930c',
@@ -27,7 +31,23 @@ export const FORMATS = {
   },
 }
 // thứ tự học trong một khóa
-export const TYPE_ORDER = ['qr', 'deck', 'scenario', 'video', 'guide', 'exam']
+export const TYPE_ORDER = ['master', 'qr', 'deck', 'scenario', 'video', 'guide', 'exam']
+
+/** Dạng câu hỏi, theo thứ tự hiện trong menu */
+export const QTYPES = { mc: 'Một đáp án', mr: 'Nhiều đáp án', tf: 'Đúng / Sai', fill: 'Điền chỗ trống', order: 'Sắp thứ tự', match: 'Ghép cặp', cat: 'Phân loại kéo thả', essay: 'Tự luận', code: 'Bài code' }
+const TF = () => [{ t: 'Đúng', ok: true, fb: '' }, { t: 'Sai', ok: false, fb: '' }]
+/** Trường cần có của từng dạng câu (câu mới, hoặc đổi dạng câu đang có): giữ phần đã nhập nếu dùng lại được */
+export function questionFields(t, x = {}) {
+  if (t === 'tf') return { choices: TF() }
+  if (t === 'mc' || t === 'mr') return { choices: x.choices && x.type !== 'tf' ? x.choices : [{ t: '', ok: true, fb: '' }, { t: '', ok: false, fb: '' }] }
+  if (t === 'fill') return { answer: x.answer ?? '' }
+  if (t === 'order') return { items: x.items ?? ['', '', ''] }
+  if (t === 'match') return { pairs: x.pairs ?? [{ l: '', r: '' }, { l: '', r: '' }, { l: '', r: '' }] }
+  if (t === 'cat') return { groups: x.groups ?? [{ name: 'Nhóm 1', items: [''] }, { name: 'Nhóm 2', items: [''] }] }
+  if (t === 'essay') return { rubric: x.rubric ?? [''] }
+  if (t === 'code') return { tests: x.tests ?? [{ name: '', args: '[]', expected: '' }], starter: x.starter ?? 'function solve() {\n  \n}' }
+  return {}
+}
 
 export const LEVELS = [
   { v: 1, name: 'Mức 1 · Biết khái niệm', kinds: 'Trắc nghiệm' },

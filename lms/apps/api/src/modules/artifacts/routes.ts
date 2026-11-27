@@ -6,9 +6,11 @@ import { me, requireEditor } from '../../lib/auth.js'
 import { badRequest, conflict, must } from '../../lib/errors.js'
 import { audit } from '../../lib/audit.js'
 import { enqueue } from '../../lib/jobs.js'
-import { artifactDto, artifactMeta, getKit } from '../kits/service.js'
-import { aiBlock, aiEditBlock, generateQuestions } from './ai-edit.js'
+import { artifactDto, artifactMeta, getKit, isBank } from '../kits/service.js'
+import { aiBlock, aiEditBlock, aiLesson, generateQuestions } from './ai-edit.js'
 import { publishIssues } from './validate.js'
+import { QUESTION_TYPES } from '../kits/ai.js'
+import { lockedMaster, masterHits, requireLocked } from '../kits/master.js'
 import { publishArtifact } from './publish.js'
 
 const P = z.object({ id: z.string() })
@@ -48,7 +50,10 @@ export const artifactRoutes: FastifyPluginAsyncZod = async (app) => {
   app.delete('/:id', { schema: { params: P } }, async (req) => {
     const u = me(req)
     const a = await getArtifact(u.orgId, req.params.id)
-    await db.delete(schema.artifacts).where(eq(schema.artifacts.id, a.id))
+    const k = await getKit(u.orgId, a.kitId)
+    // đề trong kho đề tạo từ tài liệu nằm trong khóa ẩn riêng: xóa đề thì xóa luôn khóa ẩn
+    if (isBank(k)) await db.delete(schema.kits).where(eq(schema.kits.id, k.id))
+    else await db.delete(schema.artifacts).where(eq(schema.artifacts.id, a.id))
     await audit(u, 'artifact.delete', a.id, { title: a.title })
     return { ok: true }
   })
@@ -104,20 +109,34 @@ export const artifactRoutes: FastifyPluginAsyncZod = async (app) => {
   })
 
   app.post('/:id/questions/generate', {
-    schema: { params: P, body: z.object({ level: z.number().int().min(1).max(3), count: z.number().int().min(1).max(10), focus: z.string().max(300).default('') }) },
+    schema: { params: P, body: z.object({ level: z.number().int().min(1).max(3), count: z.number().int().min(1).max(10), focus: z.string().max(300).default(''), types: z.array(z.enum(QUESTION_TYPES)).max(QUESTION_TYPES.length).optional() }) },
   }, async (req) => {
     const u = me(req)
     const a = await getArtifact(u.orgId, req.params.id)
     const existing = (((a.content as { quiz?: { questions?: { q: string }[] } }).quiz?.questions) ?? []).map((q) => q.q)
-    return { questions: await generateQuestions(await getKit(u.orgId, a.kitId), req.body.level, req.body.count, req.body.focus, existing) }
+    // căn cứ ra câu hỏi: nội dung gốc đã chốt nếu có, không thì tài liệu nguồn
+    const m = await lockedMaster(a.kitId)
+    return { questions: await generateQuestions(await getKit(u.orgId, a.kitId), req.body.level, req.body.count, req.body.focus, existing, { types: req.body.types, hits: m ? masterHits(m.content) : undefined }) }
   })
 
-  // Tạo lại nội dung từ đầu (khi soạn lỗi)
-  app.post('/:id/regenerate', { schema: { params: P } }, async (req) => {
+  // AI soạn thêm một bài học: nội dung gốc soạn từ tài liệu nguồn; Tài liệu nhanh soạn từ nội dung gốc đã chốt
+  app.post('/:id/lessons/generate', {
+    schema: { params: P, body: z.object({ title: z.string().trim().min(2).max(200), instruction: z.string().trim().max(2000).default('') }) },
+  }, async (req) => {
+    const u = me(req)
+    const a = await getArtifact(u.orgId, req.params.id)
+    if (a.type !== 'master' && a.type !== 'qr') throw badRequest('Chỉ thêm bài học cho Nội dung gốc hoặc Tài liệu nhanh')
+    return { lesson: await aiLesson(await getKit(u.orgId, a.kitId), a.type, req.body.title, req.body.instruction) }
+  })
+
+  // Tạo lại nội dung từ đầu: khi soạn lỗi, hoặc soạn lại theo nội dung gốc mới chốt (force: thay bản nháp; bản đã xuất bản giữ nguyên tới khi xuất bản lại)
+  app.post('/:id/regenerate', { schema: { params: P, body: z.object({ force: z.boolean().default(false) }).default({ force: false }) } }, async (req) => {
     const u = me(req)
     const a = await getArtifact(u.orgId, req.params.id)
     if (a.status === 'generating') throw conflict('AI đang soạn tài liệu này')
-    if (a.publishedVersion) throw badRequest('Tài liệu đã xuất bản. Sửa trực tiếp hoặc dùng "Sửa bằng AI" cho từng phần.')
+    if (a.publishedVersion && !req.body.force) throw badRequest('Tài liệu đã xuất bản. Sửa trực tiếp hoặc dùng "Sửa bằng AI" cho từng phần.')
+    if (a.type !== 'master') await requireLocked(a.kitId)
+    await audit(u, 'artifact.regenerate', a.id)
     await db.update(schema.artifacts).set({ status: 'generating', updatedAt: new Date() }).where(eq(schema.artifacts.id, a.id))
     const job = await enqueue(u.orgId, a.type === 'exam' ? 'exam.generate' : 'artifact.generate', { artifactId: a.id }, u.id)
     return { jobId: job.id }

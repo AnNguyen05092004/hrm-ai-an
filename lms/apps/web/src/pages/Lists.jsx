@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Search, FileText, Box, Upload, Trash2, RefreshCw } from 'lucide-react'
+import { Search, FileText, Box, Upload, Trash2, RefreshCw, Plus } from 'lucide-react'
 import { useStore, useMe } from '../store'
 import { ROLE_LABEL } from './Users'
 import { ReviewBadge } from './Review'
+import { ExamCreateModal } from './KitShare'
 import { Thumb, FormatGlyph, Status, Spinner, Modal } from '../ui'
 import { TopOrg } from '../Shell'
 import { api, get, patch, del } from '../api'
@@ -56,18 +57,56 @@ function Sources() {
   )
 }
 
+/* ---------- Kho đề ---------- */
+function ExamBank() {
+  const nav = useNavigate()
+  const qc = useQueryClient()
+  const [creating, setCreating] = useState(false)
+  const [q, setQ] = useState('')
+  const exams = useQuery({ queryKey: ['exams'], queryFn: () => get('/exams'), refetchInterval: (x) => ((x.state.data ?? []).some((e) => e.status === 'generating') ? 2000 : false) })
+  const list = (exams.data ?? []).filter((e) => !q || e.title.toLowerCase().includes(q.toLowerCase()))
+  return (
+    <div>
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="flex w-full max-w-[360px] items-center gap-2 rounded-lg border border-line px-3"><Search size={15} className="text-neutral-400" /><input value={q} onChange={(e) => setQ(e.target.value)} className="h-9 flex-1 text-[14px] outline-none" placeholder="Tìm đề theo tên" /></div>
+        <div className="flex-1" />
+        <button className="btn-dark btn-sm h-9" onClick={() => setCreating(true)}><Plus size={15} />Tạo đề</button>
+      </div>
+      <p className="mt-2 text-[13px] text-neutral-500">Mọi đề kiểm tra của công ty. Tạo đề từ khóa học đã chốt nội dung gốc, hoặc thẳng từ tài liệu nguồn.</p>
+      {exams.isLoading ? <div className="mt-6"><Spinner /></div> : !list.length ? <div className="mt-5 rounded-2xl border-2 border-dashed border-line px-6 py-12 text-center text-[15px] text-neutral-500">{q ? 'Không có đề phù hợp.' : 'Chưa có đề nào. Bấm “Tạo đề” để AI soạn ngân hàng câu hỏi.'}</div> : (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[760px] text-[14px]">
+            <thead><tr className="border-b border-line text-left text-[13px] text-neutral-500"><th className="py-2 font-medium">Đề</th><th className="font-medium">Ra đề từ</th><th className="font-medium">Câu đã duyệt</th><th className="font-medium">Trạng thái</th><th className="font-medium">Cập nhật</th></tr></thead>
+            <tbody>{list.map((e) => (
+              <tr key={e.id} onClick={() => e.status !== 'generating' && nav(`/edit/${e.id}`)} className={`border-b border-line ${e.status === 'generating' ? '' : 'cursor-pointer hover:bg-neutral-50'}`}>
+                <td className="py-3 pr-3"><span className="flex items-center gap-2 font-medium"><FormatGlyph type="exam" size={15} />{e.title}</span></td>
+                <td className="pr-3 text-neutral-600">{e.origin.kind === 'kit' ? <span className="flex items-center gap-1.5"><Box size={13} className="text-emerald-600" />{e.origin.title}</span> : <span className="flex items-center gap-1.5"><FileText size={13} className="text-sky-600" />{e.origin.names.join(', ') || 'Tài liệu nguồn'}</span>}</td>
+                <td>{e.status === 'generating' ? '—' : `${e.approved}/${e.questions}`}</td>
+                <td><Status s={e.status} /></td>
+                <td className="text-neutral-500">{e.updated}</td>
+              </tr>))}</tbody>
+          </table>
+        </div>
+      )}
+      <ExamCreateModal open={creating} onClose={() => setCreating(false)} onCreated={() => qc.invalidateQueries({ queryKey: ['exams'] })} />
+    </div>
+  )
+}
+
 export function Library() {
   const nav = useNavigate()
-  const [tab, setTab] = useState('kits')
+  const [params, setParams] = useSearchParams()
+  const tab = params.get('tab') ?? 'kits'
+  const setTab = (t) => setParams(t === 'kits' ? {} : { tab: t }, { replace: true })
   const [q, setQ] = useState('')
   const kits = useQuery({ queryKey: ['kits'], queryFn: () => get('/kits') })
   const list = (kits.data ?? []).filter((k) => !q || `${k.title} ${k.artifacts.map((a) => a.title).join(' ')}`.toLowerCase().includes(q.toLowerCase()))
   const arts = list.flatMap((k) => k.artifacts.map((a) => ({ ...a, kit: k })))
   return (
     <Page title="Thư viện" sub="Khóa học, tài liệu và tài liệu nguồn của công ty.">
-      <Tabs value={tab} onChange={setTab} items={[['kits', 'Khóa học', kits.data?.length], ['arts', 'Tài liệu', arts.length], ['sources', 'Tài liệu nguồn']]} />
-      {tab !== 'sources' && <div className="mt-5 flex w-[360px] items-center gap-2 rounded-lg border border-line px-3"><Search size={15} className="text-neutral-400" /><input value={q} onChange={(e) => setQ(e.target.value)} className="h-9 flex-1 text-[14px] outline-none" placeholder="Tìm theo tên" /></div>}
-      {kits.isLoading && tab !== 'sources' && <div className="mt-6"><Spinner /></div>}
+      <Tabs value={tab} onChange={setTab} items={[['kits', 'Khóa học', kits.data?.length], ['arts', 'Tài liệu', arts.length], ['exams', 'Kho đề'], ['sources', 'Tài liệu nguồn']]} />
+      {(tab === 'kits' || tab === 'arts') && <div className="mt-5 flex w-[360px] items-center gap-2 rounded-lg border border-line px-3"><Search size={15} className="text-neutral-400" /><input value={q} onChange={(e) => setQ(e.target.value)} className="h-9 flex-1 text-[14px] outline-none" placeholder="Tìm theo tên" /></div>}
+      {kits.isLoading && (tab === 'kits' || tab === 'arts') && <div className="mt-6"><Spinner /></div>}
       {tab === 'kits' && <div className="mt-5 grid grid-cols-3 gap-5">{list.map((k) => (
         <button key={k.id} onClick={() => nav(k.stage === 'details' ? `/kit/${k.id}/details` : k.stage === 'outline' ? `/kit/${k.id}/outline` : `/kit/${k.id}`)} className="card overflow-hidden text-left transition hover:shadow-pop">
           <Thumb img={k.artifacts[0]?.img ?? k.img} className="h-36" />
@@ -75,6 +114,7 @@ export function Library() {
         </button>))}</div>}
       {tab === 'arts' && <table className="mt-5 w-full text-[14px]"><thead><tr className="border-b border-line text-left text-[13px] text-neutral-500"><th className="py-2 font-medium">Tài liệu</th><th className="font-medium">Bộ</th><th className="font-medium">Trạng thái</th><th className="font-medium">Cập nhật</th></tr></thead>
         <tbody>{arts.map((a) => <tr key={a.id} onClick={() => nav(`/edit/${a.id}`)} className="cursor-pointer border-b border-line hover:bg-neutral-50"><td className="py-3"><span className="flex items-center gap-2 font-medium"><FormatGlyph type={a.type} size={15} />{a.title}</span></td><td className="text-neutral-600">{a.kit.title}</td><td><Status s={a.status} /></td><td className="text-neutral-500">{a.updated}</td></tr>)}</tbody></table>}
+      {tab === 'exams' && <ExamBank />}
       {tab === 'sources' && <Sources />}
     </Page>
   )

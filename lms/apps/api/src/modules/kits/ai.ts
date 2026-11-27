@@ -1,4 +1,5 @@
-// AI soạn khóa học: chi tiết → dàn ý → nội dung. Mọi đoạn nội dung phải trích một đoạn nguồn có mã [S#].
+// AI soạn khóa học: chi tiết → dàn ý nội dung gốc → nội dung gốc → (sau khi chốt) các định dạng soạn từ nội dung gốc.
+// Mọi đoạn nội dung phải trích một đoạn căn cứ có mã [S#]: đoạn tài liệu nguồn, hoặc đoạn của nội dung gốc đã chốt.
 import { z } from 'zod'
 import { aiJson } from '../../lib/ai/index.js'
 import type { Hit } from '../sources/service.js'
@@ -6,6 +7,8 @@ import type { Hit } from '../sources/service.js'
 export const IMAGES = ['server', 'rack', 'desk', 'person', 'screen', 'office', 'meeting', 'team', 'cyber', 'lock', 'mobile', 'dash', 'charts', 'code', 'plan', 'support', 'handshake', 'teamwork', 'terminal', 'devscreen', 'nodes', 'ai', 'ml', 'servers', 'setup', 'devs', 'shop', 'notes', 'writing', 'welcome', 'workshop', 'warehouse'] as const
 export const GEN_TYPES = ['qr', 'deck', 'scenario', 'video'] as const
 export type GenType = typeof GEN_TYPES[number]
+/** Nội dung gốc: bản soạn đầy đủ để duyệt nội bộ, không xuất cho người học; mọi định dạng sinh từ bản này */
+export type DraftType = GenType | 'master'
 
 const RULES = `Bạn là chuyên gia thiết kế đào tạo nội bộ, viết tiếng Việt rõ ràng, câu ngắn, giọng trung tính.
 Quy tắc bắt buộc:
@@ -40,7 +43,6 @@ export const DetailsSchema = z.object({
   skillId: z.string().describe('id kỹ năng trong danh sách, hoặc chuỗi rỗng nếu không khớp'),
   level: z.number().int(),
   practice: z.enum(['less', 'balanced', 'more']),
-  plan: z.array(z.object({ type: z.enum(GEN_TYPES), title: z.string(), summary: z.string() })),
   warnings: z.array(z.string()).describe('mâu thuẫn giữa các nguồn, dữ liệu nhạy cảm, nguồn thiếu'),
 })
 export type Details = z.infer<typeof DetailsSchema>
@@ -53,7 +55,6 @@ Nhiệm vụ: từ mô tả mục tiêu và tài liệu nguồn, đề xuất ch
 - title ngắn (≤ 60 ký tự), desc 1–2 câu.
 - 3–4 mục tiêu, 3–5 điều cần nhớ, 2–3 chỉ số thành công đo được.
 - Chọn skillId từ danh sách kỹ năng; level 1–3.
-- plan gồm 2–4 tài liệu. Dạng: qr = Tài liệu nhanh (tối đa 3 bài, luôn có, kèm bài kiểm tra), deck = Bộ slide, scenario = Tình huống hội thoại có lựa chọn, video = Video tạo từ slide và giọng đọc AI.
 - warnings: nêu mâu thuẫn giữa nguồn, nguồn có dữ liệu nhạy cảm, hoặc nguồn không đủ cho mục tiêu.`,
     input: `Mô tả mục tiêu của người soạn:\n${goal}\n\nKỹ năng có trong khung năng lực:\n${skills.map((s) => `${s.id}: ${s.name}`).join('\n')}\n\nTài liệu nguồn: ${sourceNames.join(', ') || 'không có'}\n${sensitive.length ? `Tài liệu có dấu hiệu chứa dữ liệu nhạy cảm: ${sensitive.join(', ')}\n` : ''}\nTrích đoạn nguồn:\n${hitsText(hits) || '(không có)'}`,
     mock: () => mockDetails(goal, skills, sourceNames, sensitive),
@@ -70,30 +71,27 @@ function mockDetails(goal: string, skills: { id: string; name: string }[], sourc
     takeaways: ['Giải thích được khái niệm chính', 'Làm đúng các bước cơ bản', 'Biết lỗi hay gặp'],
     metrics: ['Giảm câu hỏi lặp lại gửi bộ phận phụ trách', 'Tỷ lệ đạt bài kiểm tra ≥ 80%'],
     skillId: sk?.id ?? '', level: 2, practice: 'balanced',
-    plan: [
-      { type: 'qr', title: `${title}: những điều cần biết`, summary: 'Tóm tắt nội dung cốt lõi trong tối đa 3 bài, kèm bài kiểm tra.' },
-      { type: 'deck', title: `${title} trong 10 phút`, summary: 'Bộ slide ngắn để trình bày hoặc gửi đi.' },
-      { type: 'scenario', title: 'Xử lý tình huống thực tế', summary: 'Người học trả lời đồng nghiệp trong tình huống thường gặp.' },
-    ],
     warnings: [...(sourceNames.length ? [] : ['Chưa có tài liệu nguồn: AI chỉ soạn khung, không viết nội dung chi tiết.']), ...sensitive.map((s) => `${s} có dấu hiệu chứa dữ liệu nhạy cảm. Xác nhận phạm vi được dùng trước khi soạn.`)],
   }
 }
 
 // ---------- 2. Dàn ý ----------
 export const OutlineSchemas = {
+  master: z.object({ sections: z.array(z.object({ t: z.string(), items: z.array(z.string()) })) }),
   qr: z.object({ sections: z.array(z.object({ t: z.string(), items: z.array(z.string()) })) }),
   deck: z.object({ slides: z.array(z.string()) }),
   video: z.object({ chapters: z.array(z.string()) }),
   scenario: z.object({ character: z.string().describe('Tên · vai trò'), learner: z.string(), situation: z.string(), goals: z.array(z.string()) }),
 }
-const OUTLINE_HINT: Record<GenType, string> = {
+const OUTLINE_HINT: Record<DraftType, string> = {
+  master: 'Dàn ý Nội dung gốc của cả khóa: 3–8 bài (sections) theo trình tự học, mỗi bài 3–6 ý chính (items), bao quát đủ các mục tiêu và điều cần nhớ.',
   qr: 'Dàn ý Tài liệu nhanh: tối đa 3 bài (sections), mỗi bài 2–4 ý chính (items).',
   deck: 'Dàn ý Bộ slide: 6–9 tiêu đề slide, slide đầu là bìa, slide cuối là việc cần làm.',
   video: 'Dàn ý video 5–8 phút: 4–6 chương.',
   scenario: 'Dàn ý Tình huống: nhân vật AI đóng (character dạng "Tên · vai trò"), vai người học, bối cảnh (situation), 2–3 mục tiêu cho từng cảnh.',
 }
 
-export function draftOutline(orgId: string, type: GenType, kit: KitBrief, item: { title: string; summary: string }, hits: Hit[]): Promise<Record<string, unknown>> {
+export function draftOutline(orgId: string, type: DraftType, kit: KitBrief, item: { title: string; summary: string }, hits: Hit[]): Promise<Record<string, unknown>> {
   const schema = OutlineSchemas[type]
   return aiJson({
     orgId, feature: `outline_${type}`, schema: schema as z.ZodType<Record<string, unknown>>,
@@ -103,7 +101,8 @@ export function draftOutline(orgId: string, type: GenType, kit: KitBrief, item: 
   })
 }
 
-function mockOutline(type: GenType, kit: KitBrief): Record<string, unknown> {
+function mockOutline(type: DraftType, kit: KitBrief): Record<string, unknown> {
+  if (type === 'master') return { sections: ['Tổng quan và khái niệm', 'Các bước thực hiện', 'Ví dụ thực tế', 'Lỗi hay gặp và cách tránh'].map((t) => ({ t, items: ['Khái niệm chính', 'Ví dụ thực tế', 'Điều cần lưu ý'] })) }
   if (type === 'qr') return { sections: ['Tổng quan', 'Các bước thực hiện', 'Lỗi hay gặp'].map((t) => ({ t, items: ['Khái niệm chính', 'Ví dụ thực tế'] })) }
   if (type === 'deck') return { slides: [kit.title, 'Vì sao cần học', 'Nội dung chính', 'Ví dụ', 'Việc cần làm'] }
   if (type === 'video') return { chapters: ['Mở đầu', 'Nội dung chính', 'Ví dụ', 'Tóm tắt'] }
@@ -125,11 +124,14 @@ export const BlockSchema = z.object({
   img: N(z.enum(IMAGES)), cap: N(z.string()),
   src: N(z.string()).describe('mã đoạn nguồn, ví dụ "S2"; null với kc, image, gap'),
 })
+/** Dạng câu hỏi: một đáp án, nhiều đáp án, đúng/sai, điền chỗ trống, sắp thứ tự, ghép cặp, phân loại, tự luận, bài code */
+export const QUESTION_TYPES = ['mc', 'mr', 'tf', 'fill', 'order', 'match', 'cat', 'essay', 'code'] as const
+export type QuestionType = typeof QUESTION_TYPES[number]
 export const QuestionSchema = z.object({
-  type: z.enum(['mc', 'fill', 'essay', 'code', 'match', 'order', 'cat']),
+  type: z.enum(QUESTION_TYPES),
   level: z.number().int(),
   q: z.string(),
-  choices: N(z.array(z.object({ t: z.string(), ok: z.boolean(), fb: z.string() }))),
+  choices: N(z.array(z.object({ t: z.string(), ok: z.boolean(), fb: z.string() }))).describe('mc: 3–4 lựa chọn, đúng 1; mr: 4–5 lựa chọn, đúng từ 2; tf: đúng 2 lựa chọn "Đúng" và "Sai", câu q là một phát biểu'),
   answer: N(z.string()).describe('đáp án câu điền'),
   rubric: N(z.array(z.string())),
   pairs: N(z.array(z.object({ l: z.string(), r: z.string() }))).describe('match: 3–5 cặp vế trái / vế phải ghép đúng'),
@@ -151,18 +153,27 @@ const LEVEL_KINDS: Record<number, string> = {
   3: 'mức 3: 3 câu trắc nghiệm, 1 câu tự luận tình huống có rubric, 1 bài code JavaScript (code) có hàm solve và 3–4 test',
 }
 
-export function draftQr(orgId: string, kit: KitBrief, item: { title: string; summary: string }, outline: { sections: { t: string; items: string[] }[] }, hits: Hit[]): Promise<QrDraft> {
+const TASK = {
+  master: 'Nhiệm vụ: viết Nội dung gốc của khóa theo dàn ý, mỗi bài (lesson) ứng với một mục dàn ý. Đây là bản nội dung đầy đủ để chuyên gia duyệt; slide, video, tình huống, đề kiểm tra sẽ được soạn từ bản này, nên viết đủ ý, chính xác, có ví dụ. Không viết câu hỏi kiểm tra (questions là mảng rỗng).',
+  qr: 'Nhiệm vụ: viết Tài liệu nhanh theo dàn ý, mỗi bài (lesson) ứng với một mục dàn ý, và bộ câu hỏi kiểm tra.',
+  lesson: 'Nhiệm vụ: viết đúng một bài học (lesson) theo tên bài và yêu cầu. Không viết câu hỏi kiểm tra (questions là mảng rỗng).',
+}
+export type QrMode = keyof typeof TASK
+
+/** Viết bài học theo dàn ý. mode: master = Nội dung gốc (không có câu hỏi), qr = Tài liệu nhanh kèm câu hỏi, lesson = một bài lẻ */
+export function draftQr(orgId: string, kit: KitBrief, item: { title: string; summary: string }, outline: { sections: { t: string; items: string[] }[] }, hits: Hit[], mode: QrMode = 'qr'): Promise<QrDraft> {
+  const quiz = mode === 'qr'
   return aiJson({
-    orgId, feature: 'gen_qr', schema: QrSchema, strong: true,
+    orgId, feature: mode === 'master' ? 'gen_master' : 'gen_qr', schema: QrSchema, strong: true,
     system: `${RULES}
-Nhiệm vụ: viết Tài liệu nhanh theo dàn ý, mỗi bài (lesson) ứng với một mục dàn ý, và bộ câu hỏi kiểm tra.
+${TASK[mode]}
 Khối (block) dùng được: heading (h + p), para (p), list (intro + items), flash (h, p, cards mặt trước f / mặt sau b), accordion (h, p, accordion các mục t/b), tabs (h, p, accordion: mỗi mục là một tab t/b, hợp khi so sánh các lựa chọn), timeline (h, timeline: mốc d, tiêu đề t, mô tả b; hợp với quy trình theo thời gian hoặc lịch sử), sorting (h, p, groups: hoạt động kéo thả mục vào đúng nhóm), table (head, rows), code (h, code), process (h, steps), kc (câu hỏi nhanh: q, choices, correct là chỉ số), image (img, cap), gap (p: mô tả phần thiếu căn cứ).
 - Mỗi bài 4–7 khối, mở đầu bằng heading, có ít nhất một khối tương tác (flash/accordion/tabs/timeline/sorting/process/table) và kết thúc bằng một kc.
 - Mọi khối nội dung (trừ kc, image, gap) phải có src là mã đoạn nguồn dùng làm căn cứ.
 - Ý trong dàn ý không tìm thấy trong nguồn: viết khối gap nêu rõ thiếu gì.
-- Câu hỏi kiểm tra: ${LEVEL_KINDS[kit.level] ?? LEVEL_KINDS[2]}. Mỗi câu có src. Câu mc có 3–4 lựa chọn, đúng một đáp án, mỗi lựa chọn có giải thích fb. Câu code: tests là mảng, args là chuỗi JSON của mảng tham số, expected là chuỗi JSON.`,
+${quiz ? `- Câu hỏi kiểm tra: ${LEVEL_KINDS[kit.level] ?? LEVEL_KINDS[2]}. Mỗi câu có src. Câu mc có 3–4 lựa chọn, đúng một đáp án, mỗi lựa chọn có giải thích fb. Câu code: tests là mảng, args là chuỗi JSON của mảng tham số, expected là chuỗi JSON.` : ''}`,
     input: `${brief(kit)}\n\nTài liệu: ${item.title}\nMục đích: ${item.summary}\n\nDàn ý:\n${outline.sections.map((s, i) => `Bài ${i + 1}: ${s.t}\n${s.items.map((x) => `  - ${x}`).join('\n')}`).join('\n')}\n\nTrích đoạn nguồn:\n${hitsText(hits) || '(không có nguồn: chỉ dựng khung và gap)'}`,
-    mock: () => mockQr(outline, kit, hits),
+    mock: () => { const d = mockQr(outline, kit, hits); return quiz ? d : { ...d, questions: [] } },
   })
 }
 
